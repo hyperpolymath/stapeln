@@ -697,6 +697,206 @@
             font-weight: 600;
         }
 
+        /* Stack View - Vertical Supply Chain Visualization */
+        .stack-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .stack-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .stack-header h2 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4a9eff;
+            margin-bottom: 12px;
+        }
+        .stack-header p {
+            color: #8892a6;
+            font-size: 16px;
+        }
+        .stack-layers {
+            position: relative;
+            display: flex;
+            flex-direction: column-reverse; /* Bottom to top */
+            gap: 0;
+        }
+        .stack-layer {
+            position: relative;
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 2px solid #2a3142;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .stack-layer:hover {
+            border-color: #4a9eff;
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.2);
+        }
+        .stack-layer.complete {
+            border-color: #4caf50;
+        }
+        .stack-layer.incomplete {
+            border-color: #ff9800;
+        }
+        .stack-layer.empty {
+            border-color: #f44336;
+            opacity: 0.6;
+        }
+        .layer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .layer-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .layer-icon {
+            font-size: 28px;
+        }
+        .layer-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #e0e6ed;
+        }
+        .layer-description {
+            font-size: 13px;
+            color: #8892a6;
+            margin-top: 4px;
+        }
+        .layer-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .layer-status.complete {
+            color: #4caf50;
+        }
+        .layer-status.incomplete {
+            color: #ff9800;
+        }
+        .layer-status.empty {
+            color: #f44336;
+        }
+        .layer-components {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #2a3142;
+        }
+        .stack-layer.expanded .layer-components {
+            display: block;
+        }
+        .layer-component-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #0a0e1a;
+            border: 1px solid #2a3142;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+        .layer-component-item:hover {
+            border-color: #4a9eff;
+        }
+        .component-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .component-icon-small {
+            font-size: 20px;
+        }
+        .component-details {
+            display: flex;
+            flex-direction: column;
+        }
+        .component-name-small {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e6ed;
+        }
+        .component-type-small {
+            font-size: 11px;
+            color: #8892a6;
+        }
+        .component-properties {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+        }
+        .property-badge {
+            padding: 4px 8px;
+            background: #2a3142;
+            border-radius: 4px;
+            color: #8892a6;
+        }
+        .property-badge.active {
+            background: #4a9eff;
+            color: white;
+        }
+        .empty-layer {
+            text-align: center;
+            padding: 20px;
+            color: #8892a6;
+            font-size: 14px;
+        }
+        .layer-arrow {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: -24px;
+            font-size: 20px;
+            color: #4a9eff;
+            z-index: 10;
+            animation: bounce-arrow 2s infinite;
+        }
+        @keyframes bounce-arrow {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-4px); }
+        }
+        .stack-summary {
+            margin-top: 40px;
+            padding: 24px;
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 2px solid #4a9eff;
+            border-radius: 12px;
+        }
+        .stack-summary h3 {
+            color: #4a9eff;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4a9eff;
+        }
+        .summary-label {
+            font-size: 13px;
+            color: #8892a6;
+            margin-top: 4px;
+        }
+
         /* Validation Status Indicators */
         .validation-panel {
             position: fixed;
@@ -1466,33 +1666,32 @@
                 <!-- Stack View (Third Page) -->
                 <div id="stack" class="page">
                     <div class="canvas">
-                        <div class="simple-content">
-                            <h2>📚 Stack View</h2>
-                            <p>Design your component stack with vertical supply chain visualization.</p>
-                            <p style="margin-top: 16px; font-size: 14px;">
-                                Will show: Build → Base Image → Gateway → Security → Applications → Provenance
-                            </p>
+                        <div class="stack-container">
+                            <div class="stack-header">
+                                <h2>📚 Stack View: Vertical Supply Chain</h2>
+                                <p>Interactive layer-by-layer visualization of your container stack from foundation to provenance</p>
+                            </div>
 
-                            <div id="stackContext" class="component-context" style="display: none;">
-                                <h3>🎯 Editing Component</h3>
-                                <div class="info-row">
-                                    <span class="info-label">Component Name:</span>
-                                    <span class="info-value" id="ctxName">-</span>
+                            <div class="stack-layers" id="stackLayers">
+                                <!-- Layers will be dynamically populated -->
+                            </div>
+
+                            <div class="stack-summary" id="stackSummary">
+                                <h3>📊 Stack Summary</h3>
+                                <div class="summary-grid">
+                                    <div class="summary-item">
+                                        <div class="summary-value" id="summaryComponents">0</div>
+                                        <div class="summary-label">Total Components</div>
+                                    </div>
+                                    <div class="summary-item">
+                                        <div class="summary-value" id="summaryConnections">0</div>
+                                        <div class="summary-label">Connections</div>
+                                    </div>
+                                    <div class="summary-item">
+                                        <div class="summary-value" id="summaryLayers">0</div>
+                                        <div class="summary-label">Active Layers</div>
+                                    </div>
                                 </div>
-                                <div class="info-row">
-                                    <span class="info-label">Type:</span>
-                                    <span class="info-value" id="ctxType">-</span>
-                                </div>
-                                <div class="info-row">
-                                    <span class="info-label">Base Image:</span>
-                                    <span class="info-value" id="ctxImage">Click to select</span>
-                                </div>
-                                <button class="tour-button" style="margin-top: 20px;" onclick="showImageSelector()">
-                                    📦 Select Base Image
-                                </button>
-                                <button class="tour-button" style="margin-top: 12px; background: #2a3142;" onclick="returnToTopology()">
-                                    ← Back to Topology
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -2775,6 +2974,11 @@ alignment-checks:
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
             event.target.classList.add('active');
+
+            // Render stack view when switching to it
+            if (pageId === 'stack') {
+                setTimeout(() => renderStackView(), 100);
+            }
         }
 
         function showSubTab(subTabId) {
@@ -4174,6 +4378,213 @@ alignment-checks:
             selectedConnection = null;
 
             console.log(`Connection deleted: ${connectionId}`);
+        }
+
+        // ========================================
+        // STACK VIEW - VERTICAL SUPPLY CHAIN
+        // ========================================
+
+        const stackLayers = [
+            {
+                id: 'provenance',
+                name: 'Provenance & Verification',
+                icon: '🔏',
+                description: 'SBOM, signatures, supply chain verification',
+                componentTypes: ['provenance', 'sbom'],
+                order: 7
+            },
+            {
+                id: 'security',
+                name: 'Security Layer',
+                icon: '🔒',
+                description: 'Firewalls, secrets, encryption, access control',
+                componentTypes: ['firewall', 'secrets', 'security'],
+                order: 6
+            },
+            {
+                id: 'network',
+                name: 'Network & Gateway',
+                icon: '🌐',
+                description: 'Load balancers, gateways, ingress controllers',
+                componentTypes: ['gateway', 'load-balancer', 'Gateway', 'Load Balancer'],
+                order: 5
+            },
+            {
+                id: 'application',
+                name: 'Application Layer',
+                icon: '⚙️',
+                description: 'Application servers, services, workers',
+                componentTypes: ['application', 'app-server', 'frontend', 'App Server', 'Frontend'],
+                order: 4
+            },
+            {
+                id: 'data',
+                name: 'Data & Cache',
+                icon: '💾',
+                description: 'Databases, caches, message queues',
+                componentTypes: ['database', 'cache', 'message-queue', 'Database', 'Cache', 'Message Queue'],
+                order: 3
+            },
+            {
+                id: 'runtime',
+                name: 'Runtime Dependencies',
+                icon: '📦',
+                description: 'Runtime libraries, language runtimes, system packages',
+                componentTypes: ['runtime', 'library'],
+                order: 2
+            },
+            {
+                id: 'base',
+                name: 'Base Image',
+                icon: '🏔️',
+                description: 'Foundation image (Lago Grey, Alpine, Wolfi, etc.)',
+                componentTypes: ['base-image'],
+                order: 1
+            }
+        ];
+
+        function renderStackView() {
+            const stackLayersContainer = document.getElementById('stackLayers');
+            if (!stackLayersContainer) return;
+
+            stackLayersContainer.innerHTML = '';
+
+            // Build the stack from bottom to top
+            stackLayers.forEach(layer => {
+                const layerComponents = getComponentsForLayer(layer);
+                const layerDiv = createStackLayer(layer, layerComponents);
+                stackLayersContainer.appendChild(layerDiv);
+            });
+
+            // Update summary
+            updateStackSummary();
+        }
+
+        function getComponentsForLayer(layer) {
+            // Map nodes to this layer based on type
+            return nodes.filter(node => {
+                // Check if node type matches any of the layer's component types
+                return layer.componentTypes.some(type =>
+                    node.type.toLowerCase().includes(type.toLowerCase()) ||
+                    type.toLowerCase().includes(node.type.toLowerCase())
+                );
+            });
+        }
+
+        function createStackLayer(layer, components) {
+            const layerDiv = document.createElement('div');
+            layerDiv.className = 'stack-layer';
+            layerDiv.id = `layer-${layer.id}`;
+
+            // Determine layer status
+            const hasComponents = components.length > 0;
+            const allConfigured = components.every(c => c.baseImage && c.firewall && c.resources.cpu && c.resources.memory);
+
+            if (!hasComponents) {
+                layerDiv.classList.add('empty');
+            } else if (allConfigured) {
+                layerDiv.classList.add('complete');
+            } else {
+                layerDiv.classList.add('incomplete');
+            }
+
+            // Layer header
+            const header = document.createElement('div');
+            header.className = 'layer-header';
+            header.innerHTML = `
+                <div class="layer-title">
+                    <div class="layer-icon">${layer.icon}</div>
+                    <div>
+                        <div class="layer-name">${layer.name}</div>
+                        <div class="layer-description">${layer.description}</div>
+                    </div>
+                </div>
+                <div class="layer-status ${hasComponents ? (allConfigured ? 'complete' : 'incomplete') : 'empty'}">
+                    ${hasComponents ? (allConfigured ? '✅ Complete' : '⚠️ Incomplete') : '❌ Empty'}
+                    <span style="margin-left: 8px; color: #8892a6;">(${components.length})</span>
+                </div>
+            `;
+
+            layerDiv.appendChild(header);
+
+            // Layer components
+            const componentsDiv = document.createElement('div');
+            componentsDiv.className = 'layer-components';
+
+            if (components.length === 0) {
+                componentsDiv.innerHTML = `
+                    <div class="empty-layer">
+                        No components in this layer yet. Add components from Topology View.
+                    </div>
+                `;
+            } else {
+                components.forEach(component => {
+                    const componentItem = createLayerComponentItem(component);
+                    componentsDiv.appendChild(componentItem);
+                });
+            }
+
+            layerDiv.appendChild(componentsDiv);
+
+            // Add arrow (except for top layer)
+            if (layer.order < stackLayers.length) {
+                const arrow = document.createElement('div');
+                arrow.className = 'layer-arrow';
+                arrow.textContent = '↑';
+                layerDiv.appendChild(arrow);
+            }
+
+            // Click to expand/collapse
+            header.addEventListener('click', () => {
+                layerDiv.classList.toggle('expanded');
+            });
+
+            return layerDiv;
+        }
+
+        function createLayerComponentItem(component) {
+            const item = document.createElement('div');
+            item.className = 'layer-component-item';
+
+            item.innerHTML = `
+                <div class="component-info">
+                    <div class="component-icon-small">${component.icon || '📦'}</div>
+                    <div class="component-details">
+                        <div class="component-name-small">${component.name}</div>
+                        <div class="component-type-small">${component.type}</div>
+                    </div>
+                </div>
+                <div class="component-properties">
+                    ${component.baseImage ? `<span class="property-badge active">${component.baseImage}</span>` : '<span class="property-badge">No image</span>'}
+                    ${component.firewall ? '<span class="property-badge active">🔥 Firewall</span>' : '<span class="property-badge">No firewall</span>'}
+                    ${component.resources.cpu ? `<span class="property-badge active">CPU: ${component.resources.cpu}</span>` : '<span class="property-badge">No CPU</span>'}
+                    ${component.resources.memory ? `<span class="property-badge active">RAM: ${component.resources.memory}</span>` : '<span class="property-badge">No RAM</span>'}
+                </div>
+            `;
+
+            // Click to go to topology and select node
+            item.addEventListener('click', () => {
+                showPage('topology');
+                setTimeout(() => {
+                    selectNodeForProperties(component.id);
+                    // Scroll to node
+                    const nodeEl = document.getElementById(component.id);
+                    if (nodeEl) {
+                        nodeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 300);
+            });
+
+            return item;
+        }
+
+        function updateStackSummary() {
+            document.getElementById('summaryComponents').textContent = nodes.length;
+            document.getElementById('summaryConnections').textContent = connections.length;
+
+            // Count active layers (layers with components)
+            const activeLayers = stackLayers.filter(layer => getComponentsForLayer(layer).length > 0).length;
+            document.getElementById('summaryLayers').textContent = activeLayers;
         }
 
         // Click outside canvas to deselect
