@@ -85,6 +85,7 @@ let findComponent = (model: model, id: string): option<component> => {
 let componentTypeToString = (ct: componentType): string => {
   switch ct {
   | CerroTorre => "Cerro Torre"
+  | LagoGrey => "Lago Grey"
   | Svalinn => "Svalinn"
   | Selur => "selur"
   | Vordr => "Vörðr"

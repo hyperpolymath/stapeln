@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Fjord Secrets Manager Build
+
+# Build Fjord in linear mode and output WASM
+build:
+    ../../scripts/compile-affine.sh src/fjord.eph --mode linear --out ../../backend/priv/wasm/fjord.wasm
+
+# Build and show output size
+build-info: build
+    @echo "Fjord WASM compiled:"
+    @ls -lh ../../backend/priv/wasm/fjord.wasm
+
+# Run conformance tests
+test:
+    @echo "Testing Fjord linear type guarantees..."
+    # TODO: Add Ephapax conformance tests
+
+# Clean build artifacts
+clean:
+    rm -f ../../backend/priv/wasm/fjord.wasm

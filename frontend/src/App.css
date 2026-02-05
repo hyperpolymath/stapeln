@@ -1,0 +1,98 @@
+/* SPDX-License-Identifier: PMPL-1.0-or-later */
+/* App.css - Main application styles */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.nav-tabs {
+  display: flex;
+  background: #1a1a1a;
+  border-bottom: 2px solid #333;
+  padding: 0;
+  margin: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background: #222;
+  color: #fff;
+}
+
+.tab.active {
+  background: #0a0e1a;
+  color: #64b5f6;
+  border-bottom-color: #64b5f6;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.page {
+  height: 100%;
+  padding: 2rem;
+  background: #0a0e1a;
+  color: #e0e6ed;
+}
+
+.settings-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.settings-page h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #64b5f6;
+}
+
+.settings-page h2 {
+  font-size: 1.2rem;
+  margin: 1.5rem 0 1rem 0;
+  color: #8fa3bf;
+}
+
+.settings-group {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #131a26;
+  border-radius: 8px;
+  border: 1px solid #2a3f5f;
+}
+
+.settings-group label {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.settings-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+.settings-group p {
+  color: #8fa3bf;
+  margin: 0;
+}

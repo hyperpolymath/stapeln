@@ -1,0 +1,298 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Fjord Secrets Manager — Linear Mode
+// Guarantees: Secrets used exactly once, no leaks, no double-use
+
+// ============================================================================
+// Core Types
+// ============================================================================
+
+// Secret: Linear type — must be consumed exactly once
+type Secret = own {
+    data: Bytes,
+    created_at: i64,
+    secret_id: i32
+}
+
+// SecretRef: Affine reference to secret metadata (doesn't expose data)
+type SecretRef = {
+    secret_id: i32,
+    created_at: i64
+}
+
+// Result types
+type CreateError =
+    | InvalidData
+    | EncryptionFailed
+    | StorageError
+
+type UseError =
+    | SecretNotFound
+    | DecryptionFailed
+    | InjectionFailed
+    | AlreadyConsumed
+
+type RotateError =
+    | SecretNotFound
+    | RotationFailed
+
+// ============================================================================
+// Core Operations (Linear Mode)
+// ============================================================================
+
+// Create a secret — returns linear Secret that MUST be used
+fn create_secret(raw_data: ref Bytes) -> Result[Secret, CreateError] / IO + Crypto {
+    // Validate input
+    if raw_data.len() == 0 {
+        return Err(InvalidData)
+    }
+
+    // Encrypt data (XChaCha20-Poly1305)
+    let encrypted = match encrypt_xchacha20(raw_data) {
+        Ok(enc) => enc,
+        Err(_) => return Err(EncryptionFailed)
+    }
+
+    // Generate unique ID and timestamp
+    let secret_id = generate_secret_id()
+    let created_at = current_timestamp()
+
+    // Create linear secret
+    Ok(Secret {
+        data: encrypted,
+        created_at: created_at,
+        secret_id: secret_id
+    })
+}
+
+// Use secret — CONSUMES the secret (linear: exactly once)
+fn use_secret(secret: Secret) -> Result[SecretRef, UseError] / IO + Container {
+    // Decrypt secret data
+    let decrypted = match decrypt_xchacha20(&secret.data) {
+        Ok(dec) => dec,
+        Err(_) => return Err(DecryptionFailed)
+    }
+
+    // Inject into container
+    match inject_into_container(&decrypted) {
+        Ok(()) => {
+            // Secret consumed — return only metadata reference
+            let secret_ref = SecretRef {
+                secret_id: secret.secret_id,
+                created_at: secret.created_at
+            }
+
+            // secret.data is now consumed and inaccessible
+            // Ephapax guarantees memory is zeroed
+            Ok(secret_ref)
+        },
+        Err(_) => Err(InjectionFailed)
+    }
+}
+
+// Rotate secret — consumes old, returns new
+fn rotate_secret(old_secret: Secret) -> Result[Secret, RotateError] / IO + Crypto {
+    // Decrypt old secret
+    let old_data = match decrypt_xchacha20(&old_secret.data) {
+        Ok(dec) => dec,
+        Err(_) => return Err(RotationFailed)
+    }
+
+    // Generate new encryption key
+    let new_data = match re_encrypt_with_new_key(&old_data) {
+        Ok(enc) => enc,
+        Err(_) => return Err(RotationFailed)
+    }
+
+    // Old secret is consumed here
+    // Create new secret
+    Ok(Secret {
+        data: new_data,
+        created_at: current_timestamp(),
+        secret_id: generate_secret_id()
+    })
+}
+
+// ============================================================================
+// Safe Patterns (Correct Usage)
+// ============================================================================
+
+// Pattern 1: Create and immediately use
+fn create_and_use(raw_data: ref Bytes) -> Result[SecretRef, UseError] / IO + Crypto + Container {
+    let secret = create_secret(raw_data)?
+    // secret is linear — must use it
+    use_secret(secret)
+}
+
+// Pattern 2: Rotate before use
+fn rotate_and_use(old_secret: Secret) -> Result[SecretRef, UseError] / IO + Crypto + Container {
+    let new_secret = rotate_secret(old_secret)?
+    // old_secret consumed, new_secret must be used
+    use_secret(new_secret)
+}
+
+// Pattern 3: Conditional use with early error handling
+fn conditional_use(secret: Secret, condition: bool) -> Result[SecretRef, UseError] / IO + Container {
+    if !condition {
+        // Must consume secret even on error path
+        // Can't return secret, so use it or drop safely
+        return use_secret(secret)
+    }
+
+    // Normal path
+    use_secret(secret)
+}
+
+// ============================================================================
+// UNSAFE PATTERNS (These will NOT compile!)
+// ============================================================================
+
+/*
+// COMPILE ERROR: Secret used twice
+fn double_use_bad(secret: Secret) -> Result[(), UseError] / IO + Container {
+    use_secret(secret)?  // Consumes secret
+    use_secret(secret)?  // ERROR: secret already moved!
+    Ok(())
+}
+
+// COMPILE ERROR: Secret not consumed
+fn leak_secret_bad(raw_data: ref Bytes) -> Result[(), CreateError] / IO + Crypto {
+    let secret = create_secret(raw_data)?
+    // ERROR: secret created but never used
+    // Linear type checker prevents this leak
+    Ok(())
+}
+
+// COMPILE ERROR: Can't store linear secret
+fn store_secret_bad(secret: Secret) -> Result[(), UseError] / IO {
+    let stored = secret  // ERROR: Can't duplicate linear value
+    use_secret(secret)?  // ERROR: secret already moved to 'stored'
+    Ok(())
+}
+
+// COMPILE ERROR: Can't return unused secret
+fn return_unused_bad(secret: Secret) -> Secret / Pure {
+    let x = 42  // Do some work
+    secret  // This is OK — returning the secret
+
+    // But if we forget to return:
+    // ERROR: secret not consumed on all paths
+}
+*/
+
+// ============================================================================
+// Region-Based Bulk Cleanup
+// ============================================================================
+
+// Create multiple secrets in a region, use them all
+fn batch_secrets(data_list: ref Vec[Bytes]) -> Result[Vec[SecretRef], UseError] / IO + Crypto + Container {
+    region r:
+        let mut results = Vec.new()
+
+        for data in data_list {
+            // Create secret in region r
+            let secret = create_secret@r(data)?
+
+            // Use secret (consumes it)
+            let secret_ref = use_secret(secret)?
+
+            results.push(secret_ref)
+        }
+
+        // All secrets consumed, return metadata
+        Ok(results)
+    // Region r exits: any remaining allocations freed
+}
+
+// ============================================================================
+// External FFI Declarations
+// ============================================================================
+
+// These would be implemented in Rust/Zig and called via FFI
+extern fn encrypt_xchacha20(data: ref Bytes) -> Result[Bytes, ()] / Crypto
+extern fn decrypt_xchacha20(data: ref Bytes) -> Result[Bytes, ()] / Crypto
+extern fn re_encrypt_with_new_key(data: ref Bytes) -> Result[Bytes, ()] / Crypto
+extern fn inject_into_container(data: ref Bytes) -> Result[(), ()] / Container
+extern fn generate_secret_id() -> i32 / IO
+extern fn current_timestamp() -> i64 / IO
+
+// ============================================================================
+// Audit Trail (Non-sensitive metadata only)
+// ============================================================================
+
+type AuditEvent = {
+    event_type: EventType,
+    secret_ref: SecretRef,
+    timestamp: i64
+}
+
+type EventType =
+    | SecretCreated
+    | SecretUsed
+    | SecretRotated
+
+// Log audit event — secret_ref is affine (no sensitive data)
+fn log_audit(event: AuditEvent) -> Result[(), ()] / IO {
+    // Write to VeriSimDB temporal modality
+    audit_log_write(&event)
+}
+
+extern fn audit_log_write(event: ref AuditEvent) -> Result[(), ()] / IO
+
+// ============================================================================
+// Examples of Type System Guarantees
+// ============================================================================
+
+// Example 1: Type system prevents double-use
+fn example_double_use_prevented() -> Result[SecretRef, UseError] / IO + Crypto + Container {
+    let raw_data = b"my_database_password"
+    let secret = create_secret(&raw_data)?
+
+    // First use: OK
+    let secret_ref = use_secret(secret)?
+
+    // Second use: COMPILE ERROR
+    // use_secret(secret)?  // ERROR: value used after move
+
+    Ok(secret_ref)
+}
+
+// Example 2: Type system prevents leaks
+fn example_leak_prevented() -> Result[(), CreateError] / IO + Crypto {
+    let raw_data = b"api_key"
+    let secret = create_secret(&raw_data)?
+
+    // Forgetting to use secret: COMPILE ERROR
+    // Ok(())  // ERROR: unused linear value
+
+    // Must consume it:
+    use_secret(secret)?
+    Ok(())
+}
+
+// Example 3: Type system enforces all paths consume
+fn example_all_paths_consume(condition: bool, secret: Secret) -> Result[SecretRef, UseError] / IO + Container {
+    if condition {
+        // Path 1: consume secret
+        use_secret(secret)
+    } else {
+        // Path 2: MUST ALSO consume secret
+        use_secret(secret)
+        // If we forget, COMPILE ERROR:
+        // ERROR: secret not consumed on all paths
+    }
+}
+
+// ============================================================================
+// Module Exports
+// ============================================================================
+
+// Public API (linear guarantees enforced at module boundary)
+export fn create_secret(raw_data: ref Bytes) -> Result[Secret, CreateError]
+export fn use_secret(secret: Secret) -> Result[SecretRef, UseError]
+export fn rotate_secret(old_secret: Secret) -> Result[Secret, RotateError]
+export fn log_audit(event: AuditEvent) -> Result[(), ()]
+
+// Safe high-level functions
+export fn create_and_use(raw_data: ref Bytes) -> Result[SecretRef, UseError]
+export fn rotate_and_use(old_secret: Secret) -> Result[SecretRef, UseError>
+export fn batch_secrets(data_list: ref Vec[Bytes]) -> Result[Vec[SecretRef], UseError]

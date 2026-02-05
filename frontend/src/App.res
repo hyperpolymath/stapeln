@@ -1,29 +1,37 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Minimal working app to demonstrate UI
+// App.res - Main application with TEA architecture
 
 open Model
+open Msg
+open Update
 
 type page =
-  | NetworkView
-  | StackView
-  | LagoGreyView
-  | SettingsView
+  | NetworkView    // Cisco-style topology (CiscoView.res)
+  | StackView      // Paragon-style vertical (View.res)
+  | LagoGreyView   // Lago Grey image designer
+  | SettingsView   // Settings and preferences
 
-type state = {
+type appState = {
   currentPage: page,
-  components: array<component>,
+  model: model,           // TEA model for stack designer
   isDark: bool,
 }
 
-let initialState = {
+let initialAppState = {
   currentPage: NetworkView,
-  components: [],
+  model: initialModel,
   isDark: true,
 }
 
 @react.component
 let make = () => {
-  let (state, setState) = React.useState(() => initialState)
+  let (state, setState) = React.useState(() => initialAppState)
+
+  // Dispatch function for TEA messages
+  let dispatch = (msg: msg) => {
+    let (newModel, _effect) = update(state.model, msg)
+    setState(prev => {...prev, model: newModel})
+  }
 
   let switchPage = (page) => {
     setState(prev => {...prev, currentPage: page})
@@ -55,10 +63,28 @@ let make = () => {
 
     <div className="content">
       {switch state.currentPage {
-      | NetworkView => <div className="page"> {"Network topology coming soon"->React.string} </div>
-      | StackView => <div className="page"> {"Vertical stack coming soon"->React.string} </div>
+      | NetworkView => CiscoView.view(state.model, state.isDark, dispatch)
+      | StackView => View.view(state.model)
       | LagoGreyView => <LagoGreyImageDesigner />
-      | SettingsView => <div className="page"> {"Settings coming soon"->React.string} </div>
+      | SettingsView =>
+          <div className="page settings-page">
+            <h1>{"Settings"->React.string}</h1>
+            <div className="settings-group">
+              <h2>{"Theme"->React.string}</h2>
+              <label>
+                <input
+                  type_="checkbox"
+                  checked={state.isDark}
+                  onChange={_ => setState(prev => {...prev, isDark: !prev.isDark})}
+                />
+                {" Dark Mode"->React.string}
+              </label>
+            </div>
+            <div className="settings-group">
+              <h2>{"Default Runtime"->React.string}</h2>
+              <p>{"Podman / Docker / nerdctl selection coming soon"->React.string}</p>
+            </div>
+          </div>
       }}
     </div>
   </div>
