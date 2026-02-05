@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// View.res - Main view with Paragon-style interface
+// StackView.res - Vertical stack view with Paragon-style interface
 
 open Model
 open Msg
@@ -155,7 +155,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
       <button
         ariaLabel="Toggle dark/light theme"
         role="switch"
-        ariaChecked={isDark ? "true" : "false"}
+        ariaChecked={isDark ? #"true" : #"false"}
         style={`
           padding: 0.75rem 1.5rem;
           background-color: ${isDark ? Colors.darkPrimary : Colors.lightPrimary};

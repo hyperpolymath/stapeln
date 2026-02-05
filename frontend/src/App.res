@@ -6,7 +6,7 @@ open Msg
 open Update
 
 type page =
-  | NetworkView       // Cisco-style topology (CiscoView.res)
+  | NetworkView       // Cisco-style topology (TopologyView.res)
   | StackView         // Paragon-style vertical (View.res)
   | LagoGreyView      // Lago Grey image designer
   | PortConfigView    // Port configuration with ephemeral pinholes
@@ -102,7 +102,7 @@ let make = () => {
 
     <div className="content">
       {switch state.currentPage {
-      | NetworkView => CiscoView.view(state.model, state.isDark, dispatch)
+      | NetworkView => TopologyView.view(state.model, state.isDark, dispatch)
       | StackView => View.view(state.model)
       | LagoGreyView => <LagoGreyImageDesigner />
       | PortConfigView => <PortConfigPanel />

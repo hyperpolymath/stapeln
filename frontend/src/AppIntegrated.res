@@ -257,8 +257,8 @@ let make = () => {
           (),
         )}>
         {switch state.currentRoute {
-        | NetworkView => <CiscoView />
-        | StackView => <View />
+        | NetworkView => <TopologyView />
+        | StackView => <StackView />
         | LagoGreyView => <LagoGreyImageDesigner />
         | PortConfigView =>
           <PortConfigPanel

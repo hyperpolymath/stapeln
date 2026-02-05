@@ -7,7 +7,7 @@ open Update
 
 type route =
   | ParagonView
-  | CiscoView
+  | TopologyView
   | SettingsView
 
 type appModel = {
@@ -85,10 +85,10 @@ let renderNav = (currentRoute: route, isDark: bool, dispatch) => {
     </button>
 
     <button
-      onClick={_ => dispatch(Navigate(CiscoView))}
+      onClick={_ => dispatch(Navigate(TopologyView))}
       ariaLabel="Go to Cisco view"
-      ariaCurrent={currentRoute === CiscoView ? "page" : "false"}
-      style={navButtonStyle(currentRoute === CiscoView)}>
+      ariaCurrent={currentRoute === TopologyView ? "page" : "false"}
+      style={navButtonStyle(currentRoute === TopologyView)}>
       {"Cisco View" -> React.string}
     </button>
 
@@ -128,8 +128,8 @@ let appView = (model: appModel): Tea.Html.t<appMsg> => {
     {renderNav(model.route, model.isDarkMode, m => m)}
     {switch model.route {
     | ParagonView => View.renderParagonStack(model.stackModel, model.isDarkMode)
-    | CiscoView =>
-      CiscoView.view(model.stackModel, model.isDarkMode, dispatch)
+    | TopologyView =>
+      TopologyView.view(model.stackModel, model.isDarkMode, dispatch)
     | SettingsView => Settings.view(model.settings, model.isDarkMode)
     }}
   </>

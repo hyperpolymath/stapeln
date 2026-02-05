@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// CiscoView.res - Cisco Packet Tracer-style topology designer (Page 2)
+// TopologyView.res - Network topology designer with Cisco Packet Tracer-style layout
 
 open Model
 open Msg
