@@ -10,7 +10,7 @@ type containerShape =
   | Gateway
   | Nested
 
-type ciscoComponent = {
+type rec ciscoComponent = {
   id: string,
   shape: containerShape,
   label: string,
@@ -25,6 +25,7 @@ type ciscoComponent = {
 let toCiscoComponent = (comp: component): ciscoComponent => {
   let shape = switch comp.componentType {
   | CerroTorre | Svalinn => Gateway
+  | LagoGrey => Box
   | Selur | Vordr => Box
   | Podman | Docker | Nerdctl => Box
   | Volume => Oval
@@ -44,7 +45,7 @@ let toCiscoComponent = (comp: component): ciscoComponent => {
 }
 
 // Render SVG shape based on type
-let renderShape = (comp: ciscoComponent, isSelected: bool, isDark: bool) => {
+let rec renderShape = (comp: ciscoComponent, isSelected: bool, isDark: bool) => {
   let (width, height) = comp.size
   let x = comp.position.x
   let y = comp.position.y
@@ -165,17 +166,17 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
     <aside
       role="complementary"
       ariaLabel="Configuration panel"
-      style={`
-        width: 300px;
-        padding: 1.5rem;
-        background-color: ${isDark ? "#000000" : "#FFFFFF"};
-        border-left: 2px solid ${isDark ? "#CCCCCC" : "#333333"};
-        color: ${isDark ? "#FFFFFF" : "#000000"};
-      `}>
-      <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">
+      style={{
+        width: "300px",
+        padding: "1.5rem",
+        backgroundColor: isDark ? "#000000" : "#FFFFFF",
+        borderLeft: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
+        color: isDark ? "#FFFFFF" : "#000000",
+      }}>
+      <h3 style={{fontSize: "1.2rem", marginBottom: "1rem"}}>
         {"Configuration" ->React.string}
       </h3>
-      <p style="opacity: 0.7;">
+      <p style={{opacity: "0.7"}}>
         {"Click a component to configure it" ->React.string}
       </p>
     </aside>
@@ -191,56 +192,56 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         border-left: 2px solid ${isDark ? "#CCCCCC" : "#333333"};
         color: ${isDark ? "#FFFFFF" : "#000000"};
       `}>
-      <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">
+      <h3 style={{fontSize: "1.2rem", marginBottom: "1rem"}}>
         {componentTypeToString(comp.componentType) ->React.string}
       </h3>
 
       <form onSubmit={e => e->ReactEvent.Form.preventDefault}>
         // Shape selector
-        <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
-          <legend style="font-weight: 600; margin-bottom: 0.5rem;">
+        <fieldset style={{marginBottom: "1rem", border: "none", padding: "0"}}>
+          <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
             {"Shape" ->React.string}
           </legend>
-          <label style="display: block; margin-bottom: 0.5rem;">
+          <label style={{display: "block", marginBottom: "0.5rem"}}>
             <input type_="radio" name="shape" value="box" defaultChecked=true />
             {" Box" ->React.string}
           </label>
-          <label style="display: block; margin-bottom: 0.5rem;">
+          <label style={{display: "block", marginBottom: "0.5rem"}}>
             <input type_="radio" name="shape" value="oval" />
             {" Oval" ->React.string}
           </label>
-          <label style="display: block;">
+          <label style={{display: "block"}}>
             <input type_="radio" name="shape" value="gateway" />
             {" Gateway" ->React.string}
           </label>
         </fieldset>
 
         // Ports
-        <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
-          <legend style="font-weight: 600; margin-bottom: 0.5rem;">
+        <fieldset style={{marginBottom: "1rem", border: "none", padding: "0"}}>
+          <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
             {"Ports" ->React.string}
           </legend>
           <input
             type_="text"
             placeholder="8080:80"
             ariaLabel="Port mapping"
-            style={`
-              width: 100%;
-              padding: 0.5rem;
-              background-color: ${isDark ? "#1A1A1A" : "#F5F5F5"};
-              color: ${isDark ? "#FFFFFF" : "#000000"};
-              border: 1px solid ${isDark ? "#CCCCCC" : "#333333"};
-              border-radius: 4px;
-            `}
+            style={{
+              width: "100%",
+              padding: "0.5rem",
+              backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
+              color: isDark ? "#FFFFFF" : "#000000",
+              border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+              borderRadius: "4px",
+            }}
           />
         </fieldset>
 
         // Resources
-        <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
-          <legend style="font-weight: 600; margin-bottom: 0.5rem;">
+        <fieldset style={{marginBottom: "1rem", border: "none", padding: "0"}}>
+          <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
             {"Resources" ->React.string}
           </legend>
-          <label style="display: block; margin-bottom: 0.5rem;">
+          <label style={{display: "block", marginBottom: "0.5rem"}}>
             {"CPU (cores)" ->React.string}
             <input
               type_="number"
@@ -259,7 +260,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               `}
             />
           </label>
-          <label style="display: block;">
+          <label style={{display: "block"}}>
             {"Memory (MB)" ->React.string}
             <input
               type_="number"

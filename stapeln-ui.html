@@ -62,7 +62,30 @@
             color: #b0b8c4;
             border: 1px solid #2a3142;
         }
-        .quick-btn:hover { transform: translateY(-2px); }
+        .quick-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3); }
+        .quick-btn:active { transform: translateY(0); }
+        .quick-btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+            position: relative;
+        }
+        .quick-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         /* Content Area */
         .content { flex: 1; display: flex; overflow: hidden; }
@@ -220,13 +243,37 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            position: relative;
         }
         .palette-item:hover {
             border-color: #4a9eff;
             transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.15);
         }
         .palette-item:active {
             cursor: grabbing;
+            transform: translateX(2px) scale(0.98);
+        }
+        .palette-item::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px);
+            background: #1e2431;
+            border: 1px solid #4a9eff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 1000;
+        }
+        .palette-item:hover::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(12px);
         }
         .palette-item-icon {
             font-size: 24px;
@@ -253,6 +300,40 @@
         }
         .topology-canvas.drag-over {
             background: radial-gradient(circle at 20% 20%, #1a2332 0%, #0f1520 100%);
+        }
+        .canvas-empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        .canvas-empty-state h3 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            color: #4a9eff;
+        }
+        .canvas-empty-state p {
+            font-size: 14px;
+            color: #8892a6;
+            margin-bottom: 8px;
+        }
+        .canvas-empty-state .hint {
+            font-size: 12px;
+            color: #5a6479;
+            margin-top: 16px;
+        }
+        .canvas-empty-state kbd {
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #b0b8c4;
         }
 
         /* Dropped Nodes on Canvas */
@@ -1280,6 +1361,145 @@
             box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
         }
 
+        /* Deployment Progress Modal */
+        .deployment-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 26, 0.98);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .deployment-content {
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 2px solid #4a9eff;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .deployment-header h2 {
+            color: #4a9eff;
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        .deployment-header p {
+            color: #8892a6;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .deployment-progress {
+            margin-bottom: 30px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #2a3142;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a9eff, #7b6cff);
+            width: 0%;
+            transition: width 0.5s ease-out;
+            box-shadow: 0 0 10px rgba(74, 158, 255, 0.6);
+        }
+        .progress-percentage {
+            text-align: right;
+            color: #4a9eff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .deployment-steps {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .deployment-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #0a0e1a;
+            border-radius: 8px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .deployment-step.pending {
+            border-left-color: #2a3142;
+            opacity: 0.5;
+        }
+        .deployment-step.running {
+            border-left-color: #4a9eff;
+            animation: pulse-step 1.5s infinite;
+        }
+        @keyframes pulse-step {
+            0%, 100% { background: #0a0e1a; }
+            50% { background: rgba(74, 158, 255, 0.1); }
+        }
+        .deployment-step.complete {
+            border-left-color: #4caf50;
+        }
+        .deployment-step.failed {
+            border-left-color: #f44336;
+        }
+        .step-icon {
+            font-size: 20px;
+            min-width: 24px;
+        }
+        .step-text {
+            flex: 1;
+            font-size: 14px;
+            color: #e0e6ed;
+        }
+        .step-status {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .step-status.running {
+            color: #4a9eff;
+        }
+        .step-status.complete {
+            color: #4caf50;
+        }
+        .deployment-footer {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .deploy-done-btn {
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .deploy-done-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 158, 255, 0.4);
+        }
+
         /* Tutorial Overlay System */
         .tutorial-overlay {
             position: fixed;
@@ -1393,13 +1613,13 @@
 
             <!-- Quick Actions Bar -->
             <div class="quick-actions-bar">
-                <button class="quick-btn primary" onclick="deployStack()">🚀 Deploy Stack</button>
-                <button class="quick-btn secondary" onclick="toggleValidation()">✓ Validate Design</button>
-                <button class="quick-btn secondary">🔍 Simulate</button>
-                <button class="quick-btn secondary">🔧 Auto-Fix Issues</button>
-                <button class="quick-btn secondary">📊 Export Report</button>
+                <button class="quick-btn primary" onclick="deployStack()" title="Deploy your stack to Podman/Docker with generated files">🚀 Deploy Stack</button>
+                <button class="quick-btn secondary" onclick="toggleValidation()" title="Run Mustfile validation checks on your design">✓ Validate Design</button>
+                <button class="quick-btn secondary" title="Simulate deployment and test configuration">🔍 Simulate</button>
+                <button class="quick-btn secondary" title="Automatically fix common issues">🔧 Auto-Fix Issues</button>
+                <button class="quick-btn secondary" title="Export design report and metrics">📊 Export Report</button>
                 <div style="flex: 1"></div>
-                <button class="quick-btn secondary">⚡ Quick Tour</button>
+                <button class="quick-btn secondary" title="Start interactive guided tour">⚡ Quick Tour</button>
             </div>
 
             <!-- Pages -->
@@ -1558,14 +1778,14 @@
                         <div class="component-palette">
                             <div class="palette-section">
                                 <div class="palette-title">🏗️ Base Components</div>
-                                <div class="palette-item" draggable="true" data-type="base-image" data-icon="📦">
+                                <div class="palette-item" draggable="true" data-type="base-image" data-icon="📦" data-tooltip="Drag to canvas to add a base image layer">
                                     <div class="palette-item-icon">📦</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Base Image</div>
                                         <div class="palette-item-desc">Choose from 5+ images</div>
                                     </div>
                                 </div>
-                                <div class="palette-item" draggable="true" data-type="application" data-icon="⚙️">
+                                <div class="palette-item" draggable="true" data-type="application" data-icon="⚙️" data-tooltip="Drag to add an application container">
                                     <div class="palette-item-icon">⚙️</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Application</div>
@@ -1576,14 +1796,14 @@
 
                             <div class="palette-section">
                                 <div class="palette-title">🌐 Network</div>
-                                <div class="palette-item" draggable="true" data-type="gateway" data-icon="🚪">
+                                <div class="palette-item" draggable="true" data-type="gateway" data-icon="🚪" data-tooltip="Add a gateway for external access">
                                     <div class="palette-item-icon">🚪</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Gateway</div>
                                         <div class="palette-item-desc">Ingress/egress</div>
                                     </div>
                                 </div>
-                                <div class="palette-item" draggable="true" data-type="load-balancer" data-icon="⚖️">
+                                <div class="palette-item" draggable="true" data-type="load-balancer" data-icon="⚖️" data-tooltip="Distribute traffic across instances">
                                     <div class="palette-item-icon">⚖️</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Load Balancer</div>
@@ -1594,14 +1814,14 @@
 
                             <div class="palette-section">
                                 <div class="palette-title">🔒 Security</div>
-                                <div class="palette-item" draggable="true" data-type="firewall" data-icon="🛡️">
+                                <div class="palette-item" draggable="true" data-type="firewall" data-icon="🛡️" data-tooltip="Add container-level firewall protection">
                                     <div class="palette-item-icon">🛡️</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Firewall</div>
                                         <div class="palette-item-desc">Container firewall</div>
                                     </div>
                                 </div>
-                                <div class="palette-item" draggable="true" data-type="secrets" data-icon="🔐">
+                                <div class="palette-item" draggable="true" data-type="secrets" data-icon="🔐" data-tooltip="Secure secrets with Fjord encryption">
                                     <div class="palette-item-icon">🔐</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Secrets (Fjord)</div>
@@ -1612,18 +1832,50 @@
 
                             <div class="palette-section">
                                 <div class="palette-title">💾 Data</div>
-                                <div class="palette-item" draggable="true" data-type="database" data-icon="🗄️">
+                                <div class="palette-item" draggable="true" data-type="database" data-icon="🗄️" data-tooltip="Add a persistent database (PostgreSQL, MySQL)">
                                     <div class="palette-item-icon">🗄️</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Database</div>
                                         <div class="palette-item-desc">Persistent storage</div>
                                     </div>
                                 </div>
-                                <div class="palette-item" draggable="true" data-type="cache" data-icon="⚡">
+                                <div class="palette-item" draggable="true" data-type="cache" data-icon="⚡" data-tooltip="Add Redis or Memcached for caching">
                                     <div class="palette-item-icon">⚡</div>
                                     <div class="palette-item-info">
                                         <div class="palette-item-name">Cache</div>
                                         <div class="palette-item-desc">Redis, Memcached</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="message-queue" data-icon="📬" data-tooltip="Add message queue for async processing">
+                                    <div class="palette-item-icon">📬</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Message Queue</div>
+                                        <div class="palette-item-desc">RabbitMQ, Kafka</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="storage" data-icon="💿" data-tooltip="Add S3-compatible object storage">
+                                    <div class="palette-item-icon">💿</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Object Storage</div>
+                                        <div class="palette-item-desc">S3-compatible</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="palette-section">
+                                <div class="palette-title">🌐 Frontend & CDN</div>
+                                <div class="palette-item" draggable="true" data-type="frontend" data-icon="🎨" data-tooltip="Add a frontend application (React, Vue, Static)">
+                                    <div class="palette-item-icon">🎨</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Frontend</div>
+                                        <div class="palette-item-desc">React, Vue, Static</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="cdn" data-icon="🚀" data-tooltip="Add CDN for fast static content delivery">
+                                    <div class="palette-item-icon">🚀</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">CDN</div>
+                                        <div class="palette-item-desc">Content delivery</div>
                                     </div>
                                 </div>
                             </div>
@@ -1631,6 +1883,16 @@
 
                         <!-- Canvas -->
                         <div class="topology-canvas" id="topologyCanvas">
+                            <!-- Empty State -->
+                            <div id="canvasEmptyState" class="canvas-empty-state">
+                                <h3>🎨 Start Building Your Stack</h3>
+                                <p>👈 Drag components from the palette on the left</p>
+                                <p>Or click "📚 Browse Templates" above to start from a template</p>
+                                <div class="hint">
+                                    <kbd>Ctrl</kbd>+<kbd>Click</kbd> nodes to create connections • <kbd>Delete</kbd> to remove selected node
+                                </div>
+                            </div>
+
                             <!-- Connection Mode Indicator -->
                             <div id="connectionModeIndicator" class="connection-mode-indicator">
                                 🔗 Click target node to create connection
@@ -2914,6 +3176,31 @@ alignment-checks:
                         <li>Ready-to-deploy stack definitions</li>
                         <li>Learn by example and customize to your needs</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment Progress Modal -->
+        <div id="deploymentModal" class="deployment-modal" style="display: none;">
+            <div class="deployment-content">
+                <div class="deployment-header">
+                    <h2>🚀 Deploying Your Stack</h2>
+                    <p id="deploymentStatus">Preparing deployment...</p>
+                </div>
+
+                <div class="deployment-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="deploymentProgressFill"></div>
+                    </div>
+                    <div class="progress-percentage" id="deploymentPercentage">0%</div>
+                </div>
+
+                <div class="deployment-steps" id="deploymentSteps">
+                    <!-- Steps will be added dynamically -->
+                </div>
+
+                <div class="deployment-footer" id="deploymentFooter" style="display: none;">
+                    <button class="deploy-done-btn" onclick="closeDeployment()">✓ Done</button>
                 </div>
             </div>
         </div>
@@ -4852,42 +5139,108 @@ alignment-checks:
 
         function showDeploymentProgress() {
             const steps = [
-                '🔍 Validating design...',
-                '📋 Generating Mustfile...',
-                '🔐 Running Trustfile verification...',
-                '📦 Building Lago Grey base image...',
-                '⚙️ Building application image...',
-                '🚪 Configuring gateway...',
-                '🌐 Setting up network...',
-                '🔥 Configuring firewall...',
-                '🚀 Starting containers...',
-                '✅ Deployment complete!'
+                { icon: '🔍', text: 'Validating design constraints', duration: 800 },
+                { icon: '📋', text: 'Generating Mustfile validation rules', duration: 600 },
+                { icon: '🔐', text: 'Running Trustfile.hs verification', duration: 1000 },
+                { icon: '🏔️', text: 'Building Lago Grey base image (2.1 MB)', duration: 1200 },
+                { icon: '⚙️', text: 'Building application containers', duration: 1500 },
+                { icon: '🔗', text: 'Configuring network connections', duration: 700 },
+                { icon: '🔥', text: 'Setting up container firewalls', duration: 600 },
+                { icon: '🚪', text: 'Configuring gateway and ingress', duration: 800 },
+                { icon: '🚀', text: 'Starting all containers', duration: 900 },
+                { icon: '✅', text: 'Deployment complete!', duration: 500 }
             ];
 
+            // Show modal
+            const modal = document.getElementById('deploymentModal');
+            const stepsContainer = document.getElementById('deploymentSteps');
+            const progressFill = document.getElementById('deploymentProgressFill');
+            const percentage = document.getElementById('deploymentPercentage');
+            const status = document.getElementById('deploymentStatus');
+
+            modal.style.display = 'flex';
+            stepsContainer.innerHTML = '';
+
+            // Create step elements
+            steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'deployment-step pending';
+                stepEl.id = `deploy-step-${index}`;
+                stepEl.innerHTML = `
+                    <div class="step-icon">${step.icon}</div>
+                    <div class="step-text">${step.text}</div>
+                    <div class="step-status"></div>
+                `;
+                stepsContainer.appendChild(stepEl);
+            });
+
+            // Animate steps
             let current = 0;
-            const progressAlert = setInterval(() => {
-                if (current < steps.length) {
-                    console.log(steps[current]);
-                    current++;
-                } else {
-                    clearInterval(progressAlert);
-                    alert('🎉 Stack Deployed Successfully!\n\n' +
-                          '✓ All Mustfile checks passed\n' +
-                          '✓ Trustfile verification complete\n' +
-                          '✓ Dustfile recovery ready\n' +
-                          '✓ Containers running\n\n' +
-                          '📍 Your app is live at: http://localhost:8080\n\n' +
-                          'Generated files:\n' +
-                          '  • Justfile (operational commands)\n' +
-                          '  • Mustfile (validation rules)\n' +
-                          '  • Trustfile.hs (crypto verification)\n' +
-                          '  • Dustfile (recovery paths)\n' +
-                          '  • stack.yaml (Podman config)\n\n' +
-                          'Run: just status\n' +
-                          'Stop: just stop\n' +
-                          'Rollback: just rollback');
+            const runStep = () => {
+                if (current >= steps.length) {
+                    // All done
+                    status.textContent = '🎉 Your stack is live!';
+                    document.getElementById('deploymentFooter').style.display = 'block';
+                    return;
                 }
-            }, 500);
+
+                const step = steps[current];
+                const stepEl = document.getElementById(`deploy-step-${current}`);
+                const statusEl = stepEl.querySelector('.step-status');
+
+                // Mark as running
+                stepEl.classList.remove('pending');
+                stepEl.classList.add('running');
+                statusEl.textContent = 'Running...';
+                statusEl.className = 'step-status running';
+
+                status.textContent = step.text;
+
+                // Update progress
+                const progress = ((current + 1) / steps.length) * 100;
+                progressFill.style.width = progress + '%';
+                percentage.textContent = Math.round(progress) + '%';
+
+                // Complete after duration
+                setTimeout(() => {
+                    stepEl.classList.remove('running');
+                    stepEl.classList.add('complete');
+                    statusEl.textContent = '✓';
+                    statusEl.className = 'step-status complete';
+
+                    current++;
+                    runStep();
+                }, step.duration);
+            };
+
+            runStep();
+        }
+
+        function closeDeployment() {
+            document.getElementById('deploymentModal').style.display = 'none';
+            alert('🎉 Stack Deployed Successfully!\n\n' +
+                  '✓ All Mustfile checks passed\n' +
+                  '✓ Trustfile verification complete\n' +
+                  '✓ Dustfile recovery ready\n' +
+                  '✓ Containers running\n\n' +
+                  '📍 Your app is live at: http://localhost:8080\n\n' +
+                  'Generated files:\n' +
+                  '  • Justfile (operational commands)\n' +
+                  '  • Mustfile (validation rules)\n' +
+                  '  • Trustfile.hs (crypto verification)\n' +
+                  '  • Dustfile (recovery paths)\n' +
+                  '  • stack.yaml (Podman config)\n\n' +
+                  'Run: just status\n' +
+                  'Stop: just stop\n' +
+                  'Rollback: just rollback');
+        }
+
+        // Show/hide empty state based on nodes
+        function updateEmptyState() {
+            const emptyState = document.getElementById('canvasEmptyState');
+            if (emptyState) {
+                emptyState.style.display = nodes.length === 0 ? 'block' : 'none';
+            }
         }
 
         // Auto-validate when nodes change
@@ -4997,11 +5350,17 @@ alignment-checks:
 
             canvas.appendChild(node);
 
+            // Update empty state
+            updateEmptyState();
+
             // Auto-run validation when nodes change
             if (document.getElementById('validationPanel').classList.contains('active')) {
                 runValidation();
             }
         }
+
+        // Initialize empty state on page load
+        updateEmptyState();
     </script>
 </body>
 </html>

@@ -6,7 +6,7 @@
   },
   "tasks": {
     "dev": "deno run --allow-net --allow-read --allow-env --watch server.ts",
-    "build": "rescript build && deno bundle src/Main.res.js dist/bundle.js",
+    "build": "rescript build && deno bundle src/App.res.js dist/bundle.js",
     "clean": "rescript clean",
     "serve": "deno run --allow-net --allow-read server.ts"
   },

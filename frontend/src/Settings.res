@@ -103,14 +103,18 @@ let view = (settings: settings, isDark: bool) => {
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `}>
-    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 2rem;">
+    <h1 style={{
+      fontSize: "2rem",
+      fontWeight: "700",
+      marginBottom: "2rem",
+    }}>
       {"Settings" -> React.string}
     </h1>
 
     // Section 1: Default Component Settings
     <section
       role="region"
-      ariaLabelledBy="defaults-title"
+      ariaLabelledby="defaults-title"
       style={`
         margin-bottom: 2rem;
         padding: 1.5rem;
@@ -119,15 +123,15 @@ let view = (settings: settings, isDark: bool) => {
       `}>
       <h2
         id="defaults-title"
-        style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
+        style={{fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem"}}>
         {"Default Component Settings" -> React.string}
       </h2>
 
-      <fieldset style="border: none; padding: 0; margin-bottom: 1rem;">
-        <legend style="font-weight: 600; margin-bottom: 0.5rem;">
+      <fieldset style={{border: "none", padding: "0", marginBottom: "1rem"}}>
+        <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
           {"Default Container Runtime" -> React.string}
         </legend>
-        <label style="display: inline-block; margin-right: 1rem;">
+        <label style={{display: "inline-block", marginRight: "1rem"}}>
           <input
             type_="radio"
             name="runtime"
@@ -136,7 +140,7 @@ let view = (settings: settings, isDark: bool) => {
           />
           {" Podman" -> React.string}
         </label>
-        <label style="display: inline-block; margin-right: 1rem;">
+        <label style={{display: "inline-block", marginRight: "1rem"}}>
           <input
             type_="radio"
             name="runtime"
@@ -145,7 +149,7 @@ let view = (settings: settings, isDark: bool) => {
           />
           {" Docker" -> React.string}
         </label>
-        <label style="display: inline-block;">
+        <label style={{display: "inline-block"}}>
           <input
             type_="radio"
             name="runtime"
@@ -156,27 +160,27 @@ let view = (settings: settings, isDark: bool) => {
         </label>
       </fieldset>
 
-      <label style="display: block; margin-bottom: 1rem;">
-        <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
+        <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
           {"Default Registry" -> React.string}
         </span>
         <input
           type_="text"
           defaultValue=settings.defaultRegistry
           ariaLabel="Default container registry"
-          style={`
-            width: 100%;
-            max-width: 500px;
-            padding: 0.75rem;
-            background-color: ${isDark ? "#1A1A1A" : "#F5F5F5"};
-            color: ${isDark ? "#FFFFFF" : "#000000"};
-            border: 1px solid ${isDark ? "#CCCCCC" : "#333333"};
-            border-radius: 4px;
-          `}
+          style={{
+            width: "100%",
+            maxWidth: "500px",
+            padding: "0.75rem",
+            backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
+            color: isDark ? "#FFFFFF" : "#000000",
+            border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+            borderRadius: "4px",
+          }}
         />
       </label>
 
-      <label style="display: block; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "0.5rem"}}>
         <input
           type_="checkbox"
           defaultChecked=settings.autoVerifySignatures
@@ -185,7 +189,7 @@ let view = (settings: settings, isDark: bool) => {
         {" Auto-verify signatures" -> React.string}
       </label>
 
-      <label style="display: block; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "0.5rem"}}>
         <input
           type_="checkbox"
           defaultChecked=settings.requireSBOM
@@ -194,7 +198,7 @@ let view = (settings: settings, isDark: bool) => {
         {" Require SBOM" -> React.string}
       </label>
 
-      <label style="display: block; margin-bottom: 1rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
         <input
           type_="checkbox"
           defaultChecked=settings.enforceNetworkPolicies
@@ -203,13 +207,13 @@ let view = (settings: settings, isDark: bool) => {
         {" Enforce network policies" -> React.string}
       </label>
 
-      <h3 style="font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 1rem;">
+      <h3 style={{fontSize: "1.2rem", fontWeight: "600", margin: "1.5rem 0 1rem"}}>
         {"Default Resource Limits" -> React.string}
       </h3>
 
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; max-width: 600px;">
         <label>
-          <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+          <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
             {"CPU (cores)" -> React.string}
           </span>
           <input
@@ -230,7 +234,7 @@ let view = (settings: settings, isDark: bool) => {
         </label>
 
         <label>
-          <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+          <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
             {"Memory (MB)" -> React.string}
           </span>
           <input
@@ -251,7 +255,7 @@ let view = (settings: settings, isDark: bool) => {
         </label>
 
         <label>
-          <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+          <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
             {"Storage (GB)" -> React.string}
           </span>
           <input
@@ -276,7 +280,7 @@ let view = (settings: settings, isDark: bool) => {
     // Section 2: Cerro Torre Integration
     <section
       role="region"
-      ariaLabelledBy="cerro-torre-title"
+      ariaLabelledby="cerro-torre-title"
       style={`
         margin-bottom: 2rem;
         padding: 1.5rem;
@@ -285,12 +289,12 @@ let view = (settings: settings, isDark: bool) => {
       `}>
       <h2
         id="cerro-torre-title"
-        style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
+        style={{fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem"}}>
         {"🏔️ Cerro Torre Integration" -> React.string}
       </h2>
 
-      <label style="display: block; margin-bottom: 1rem;">
-        <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
+        <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
           {"CLI Path" -> React.string}
         </span>
         <input
@@ -310,8 +314,8 @@ let view = (settings: settings, isDark: bool) => {
         />
       </label>
 
-      <label style="display: block; margin-bottom: 1rem;">
-        <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
+        <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
           {"Default Signing Key" -> React.string}
         </span>
         <input
@@ -331,8 +335,8 @@ let view = (settings: settings, isDark: bool) => {
         />
       </label>
 
-      <label style="display: block; margin-bottom: 1rem;">
-        <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
+        <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
           {"Transparency Log" -> React.string}
         </span>
         <input
@@ -355,22 +359,22 @@ let view = (settings: settings, isDark: bool) => {
     // Section 3: UI Preferences
     <section
       role="region"
-      ariaLabelledBy="ui-title"
+      ariaLabelledby="ui-title"
       style={`
         margin-bottom: 2rem;
         padding: 1.5rem;
         border: 2px solid ${isDark ? "#CCCCCC" : "#333333"};
         border-radius: 8px;
       `}>
-      <h2 id="ui-title" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
+      <h2 id="ui-title" style={{fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem"}}>
         {"UI Preferences" -> React.string}
       </h2>
 
-      <fieldset style="border: none; padding: 0; margin-bottom: 1rem;">
-        <legend style="font-weight: 600; margin-bottom: 0.5rem;">
+      <fieldset style={{border: "none", padding: "0", marginBottom: "1rem"}}>
+        <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
           {"Theme" -> React.string}
         </legend>
-        <label style="display: inline-block; margin-right: 1rem;">
+        <label style={{display: "inline-block", marginRight: "1rem"}}>
           <input
             type_="radio"
             name="theme"
@@ -379,22 +383,22 @@ let view = (settings: settings, isDark: bool) => {
           />
           {" System" -> React.string}
         </label>
-        <label style="display: inline-block; margin-right: 1rem;">
+        <label style={{display: "inline-block", marginRight: "1rem"}}>
           <input type_="radio" name="theme" value="light" defaultChecked={settings.theme === "light"} />
           {" Light" -> React.string}
         </label>
-        <label style="display: inline-block;">
+        <label style={{display: "inline-block"}}>
           <input type_="radio" name="theme" value="dark" defaultChecked={settings.theme === "dark"} />
           {" Dark" -> React.string}
         </label>
       </fieldset>
 
-      <h3 style="font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 1rem;">
+      <h3 style={{fontSize: "1.2rem", fontWeight: "600", margin: "1.5rem 0 1rem"}}>
         {"Accessibility" -> React.string}
       </h3>
 
-      <label style="display: block; margin-bottom: 1rem;">
-        <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
+        <span style={{display: "block", fontWeight: "600", marginBottom: "0.5rem"}}>
           {"Font Size (px)" -> React.string}
         </span>
         <input
@@ -414,17 +418,17 @@ let view = (settings: settings, isDark: bool) => {
         />
       </label>
 
-      <label style="display: block; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "0.5rem"}}>
         <input type_="checkbox" defaultChecked=settings.highContrast />
         {" High contrast mode" -> React.string}
       </label>
 
-      <label style="display: block; margin-bottom: 0.5rem;">
+      <label style={{display: "block", marginBottom: "0.5rem"}}>
         <input type_="checkbox" defaultChecked=settings.reducedMotion />
         {" Reduced motion" -> React.string}
       </label>
 
-      <label style="display: block; margin-bottom: 1rem;">
+      <label style={{display: "block", marginBottom: "1rem"}}>
         <input type_="checkbox" defaultChecked=settings.screenReaderMode />
         {" Screen reader mode (extra announcements)" -> React.string}
       </label>

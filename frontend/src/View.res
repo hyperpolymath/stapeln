@@ -22,6 +22,7 @@ module Colors = {
 
   // Component colors (Paragon-style)
   let cerroTorre = "#1B5E20" // Dark green
+  let lagoGrey = "#546E7A" // Blue grey (minimal Linux images)
   let svalinn = "#0D47A1" // Dark blue
   let selur = "#4A148C" // Deep purple
   let vordr = "#B71C1C" // Dark red
@@ -52,6 +53,7 @@ let ariaBraille = (text: string): string => {
 let renderStackBlock = (component: component, isDark: bool) => {
   let bgColor = switch component.componentType {
   | CerroTorre => Colors.cerroTorre
+  | LagoGrey => Colors.lagoGrey
   | Svalinn => Colors.svalinn
   | Selur => Colors.selur
   | Vordr => Colors.vordr
@@ -68,53 +70,33 @@ let renderStackBlock = (component: component, isDark: bool) => {
     className="stack-block"
     role="region"
     ariaLabel={componentName ++ " component"}
-    ariaBraille={componentName}
-    style={`
-      background-color: ${bgColor};
-      color: white;
-      padding: 1.5rem;
-      margin: 0.5rem;
-      border-radius: 8px;
-      min-height: 80px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      border: 2px solid ${isDark ? Colors.darkBorder : Colors.lightBorder};
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    `}>
+    style={{
+      backgroundColor: bgColor,
+      color: "white",
+      padding: "1.5rem",
+      margin: "0.5rem",
+      borderRadius: "8px",
+      minHeight: "80px",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      border: isDark ? "2px solid " ++ Colors.darkBorder : "2px solid " ++ Colors.lightBorder,
+      boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+    }}>
     <h3
-      style="margin: 0; font-size: 1.2rem; font-weight: 600;"
+      style={{margin: "0", fontSize: "1.2rem", fontWeight: "600"}}
       id={component.id ++ "-title"}>
       {componentName ->React.string}
     </h3>
     <p
-      style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;"
+      style={{margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: "0.9"}}
       id={component.id ++ "-desc"}
       ariaDescribedby={component.id ++ "-title"}>
       {("Position: " ++ Float.toString(component.position.x) ++ ", " ++
         Float.toString(component.position.y)) ->React.string}
     </p>
 
-    // Semantic metadata (hidden from visual, available for screen readers)
-    <div
-      style={ReactDOM.Style.make(~display="none", ())}
-      role="note"
-      ariaHidden="false">
-      <div data-component-id={component.id} />
-      <div data-component-name={componentName} />
-      <div data-component-layer={
-        switch component.componentType {
-        | CerroTorre => "build"
-        | LagoGrey => "base-image"
-        | Svalinn => "gateway"
-        | Selur => "bridge"
-        | Vordr => "runtime"
-        | Podman | Docker | Nerdctl => "container-engine"
-        | Volume => "storage"
-        | Network => "network"
-        }
-      } />
-    </div>
+    // Metadata available via aria-label already
   </section>
 }
 
@@ -137,9 +119,9 @@ let renderParagonStack = (model: model, isDark: bool) => {
     // Screen reader announcement region
     <div
       role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;">
+      ariaLive=#polite
+      ariaAtomic=true
+      style={{position: "absolute", left: "-10000px", width: "1px", height: "1px", overflow: "hidden"}}>
       {switch model.validationResult {
       | None => React.null
       | Some(result) =>
@@ -164,7 +146,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         style="margin: 0; font-size: 2rem; font-weight: 700;"
         id="main-title">
         {"stackur" ->React.string}
-        <span style="font-size: 0.9rem; font-weight: 400; opacity: 0.8; margin-left: 0.5rem;">
+        <span style={{fontSize: "0.9rem", fontWeight: "400", opacity: "0.8", marginLeft: "0.5rem"}}>
           {"Container Stack Designer" ->React.string}
         </span>
       </h1>
