@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="stapeln - Visual drag-and-drop container stack designer with WCAG 2.3 AAA accessibility">
+    <meta name="author" content="Jonathan D.A. Jewell">
+
+    <!-- WCAG 2.3 AAA Accessibility -->
+    <meta name="color-scheme" content="light dark">
+
+    <title>stapeln - Container Stack Designer</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        /* Respect reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Skip link for keyboard navigation */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #0052CC;
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            z-index: 100;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        #app {
+            height: 100%;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-size: 1.5rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- App root -->
+    <div id="app">
+        <div class="loading" role="status" aria-live="polite">
+            <span>Loading stapeln...</span>
+        </div>
+    </div>
+
+    <!-- Main application script -->
+    <script type="module" src="./src/Main.res.js"></script>
+</body>
+</html>
