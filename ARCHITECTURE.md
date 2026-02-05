@@ -1,8 +1,8 @@
-# stackur Architecture
+# stapeln Architecture
 
 ## Overview
 
-stackur is a visual drag-and-drop container stack designer built with:
+stapeln is a visual drag-and-drop container stack designer built with:
 
 - **Frontend**: ReScript-TEA (The Elm Architecture) + Deno
 - **Backend**: Elixir (Phoenix) + Ephapax + Idris2 + Rust
@@ -134,7 +134,7 @@ noPortConflicts : (s : Stack) -> Dec (UniquePortBindings s)
 defmodule Stackur.Validator.Idris do
   # Calls compiled Idris2 executable via Port
   def prove_correctness(stack_json) do
-    Port.open({:spawn_executable, "/usr/local/bin/stackur-prover"},
+    Port.open({:spawn_executable, "/usr/local/bin/stapeln-prover"},
       [:binary, :use_stdio, {:args, [stack_json]}])
   end
 end
@@ -149,7 +149,7 @@ end
 - Memory safety guarantees
 
 ```rust
-// backend/native/stackur_codegen/src/lib.rs
+// backend/native/stapeln_codegen/src/lib.rs
 use rustler::{Encoder, Env, Term};
 use toml::Value;
 
@@ -172,7 +172,7 @@ fn compose_toml_from_stack(stack: &Stack) -> Result<Value, String> {
 **Elixir NIF wrapper**:
 ```elixir
 defmodule Stackur.Codegen do
-  use Rustler, otp_app: :stackur, crate: "stackur_codegen"
+  use Rustler, otp_app: :stapeln, crate: "stapeln_codegen"
 
   def generate_compose_toml(_stack_json), do: :erlang.nif_error(:nif_not_loaded)
   def generate_docker_compose(_stack_json), do: :erlang.nif_error(:nif_not_loaded)

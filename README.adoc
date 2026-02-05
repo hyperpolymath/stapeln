@@ -1,4 +1,4 @@
-= stackur
+= stapeln
 :toc:
 :toclevels: 3
 
@@ -11,7 +11,7 @@ image:https://img.shields.io/badge/backend-Elixir%20%2B%20Phoenix-4e2a8e.svg[Eli
 
 == Overview
 
-**stackur** (Icelandic: "stack" + designer) is a visual web application for designing multi-container stacks using the https://github.com/hyperpolymath/verified-container-spec[verified-container-spec] ecosystem. Drag components onto a canvas, connect them, configure them, and stackur generates `compose.toml` files for https://github.com/hyperpolymath/selur-compose[selur-compose] deployment.
+**stapeln** (Icelandic: "stack" + designer) is a visual web application for designing multi-container stacks using the https://github.com/hyperpolymath/verified-container-spec[verified-container-spec] ecosystem. Drag components onto a canvas, connect them, configure them, and stapeln generates `compose.toml` files for https://github.com/hyperpolymath/selur-compose[selur-compose] deployment.
 
 === Key Features
 
@@ -128,7 +128,7 @@ just dev  # Starts both frontend and backend
 
 === 1. Design Stack
 
-1. Open stackur in browser: `http://localhost:8000`
+1. Open stapeln in browser: `http://localhost:8000`
 2. Drag components from palette to canvas
 3. Connect components (click to create connection lines)
 4. Configure each component (click to open config panel)
@@ -224,7 +224,7 @@ pgdata = { driver = "local" }
 === Project Structure
 
 ```
-stackur/
+stapeln/
 ├── frontend/              # ReScript-TEA + Deno
 │   ├── src/
 │   │   ├── Main.res      # Entry point
@@ -239,8 +239,8 @@ stackur/
 │   └── import_map.json
 ├── backend/               # Elixir Phoenix
 │   ├── lib/
-│   │   ├── stackur_web/  # Phoenix controllers/channels
-│   │   ├── stackur/      # Business logic
+│   │   ├── stapeln_web/  # Phoenix controllers/channels
+│   │   ├── stapeln/      # Business logic
 │   │   └── validator/    # Ephapax validation
 │   ├── native/           # Rust NIFs (codegen)
 │   └── mix.exs
@@ -274,7 +274,7 @@ stackur/
 
 == Validation
 
-stackur uses **formal verification** to ensure stack correctness:
+stapeln uses **formal verification** to ensure stack correctness:
 
 === Linear Type Validation (Ephapax)
 

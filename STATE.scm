@@ -7,11 +7,11 @@
      (schema-version "1.0")
      (created "2026-02-05")
      (updated "2026-02-05")
-     (project "stackur")
-     (repo "hyperpolymath/stackur"))
+     (project "stapeln")
+     (repo "hyperpolymath/stapeln"))
 
     (project-context
-     (name "stackur")
+     (name "stapeln")
      (tagline "Visual drag-and-drop container stack designer for verified containers")
      (tech-stack
       ((frontend . "ReScript-TEA + cadre-tea-router + Deno")
