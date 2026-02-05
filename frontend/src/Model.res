@@ -2,15 +2,16 @@
 // Model.res - TEA Model (application state)
 
 type componentType =
-  | CerroTorre
-  | Svalinn
-  | Selur
-  | Vordr
-  | Podman
-  | Docker
-  | Nerdctl
-  | Volume
-  | Network
+  | CerroTorre       // Container builder (.ctp bundles)
+  | LagoGrey         // Base image designer (Alpine/Chainguard alternative)
+  | Svalinn          // Edge gateway
+  | Selur            // IPC bridge
+  | Vordr            // Runtime/orchestrator
+  | Podman           // Container runtime
+  | Docker           // Container runtime
+  | Nerdctl          // Container runtime
+  | Volume           // Persistent storage
+  | Network          // Networking
 
 type position = {
   x: float,
@@ -35,7 +36,7 @@ type dragState =
   | DraggingComponent(component)
   | DraggingCanvas(position)
 
-type model = {
+type rec model = {
   components: array<component>,
   connections: array<connection>,
   selectedComponent: option<string>,

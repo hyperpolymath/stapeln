@@ -419,3 +419,80 @@ What makes stapeln the **ultimate container GUI**:
 12. **Compliance reports** → Auto-generate SOC2/ISO27001 docs
 
 These are gaps that Docker Compose, Podman Compose, Kubernetes, and even advanced tools like Portainer/Rancher don't fully address.
+
+## Page 4: Lago Grey Image Designer (Ice Formation Assembly)
+
+**Purpose**: Visual designer for creating minimal Lago Grey Linux distributions by assembling ice formations (components)
+
+**Status**: Modular stub - can be implemented independently without affecting Pages 1-3
+
+**Metaphor System**:
+```
+🌊 Lago Grey Image = Complete distribution (glacial lake)
+🧊 Ice Block        = Small component < 1MB (libsodium, musl-dns)
+🏔️ Iceberg         = Medium component 1-10MB (liboqs, obli-pkg)
+🌊 Glacier          = Large subsystem 10MB+ (networking, storage)
+```
+
+**Visual Layout**:
+```
+┌──────────────────────────────────────────────────────────┐
+│  🌊 Lago Grey Image Designer                             │
+├────────────────┬─────────────────────────────────────────┤
+│ Ice Formations │ Canvas (Drag & Drop)                   │
+│ ──────────────│ ───────────────────────────────────     │
+│                │                                         │
+│ Build Mode:    │  ┌─────────────────────────────────┐  │
+│ ● Bottom-up    │  │ Your Lago Grey Image            │  │
+│ ○ Top-down     │  │                                 │  │
+│                │  │  🌊 Glacier: Distroless (10MB)  │  │
+│ Base:          │  │  🏔️ Iceberg: liboqs (5MB)       │  │
+│ ▼ Distroless   │  │  🧊 Ice Block: libsodium (200KB)│  │
+│                │  │  🏔️ Iceberg: obli-pkg (1MB)     │  │
+│ Available:     │  │  🧊 Ice Block: hello (16KB)     │  │
+│ 🧊 libsodium   │  │                                 │  │
+│ 🏔️ liboqs      │  │  Total: 16.2MB, 52 files        │  │
+│ 🏔️ obli-pkg    │  └─────────────────────────────────┘  │
+│ 🧊 musl-dns    │                                         │
+│ 🏔️ quiche      │  Analyzer:                             │
+│ 🌊 Networking  │  ✓ Security: PQ crypto complete        │
+│                │  ⚠ No DNS resolver                     │
+│ [Analyze]      │  ℹ Suggest: Add musl-dns ice block     │
+│ [Export]       │                                         │
+└────────────────┴─────────────────────────────────────────┘
+```
+
+**Features**:
+- Drag ice formations onto canvas to build image
+- Two build modes:
+  - **Bottom-up**: Start with distroless, add ice formations
+  - **Top-down**: Start with Alpine glacier, chip away
+- Smart analyzer suggests required formations
+- Real-time size and file count calculation
+- Export to: Dockerfile, .zpkg (Oblibeny), Nickel config
+- Import/share configurations
+- Security spec integration (PQ crypto by default)
+- WCAG 2.3 AAA accessibility
+
+**Size Categories**:
+| Formation | Size | Examples |
+|-----------|------|----------|
+| 🧊 Ice Block | < 1MB | libsodium (200KB), musl-dns (50KB), argon2 (50KB) |
+| 🏔️ Iceberg | 1-10MB | liboqs (5MB), obli-pkg (1MB), quiche (2MB) |
+| 🌊 Glacier | 10MB+ | Networking stack, storage layer, distroless base |
+
+**Integration**:
+- Oblibeny repository: `~/Documents/hyperpolymath-repos/oblibeny`
+- Generates .zpkg packages compatible with Oblibeny package manager
+- Uses Idris2 ABI proofs for component verification
+- Zig FFI for system-level operations
+- ReScript frontend (same stack as Pages 1-3)
+
+**Technical Stack**:
+- Frontend: ReScript-TEA (modular, independent of other pages)
+- Canvas: HTML5 drag-and-drop with visual ice formations
+- Analyzer: Logic in `LagoGreyImageDesigner.res`
+- Export: Generate Dockerfile, Nickel, or .zpkg format
+- Backend: Optional Phoenix GraphQL for analyzer suggestions
+
+**File**: `frontend/src/LagoGreyImageDesigner.res` (stub created, ready to implement)

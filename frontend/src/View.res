@@ -85,35 +85,36 @@ let renderStackBlock = (component: component, isDark: bool) => {
     <h3
       style="margin: 0; font-size: 1.2rem; font-weight: 600;"
       id={component.id ++ "-title"}>
-      {componentName |> React.string}
+      {componentName ->React.string}
     </h3>
     <p
       style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;"
       id={component.id ++ "-desc"}
       ariaDescribedby={component.id ++ "-title"}>
       {("Position: " ++ Float.toString(component.position.x) ++ ", " ++
-        Float.toString(component.position.y)) |> React.string}
+        Float.toString(component.position.y)) ->React.string}
     </p>
 
-    // Semantic XML metadata (hidden from visual, available for screen readers)
-    <xml:metadata
-      style="display: none;"
+    // Semantic metadata (hidden from visual, available for screen readers)
+    <div
+      style={ReactDOM.Style.make(~display="none", ())}
       role="note"
-      aria-hidden="false">
-      <component:id>{component.id |> React.string}</component:id>
-      <component:type>{componentName |> React.string}</component:type>
-      <component:layer>
-        {switch component.componentType {
+      ariaHidden="false">
+      <div data-component-id={component.id} />
+      <div data-component-type={componentName} />
+      <div data-component-layer={
+        switch component.componentType {
         | CerroTorre => "build"
+        | LagoGrey => "base-image"
         | Svalinn => "gateway"
         | Selur => "bridge"
         | Vordr => "runtime"
         | Podman | Docker | Nerdctl => "container-engine"
         | Volume => "storage"
         | Network => "network"
-        } |> React.string}
-      </component:layer>
-    </xml:metadata>
+        }
+      } />
+    </div>
   </section>
 }
 
@@ -145,7 +146,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         (result.valid
           ? "Stack validation passed"
           : "Stack validation failed with " ++ Int.toString(Array.length(result.errors)) ++ " errors"
-        ) |> React.string
+        ) ->React.string
       }}
     </div>
 
@@ -162,9 +163,9 @@ let renderParagonStack = (model: model, isDark: bool) => {
       <h1
         style="margin: 0; font-size: 2rem; font-weight: 700;"
         id="main-title">
-        {"stackur" |> React.string}
+        {"stackur" ->React.string}
         <span style="font-size: 0.9rem; font-weight: 400; opacity: 0.8; margin-left: 0.5rem;">
-          {"Container Stack Designer" |> React.string}
+          {"Container Stack Designer" ->React.string}
         </span>
       </h1>
 
@@ -185,7 +186,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
           font-weight: 600;
           transition: background-color 0.2s ease;
         `}>
-        {(isDark ? "🌙 Dark" : "☀️ Light") |> React.string}
+        {(isDark ? "🌙 Dark" : "☀️ Light") ->React.string}
       </button>
     </header>
 
@@ -202,7 +203,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         <h2
           style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem;"
           id="palette-title">
-          {"Components" |> React.string}
+          {"Components" ->React.string}
         </h2>
 
         <nav ariaLabelledBy="palette-title">
@@ -238,9 +239,9 @@ let renderParagonStack = (model: model, isDark: bool) => {
                     font-weight: 500;
                     transition: all 0.2s ease;
                   `}>
-                  <div style="font-weight: 600;">{name |> React.string}</div>
+                  <div style="font-weight: 600;">{name ->React.string}</div>
                   <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 0.25rem;">
-                    {desc |> React.string}
+                    {desc ->React.string}
                   </div>
                 </button>
               </li>
@@ -258,7 +259,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         <h2
           style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem;"
           id="stack-title">
-          {"Stack Configuration" |> React.string}
+          {"Stack Configuration" ->React.string}
         </h2>
 
         {Array.length(model.components) === 0
@@ -273,7 +274,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
                 color: ${isDark ? Colors.darkSecondary : Colors.lightSecondary};
               `}>
               <p style="font-size: 1.1rem; margin: 0;">
-                {"Drag components from the palette to build your stack" |> React.string}
+                {"Drag components from the palette to build your stack" ->React.string}
               </p>
             </div>
           : <div

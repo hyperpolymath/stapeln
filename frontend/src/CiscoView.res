@@ -118,7 +118,8 @@ let renderShape = (comp: ciscoComponent, isSelected: bool, isDark: bool) => {
         let childX = x +. 20.0 +. Float.fromInt(idx) *. 30.0
         let childY = y +. 40.0
         renderShape({...child, position: {x: childX, y: childY}}, false, isDark)
-      }) |> React.array}
+      })
+      ->React.array}
     </>
   }
 }
@@ -172,10 +173,10 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         color: ${isDark ? "#FFFFFF" : "#000000"};
       `}>
       <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">
-        {"Configuration" |> React.string}
+        {"Configuration" ->React.string}
       </h3>
       <p style="opacity: 0.7;">
-        {"Click a component to configure it" |> React.string}
+        {"Click a component to configure it" ->React.string}
       </p>
     </aside>
 
@@ -191,33 +192,33 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         color: ${isDark ? "#FFFFFF" : "#000000"};
       `}>
       <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">
-        {componentTypeToString(comp.componentType) |> React.string}
+        {componentTypeToString(comp.componentType) ->React.string}
       </h3>
 
       <form onSubmit={e => e->ReactEvent.Form.preventDefault}>
         // Shape selector
         <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
           <legend style="font-weight: 600; margin-bottom: 0.5rem;">
-            {"Shape" |> React.string}
+            {"Shape" ->React.string}
           </legend>
           <label style="display: block; margin-bottom: 0.5rem;">
             <input type_="radio" name="shape" value="box" defaultChecked=true />
-            {" Box" |> React.string}
+            {" Box" ->React.string}
           </label>
           <label style="display: block; margin-bottom: 0.5rem;">
             <input type_="radio" name="shape" value="oval" />
-            {" Oval" |> React.string}
+            {" Oval" ->React.string}
           </label>
           <label style="display: block;">
             <input type_="radio" name="shape" value="gateway" />
-            {" Gateway" |> React.string}
+            {" Gateway" ->React.string}
           </label>
         </fieldset>
 
         // Ports
         <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
           <legend style="font-weight: 600; margin-bottom: 0.5rem;">
-            {"Ports" |> React.string}
+            {"Ports" ->React.string}
           </legend>
           <input
             type_="text"
@@ -237,10 +238,10 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         // Resources
         <fieldset style="margin-bottom: 1rem; border: none; padding: 0;">
           <legend style="font-weight: 600; margin-bottom: 0.5rem;">
-            {"Resources" |> React.string}
+            {"Resources" ->React.string}
           </legend>
           <label style="display: block; margin-bottom: 0.5rem;">
-            {"CPU (cores)" |> React.string}
+            {"CPU (cores)" ->React.string}
             <input
               type_="number"
               defaultValue="1.0"
@@ -259,7 +260,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
             />
           </label>
           <label style="display: block;">
-            {"Memory (MB)" |> React.string}
+            {"Memory (MB)" ->React.string}
             <input
               type_="number"
               defaultValue="512"
@@ -294,7 +295,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               font-weight: 600;
               cursor: pointer;
             `}>
-            {"Apply" |> React.string}
+            {"Apply" ->React.string}
           </button>
           <button
             type_="button"
@@ -310,7 +311,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               font-weight: 600;
               cursor: pointer;
             `}>
-            {"Cancel" |> React.string}
+            {"Cancel" ->React.string}
           </button>
         </div>
       </form>
@@ -386,7 +387,7 @@ let view = (model: model, isDark: bool, dispatch) => {
             dominantBaseline="middle"
             fill={isDark ? "#FFFFFF" : "#000000"}
             style="font-size: 14px; font-weight: 600; pointer-events: none;">
-            {comp.label |> React.string}
+            {comp.label ->React.string}
           </text>
         </g>
       }) |> React.array}
