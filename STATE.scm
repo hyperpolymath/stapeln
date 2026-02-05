@@ -22,16 +22,16 @@
 
     (current-position
      (phase "Phase 2: Frontend Implementation In Progress")
-     (overall-completion 60)
+     (overall-completion 68)
      (components
-      ((frontend-ui . 45)         ; Model, View, Update, CiscoView, Settings, LagoGreyImageDesigner complete
+      ((frontend-ui . 55)         ; Model, View, Update, CiscoView, Settings, PortConfig, Security, Gap complete
        (lago-grey-integration . 60) ; Visual designer integrated, import/export pending
        (drag-drop-canvas . 20)     ; Architecture defined, not implemented
        (component-library . 15)    ; Types defined in Model.res
        (backend-api . 10)          ; GraphQL schema designed
        (stack-validator . 0)       ; Pending miniKanren implementation
-       (security-analysis . 40)    ; Full spec + OWASP rules defined
-       (firewall-config . 30)      ; Full spec + ephemeral pinholes designed
+       (security-analysis . 60)    ; SecurityInspector + GapAnalysis components complete
+       (firewall-config . 70)      ; PortConfigPanel with ephemeral pinholes complete
        (database-integration . 35) ; VeriSimDB + A2ML + K9 specs complete
        (codegen-engine . 0)
        (runtime-adapters . 0)
@@ -75,7 +75,7 @@
               "✅ Game-like UI mockups"))))
        (m2 "Frontend Implementation"
            ((status . "in-progress")
-            (completion . 45)
+            (completion . 65)
             (items
              ("✅ Model.res - Type definitions and state"
               "✅ Msg.res - Message types for TEA"
@@ -86,12 +86,12 @@
               "✅ LagoGreyImageDesigner.res - Base image designer component"
               "✅ LagoGreyImageDesigner.css - Dark theme styling"
               "✅ App.res - Four-page navigation with LagoGrey integration"
+              "✅ PortConfigPanel.res - Ephemeral pinholes with auto-expiry (475 lines)"
+              "✅ SecurityInspector.res - Attack surface analysis with metrics (759 lines)"
+              "✅ GapAnalysis.res - Automated remediation with AI reasoning (852 lines)"
               "⚠️ Wire View.res and CiscoView.res to App.res (pending)"
               "⚠️ Fix componentTypeToString for LagoGrey (pending)"
               "⚠️ Router.res - cadre-tea-router integration (pending)"
-              "⚠️ PortConfigPanel.res - Port configuration UI (pending)"
-              "⚠️ SecurityInspector.res - Attack surface display (pending)"
-              "⚠️ GapAnalysis.res - Sidebar warnings panel (pending)"
               "⚠️ SimulationMode.res - Packet animation (pending)"
               "⚠️ Auth.res - User authentication flow (pending)"))))
        (m2.5 "Lago Grey Integration"
@@ -213,11 +213,12 @@
        "Add error handling UI (toast notifications)"
        "User testing: import/export workflow"))
      (this-month
-      ("Implement PortConfigPanel.res with ephemeral toggle"
-       "Add SecurityInspector.res component"
-       "Build real-time security scoring display"
+      ("✅ COMPLETED: PortConfigPanel.res with ephemeral toggle"
+       "✅ COMPLETED: SecurityInspector.res component"
+       "✅ COMPLETED: GapAnalysis.res automated remediation"
+       "Wire new components (PortConfig/Security/Gap) into App.res"
        "Create miniKanren proof-of-concept with 5 basic security rules"
-       "Implement simulation mode (packet animation)"
+       "Implement SimulationMode.res - packet animation"
        "Set up Phoenix backend with GraphQL"
        "User testing with container-hater (cyberwar officer!)"))
      (before-release
