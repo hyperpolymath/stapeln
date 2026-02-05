@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "rescript-tea/": "https://esm.sh/@rescript/tea@0.12.0/",
+    "cadre-tea-router/": "https://esm.sh/cadre-tea-router@1.0.0/",
+    "std/": "https://deno.land/std@0.224.0/"
+  }
+}

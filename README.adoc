@@ -1,0 +1,361 @@
+= stackur
+:toc:
+:toclevels: 3
+
+**Visual drag-and-drop container stack designer for verified containers**
+
+image:https://img.shields.io/badge/license-PMPL--1.0--or--later-blue.svg[License: PMPL-1.0-or-later,link=LICENSE]
+image:https://img.shields.io/badge/ReScript-TEA-e34c4c.svg[ReScript-TEA]
+image:https://img.shields.io/badge/runtime-Deno-000000.svg[Deno]
+image:https://img.shields.io/badge/backend-Elixir%20%2B%20Phoenix-4e2a8e.svg[Elixir]
+
+== Overview
+
+**stackur** (Icelandic: "stack" + designer) is a visual web application for designing multi-container stacks using the https://github.com/hyperpolymath/verified-container-spec[verified-container-spec] ecosystem. Drag components onto a canvas, connect them, configure them, and stackur generates `compose.toml` files for https://github.com/hyperpolymath/selur-compose[selur-compose] deployment.
+
+=== Key Features
+
+* 🎨 **Drag-and-Drop UI** - Intuitive visual stack designer
+* 🔗 **Component Library** - Pre-built components (Cerro Torre, Svalinn, selur, Vörðr)
+* ✅ **Formal Validation** - Stack correctness verified via Idris2 proofs
+* 📝 **Multi-Format Export** - Generate `compose.toml`, `docker-compose.yml`, `podman-compose.yml`
+* 🐳 **Runtime Support** - Podman, Docker, nerdctl
+* 🔒 **Type-Safe** - ReScript frontend, Elixir backend, Ephapax validation
+
+== Architecture
+
+=== Frontend (ReScript-TEA + Deno)
+
+```
+┌─────────────────────────────────────────────┐
+│ Browser (ReScript-TEA)                      │
+│  ├─ Component Palette                       │
+│  ├─ Canvas (drag-and-drop)                  │
+│  ├─ Connection Lines                        │
+│  ├─ Configuration Panel                     │
+│  └─ Export Menu                             │
+└────────────┬────────────────────────────────┘
+             │ WebSocket + REST
+             ↓
+┌─────────────────────────────────────────────┐
+│ Backend (Elixir Phoenix)                    │
+│  ├─ REST API (stack CRUD)                   │
+│  ├─ WebSocket (real-time preview)           │
+│  ├─ Validation Service (Ephapax)            │
+│  └─ Code Generator (Rust)                   │
+└─────────────────────────────────────────────┘
+```
+
+=== Backend Services
+
+[cols="1,2,2"]
+|===
+| Service | Language | Purpose
+
+| **API Server**
+| Elixir (Phoenix)
+| REST endpoints, WebSocket, orchestration
+
+| **Stack Validator**
+| Ephapax + Idris2
+| Linear type validation, dependency ordering proofs
+
+| **Constraint Checker**
+| AffineScript (MVP: Rust)
+| Resource constraints (CPU, memory, ports)
+
+| **Code Generator**
+| Rust
+| Generate compose.toml, docker-compose.yml, podman-compose.yml
+|===
+
+=== Component Types
+
+==== Container Components
+
+* **Cerro Torre (ct)** - Verified container bundle creator (.ctp files)
+* **Svalinn** - HTTP edge gateway with auth/policy enforcement
+* **selur** - Zero-copy IPC bridge (WASM)
+* **Vörðr** - Container runtime/orchestrator
+
+==== Runtime Components
+
+* **Podman** - OCI-compliant container runtime
+* **Docker** - Docker Engine runtime
+* **nerdctl** - containerd CLI
+
+==== Infrastructure Components
+
+* **Volumes** - Persistent storage
+* **Networks** - Service networking
+* **Secrets** - Secure configuration
+
+== Quick Start
+
+=== Prerequisites
+
+* Deno 2.0+
+* Elixir 1.17+ with Phoenix
+* Rust 1.75+ (for codegen)
+* Idris2 0.7+ (for validation proofs)
+
+=== Frontend Setup
+
+[source,bash]
+----
+cd frontend
+deno task dev  # Start development server on http://localhost:8000
+----
+
+=== Backend Setup
+
+[source,bash]
+----
+cd backend
+mix deps.get
+mix ecto.setup
+mix phx.server  # Start Phoenix on http://localhost:4000
+----
+
+=== Full Stack
+
+[source,bash]
+----
+just dev  # Starts both frontend and backend
+----
+
+== Usage
+
+=== 1. Design Stack
+
+1. Open stackur in browser: `http://localhost:8000`
+2. Drag components from palette to canvas
+3. Connect components (click to create connection lines)
+4. Configure each component (click to open config panel)
+
+=== 2. Validate
+
+Click **Validate** to check:
+- Dependency cycles
+- Port conflicts
+- Resource constraints
+- Type safety (linear types)
+
+=== 3. Export
+
+Choose export format:
+- `compose.toml` (selur-compose)
+- `docker-compose.yml` (Docker Compose)
+- `podman-compose.yml` (Podman Compose)
+
+=== 4. Deploy
+
+[source,bash]
+----
+# Using selur-compose
+selur-compose -f stack.compose.toml up
+
+# Using Docker Compose
+docker-compose -f stack.docker-compose.yml up
+
+# Using Podman Compose
+podman-compose -f stack.podman-compose.yml up
+----
+
+== Example Stack
+
+=== Web Application Stack
+
+```
+┌──────────────┐
+│   Podman     │ Runtime
+└──────┬───────┘
+       │
+┌──────▼───────┐
+│  Cerro Torre │ .ctp bundle creation
+└──────┬───────┘
+       │
+┌──────▼───────┐
+│   Svalinn    │ Edge gateway (auth, policy)
+└──────┬───────┘
+       │
+┌──────▼───────┐
+│    selur     │ Zero-copy IPC bridge
+└──────┬───────┘
+       │
+┌──────▼───────┐
+│    Vörðr     │ Container orchestration
+└──────┬───────┘
+       │
+       ├─────► nginx (web server)
+       ├─────► api (backend service)
+       └─────► postgres (database)
+```
+
+Generated `compose.toml`:
+
+[source,toml]
+----
+version = "1.0"
+
+[runtime]
+engine = "podman"
+
+[services.nginx]
+image = "ghcr.io/hyperpolymath/nginx:latest.ctp"
+ports = ["8080:80"]
+depends_on = ["api"]
+
+[services.api]
+image = "ghcr.io/myorg/api:v1.0.0.ctp"
+ports = ["3000:3000"]
+depends_on = ["postgres"]
+
+[services.postgres]
+image = "ghcr.io/hyperpolymath/postgres:16.ctp"
+volumes = ["pgdata:/var/lib/postgresql/data"]
+
+[volumes]
+pgdata = { driver = "local" }
+----
+
+== Development
+
+=== Project Structure
+
+```
+stackur/
+├── frontend/              # ReScript-TEA + Deno
+│   ├── src/
+│   │   ├── Main.res      # Entry point
+│   │   ├── Model.res     # TEA Model
+│   │   ├── Msg.res       # TEA Messages
+│   │   ├── Update.res    # TEA Update
+│   │   ├── View.res      # TEA View
+│   │   ├── Canvas.res    # Drag-and-drop canvas
+│   │   ├── Components.res # Component library
+│   │   └── Router.res    # cadre-tea-router
+│   ├── deno.json
+│   └── import_map.json
+├── backend/               # Elixir Phoenix
+│   ├── lib/
+│   │   ├── stackur_web/  # Phoenix controllers/channels
+│   │   ├── stackur/      # Business logic
+│   │   └── validator/    # Ephapax validation
+│   ├── native/           # Rust NIFs (codegen)
+│   └── mix.exs
+├── validation/            # Idris2 proofs
+│   └── src/
+│       ├── Stack.idr     # Stack type definitions
+│       └── Proofs.idr    # Correctness proofs
+└── justfile              # Build automation
+```
+
+=== Tech Stack Rationale
+
+==== Frontend: ReScript-TEA + Deno
+
+* **ReScript-TEA** - Elm Architecture for predictable state management
+* **Deno** - Secure runtime with native TypeScript support
+* **No npm/Node** - Per hyperpolymath language policy
+
+==== Backend: Elixir + Phoenix
+
+* **Elixir** - Concurrent, fault-tolerant
+* **Phoenix** - Real-time WebSocket support
+* **Ephapax** - Linear types for resource validation
+* **Idris2** - Formal proofs for stack correctness
+
+==== Codegen: Rust
+
+* **Rust** - Memory-safe, zero-cost abstractions
+* **TOML parser** - Native TOML support
+* **Type safety** - Generate validated output
+
+== Validation
+
+stackur uses **formal verification** to ensure stack correctness:
+
+=== Linear Type Validation (Ephapax)
+
+* Resources consumed exactly once
+* No dangling references
+* Memory safety guarantees
+
+=== Dependency Ordering (Idris2)
+
+* Acyclic dependency graphs
+* Topological sort correctness
+* No circular dependencies
+
+=== Resource Constraints (AffineScript)
+
+* Port conflict detection
+* CPU/memory limits
+* Network isolation
+
+== API
+
+=== REST Endpoints
+
+[cols="1,2,3"]
+|===
+| Method | Endpoint | Description
+
+| `POST`
+| `/api/stacks`
+| Create new stack
+
+| `GET`
+| `/api/stacks/:id`
+| Retrieve stack
+
+| `PUT`
+| `/api/stacks/:id`
+| Update stack
+
+| `DELETE`
+| `/api/stacks/:id`
+| Delete stack
+
+| `POST`
+| `/api/stacks/:id/validate`
+| Validate stack
+
+| `POST`
+| `/api/stacks/:id/export`
+| Export to compose file
+|===
+
+=== WebSocket Events
+
+[cols="1,2"]
+|===
+| Event | Description
+
+| `stack:updated`
+| Stack configuration changed
+
+| `validation:result`
+| Validation result
+
+| `export:complete`
+| Export completed
+|===
+
+== License
+
+PMPL-1.0-or-later (Palimpsest License)
+
+== Contributing
+
+See link:CONTRIBUTING.md[CONTRIBUTING.md]
+
+== Links
+
+* https://github.com/hyperpolymath/selur-compose[selur-compose] - CLI orchestration
+* https://github.com/hyperpolymath/cerro-torre[Cerro Torre] - Verified container builder
+* https://github.com/hyperpolymath/svalinn[Svalinn] - Edge gateway
+* https://github.com/hyperpolymath/selur[selur] - Zero-copy IPC bridge
+* https://github.com/hyperpolymath/vordr[Vörðr] - Container orchestrator
+* https://github.com/hyperpolymath/verified-container-spec[verified-container-spec] - Protocol specification

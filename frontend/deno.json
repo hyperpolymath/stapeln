@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window", "dom", "dom.iterable"],
+    "strict": true
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --watch server.ts",
+    "build": "rescript build && deno bundle src/Main.res.js dist/bundle.js",
+    "clean": "rescript clean",
+    "serve": "deno run --allow-net --allow-read server.ts"
+  },
+  "importMap": "./import_map.json",
+  "fmt": {
+    "files": {
+      "include": ["src/", "server.ts"]
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["src/", "server.ts"]
+    }
+  }
+}
