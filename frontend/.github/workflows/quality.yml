@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Quality Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  trufflehog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main # 7ee2e0fdffec27d19ccbb8fb3dcf8a83b9d7f9e8
+        with:
+          extra_args: --only-verified
+
+  editorconfig:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: EditorConfig Checker
+        uses: editorconfig-checker/action-editorconfig-checker@main # 4054fa83a075fdf090bd098bdb1c09aaf64a4169
+
+  rescript-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build ReScript
+        run: npx rescript build
+
+      - name: Check for build errors
+        run: |
+          if [ $? -ne 0 ]; then
+            echo "ReScript build failed"
+            exit 1
+          fi

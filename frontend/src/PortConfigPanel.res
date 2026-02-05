@@ -375,8 +375,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
-          ~WebkitBackgroundClip="text",
-          ~WebkitTextFillColor="transparent",
+          ~webkitBackgroundClip="text",
+          ~webkitTextFillColor="transparent",
           ~marginBottom="8px",
           (),
         )}>

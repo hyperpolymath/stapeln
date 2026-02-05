@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: CodeQL Security Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 12 * * 1' # Weekly on Mondays at noon
+
+permissions: read-all
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3 # 6624720a57d4c312633c7b953db2f2da5bcb4c3a
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3 # 6624720a57d4c312633c7b953db2f2da5bcb4c3a
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3 # 6624720a57d4c312633c7b953db2f2da5bcb4c3a
+        with:
+          category: "/language:${{matrix.language}}"

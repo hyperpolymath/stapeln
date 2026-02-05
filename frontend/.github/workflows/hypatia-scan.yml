@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Hypatia Neurosymbolic Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sundays
+
+permissions: read-all
+
+jobs:
+  hypatia-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Run Hypatia Neurosymbolic Security Scan
+        uses: hyperpolymath/hypatia@main
+        with:
+          scan-type: 'full'
+          enable-neurosymbolic: true
+          upload-sarif: true
+
+      - name: Upload Hypatia Results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3 # 6624720a57d4c312633c7b953db2f2da5bcb4c3a
+        with:
+          sarif_file: hypatia-results.sarif
+          category: hypatia-security

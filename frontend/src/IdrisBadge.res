@@ -118,7 +118,6 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
       ~boxShadow="0 8px 24px rgba(188, 19, 254, 0.4)",
       (),
     )}>
-    {/* Header */}
     <div
       style={ReactDOM.Style.make(
         ~display="flex",
@@ -143,8 +142,8 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
             ~color="white",
             ~fontFamily="monospace",
             ~background="linear-gradient(135deg, #bc13fe, #f72585)",
-            ~WebkitBackgroundClip="text",
-            ~WebkitTextFillColor="transparent",
+            ~webkitBackgroundClip="text",
+            ~webkitTextFillColor="transparent",
             ~lineHeight="1.2",
             (),
           )}>
@@ -163,7 +162,6 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
       </div>
     </div>
 
-    {/* Proofs list */}
     <div
       style={ReactDOM.Style.make(
         ~display="flex",
@@ -210,7 +208,6 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
       )->React.array}
     </div>
 
-    {/* Footer */}
     <div
       style={ReactDOM.Style.make(
         ~marginTop="16px",
@@ -242,63 +239,64 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 }
 
 // Tooltip component for hovering over compact badge
-@react.component
-let makeWithTooltip = (~showTooltip: bool=false) => {
-  let (hover, setHover) = React.useState(() => false)
-
-  <div
-    style={ReactDOM.Style.make(
-      ~position="relative",
-      ~display="inline-block",
-      (),
-    )}
-    onMouseEnter={_ => setHover(_ => true)}
-    onMouseLeave={_ => setHover(_ => false)}>
-    {viewCompactBadge()}
-
-    {hover || showTooltip
-      ? <div
-          style={ReactDOM.Style.make(
-            ~position="absolute",
-            ~bottom="calc(100% + 8px)",
-            ~left="50%",
-            ~transform="translateX(-50%)",
-            ~zIndex="1000",
-            ~whiteSpace="nowrap",
-            (),
-          )}>
-          <div
-            style={ReactDOM.Style.make(
-              ~padding="12px 16px",
-              ~background="linear-gradient(135deg, #1e0836 0%, #2d0a4e 100%)",
-              ~border="2px solid #bc13fe",
-              ~borderRadius="8px",
-              ~boxShadow="0 8px 24px rgba(188, 19, 254, 0.5)",
-              ~fontSize="12px",
-              ~color="white",
-              ~fontWeight="600",
-              (),
-            )}>
-            {"Formally verified with Idris² dependent types"->React.string}
-            <br />
-            {"Memory-safe • Thread-safe • Type-correct"->React.string}
-          </div>
-          {/* Tooltip arrow */}
-          <div
-            style={ReactDOM.Style.make(
-              ~position="absolute",
-              ~bottom="-8px",
-              ~left="50%",
-              ~transform="translateX(-50%)",
-              ~width="0",
-              ~height="0",
-              ~borderLeft="8px solid transparent",
-              ~borderRight="8px solid transparent",
-              ~borderTop="8px solid #bc13fe",
-              (),
-            )}
-          />
-        </div>
-      : React.null}
-  </div>
-}
+// TODO: Move to separate module (IdrisBadgeTooltip.res)
+// @react.component
+// let makeWithTooltip = (~showTooltip: bool=false) => {
+//   let (hover, setHover) = React.useState(() => false)
+// 
+//   <div
+//     style={ReactDOM.Style.make(
+//       ~position="relative",
+//       ~display="inline-block",
+//       (),
+//     )}
+//     onMouseEnter={_ => setHover(_ => true)}
+//     onMouseLeave={_ => setHover(_ => false)}>
+//     {viewCompactBadge()}
+// 
+//     {hover || showTooltip
+//       ? <div
+//           style={ReactDOM.Style.make(
+//             ~position="absolute",
+//             ~bottom="calc(100% + 8px)",
+//             ~left="50%",
+//             ~transform="translateX(-50%)",
+//             ~zIndex="1000",
+//             ~whiteSpace="nowrap",
+//             (),
+//           )}>
+//           <div
+//             style={ReactDOM.Style.make(
+//               ~padding="12px 16px",
+//               ~background="linear-gradient(135deg, #1e0836 0%, #2d0a4e 100%)",
+//               ~border="2px solid #bc13fe",
+//               ~borderRadius="8px",
+//               ~boxShadow="0 8px 24px rgba(188, 19, 254, 0.5)",
+//               ~fontSize="12px",
+//               ~color="white",
+//               ~fontWeight="600",
+//               (),
+//             )}>
+//             {"Formally verified with Idris² dependent types"->React.string}
+//             <br />
+//             {"Memory-safe • Thread-safe • Type-correct"->React.string}
+//           </div>
+//           {/* Tooltip arrow */}
+//           <div
+//             style={ReactDOM.Style.make(
+//               ~position="absolute",
+//               ~bottom="-8px",
+//               ~left="50%",
+//               ~transform="translateX(-50%)",
+//               ~width="0",
+//               ~height="0",
+//               ~borderLeft="8px solid transparent",
+//               ~borderRight="8px solid transparent",
+//               ~borderTop="8px solid #bc13fe",
+//               (),
+//             )}
+//           />
+//         </div>
+//       : React.null}
+//   </div>
+// }

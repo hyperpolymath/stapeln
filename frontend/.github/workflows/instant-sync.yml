@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Instant Forge Sync
+
+on:
+  push:
+    branches: ['**']
+  create:
+  delete:
+
+permissions: read-all
+
+jobs:
+  sync:
+    name: Sync to All Forges
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Sync to GitLab
+        if: ${{ secrets.GITLAB_TOKEN != '' }}
+        run: |
+          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/hyperpolymath/stapeln-frontend.git || true
+          git push gitlab --all --force
+          git push gitlab --tags --force
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        continue-on-error: true
+
+      - name: Sync to Bitbucket
+        if: ${{ secrets.BITBUCKET_TOKEN != '' }}
+        run: |
+          git remote add bitbucket https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/hyperpolymath/stapeln-frontend.git || true
+          git push bitbucket --all --force
+          git push bitbucket --tags --force
+        env:
+          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+        continue-on-error: true

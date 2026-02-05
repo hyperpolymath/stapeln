@@ -146,8 +146,8 @@ let update = (msg: msg, state: state): state => {
     {...state, mode: mode}
 
   | SendPacket(sourceId, targetId, packetType) =>
-    let sourceNode = Array.find(state.nodes, n => n.id == sourceId)
-    let targetNode = Array.find(state.nodes, n => n.id == targetId)
+    let sourceNode = Belt.Array.getBy(state.nodes, n => n.id == sourceId)
+    let targetNode = Belt.Array.getBy(state.nodes, n => n.id == targetId)
 
     switch (sourceNode, targetNode) {
     | (Some(src), Some(tgt)) =>
@@ -195,8 +195,8 @@ let update = (msg: msg, state: state): state => {
           {...packet, progress: 1.0, status: Delivered}
         } else {
           // Calculate interpolated position
-          let sourceNode = Array.find(state.nodes, n => n.id == packet.sourceNode)
-          let targetNode = Array.find(state.nodes, n => n.id == packet.targetNode)
+          let sourceNode = Belt.Array.getBy(state.nodes, n => n.id == packet.sourceNode)
+          let targetNode = Belt.Array.getBy(state.nodes, n => n.id == packet.targetNode)
 
           switch (sourceNode, targetNode) {
           | (Some(src), Some(tgt)) =>
@@ -478,8 +478,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #00bcd4)",
-          ~WebkitBackgroundClip="text",
-          ~WebkitTextFillColor="transparent",
+          ~webkitBackgroundClip="text",
+          ~webkitTextFillColor="transparent",
           ~marginBottom="8px",
           (),
         )}>

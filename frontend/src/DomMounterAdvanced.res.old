@@ -1,0 +1,313 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// DomMounterAdvanced.res - Phase 4 advanced features
+
+open DomMounterEnhanced
+
+// ============================================================================
+// SHADOW DOM SUPPORT
+// ============================================================================
+
+type shadowMode =
+  | Open
+  | Closed
+
+// FFI for Shadow DOM
+module ShadowDOMFFI = {
+  @val external attachShadow: (Dom.element, {"mode": string}) => Dom.element = "attachShadow"
+  @val external getElementById: string => option<Dom.element> = "document.getElementById"
+}
+
+let mountToShadowRoot = (elementId: string, mode: shadowMode): Result.t<unit, string> => {
+  let modeStr = switch mode {
+  | Open => "open"
+  | Closed => "closed"
+  }
+
+  switch ShadowDOMFFI.getElementById(elementId) {
+  | None => Error(`Element not found: ${elementId}`)
+  | Some(element) => {
+      let shadowRoot = ShadowDOMFFI.attachShadow(element, {"mode": modeStr})
+      // Mount would happen to shadowRoot instead of element
+      Ok()
+    }
+  }
+}
+
+// ============================================================================
+// BATCH MOUNTING
+// ============================================================================
+
+type batchMountResult = {
+  successful: array<string>,
+  failed: array<(string, string)>,
+}
+
+let mountBatch = (elementIds: array<string>): batchMountResult => {
+  let successful = []
+  let failed = []
+
+  Array.forEach(elementIds, id => {
+    switch mount(id) {
+    | Ok() => Js.Array2.push(successful, id)->ignore
+    | Error(msg) => Js.Array2.push(failed, (id, msg))->ignore
+    }
+  })
+
+  {successful: successful, failed: failed}
+}
+
+let mountBatchWithRecovery = (
+  elementIds: array<string>,
+  strategy: recoveryStrategy,
+): batchMountResult => {
+  let successful = []
+  let failed = []
+
+  Array.forEach(elementIds, id => {
+    switch mountWithRecovery(id, strategy) {
+    | Ok(recoveredId) => Js.Array2.push(successful, recoveredId)->ignore
+    | Error(err) => {
+        let msg = errorToUserMessage(err)
+        Js.Array2.push(failed, (id, msg))->ignore
+      }
+    }
+  })
+
+  {successful: successful, failed: failed}
+}
+
+// ============================================================================
+// ANIMATION HOOKS
+// ============================================================================
+
+type animationConfig = {
+  duration: float,
+  easing: string,
+  delay: float,
+}
+
+module AnimationFFI = {
+  type cssStyleDeclaration
+  @get external style: Dom.element => cssStyleDeclaration = "style"
+  @set external setProperty: (cssStyleDeclaration, string, string) => unit = ""
+  @val external setTimeout: (unit => unit, float) => float = "setTimeout"
+}
+
+let mountWithAnimation = (
+  elementId: string,
+  animation: animationConfig,
+): Result.t<unit, string> => {
+  switch mount(elementId) {
+  | Error(e) => Error(e)
+  | Ok() => {
+      switch ShadowDOMFFI.getElementById(elementId) {
+      | None => Ok() // Already mounted, element might have been removed
+      | Some(element) => {
+          let styles = AnimationFFI.style(element)
+
+          // Set initial state (hidden)
+          AnimationFFI.setProperty(styles, "opacity", "0")
+          AnimationFFI.setProperty(
+            styles,
+            "transition",
+            `opacity ${Float.toString(animation.duration)}ms ${animation.easing} ${Float.toString(animation.delay)}ms`,
+          )
+
+          // Trigger animation after delay
+          let _ = AnimationFFI.setTimeout(() => {
+            AnimationFFI.setProperty(styles, "opacity", "1")
+          }, animation.delay +. 16.0) // 1 frame delay for reflow
+
+          Ok()
+        }
+      }
+    }
+  }
+}
+
+let defaultAnimation: animationConfig = {
+  duration: 300.0,
+  easing: "ease-in-out",
+  delay: 0.0,
+}
+
+// ============================================================================
+// RESIZE OBSERVER
+// ============================================================================
+
+type resizeCallback = {
+  width: float,
+  height: float,
+} => unit
+
+module ResizeObserverFFI = {
+  type resizeObserver
+  type resizeEntry
+  type domRectReadOnly
+
+  @new external makeResizeObserver: (array<resizeEntry> => unit) => resizeObserver = "ResizeObserver"
+  @send external observe: (resizeObserver, Dom.element) => unit = "observe"
+  @send external unobserve: (resizeObserver, Dom.element) => unit = "unobserve"
+  @send external disconnect: resizeObserver => unit = "disconnect"
+  @get external getContentRect: resizeEntry => domRectReadOnly = "contentRect"
+  @get external getWidth: domRectReadOnly => float = "width"
+  @get external getHeight: domRectReadOnly => float = "height"
+}
+
+let mountWithResizeObserver = (
+  elementId: string,
+  onResize: resizeCallback,
+): Result.t<resizeObserverFFI.resizeObserver, string> => {
+  switch mount(elementId) {
+  | Error(e) => Error(e)
+  | Ok() => {
+      switch ShadowDOMFFI.getElementById(elementId) {
+      | None => Error("Element not found after mount")
+      | Some(element) => {
+          let observer = ResizeObserverFFI.makeResizeObserver(entries => {
+            Array.forEach(entries, entry => {
+              let rect = ResizeObserverFFI.getContentRect(entry)
+              let width = ResizeObserverFFI.getWidth(rect)
+              let height = ResizeObserverFFI.getHeight(rect)
+              onResize({width: width, height: height})
+            })
+          })
+
+          ResizeObserverFFI.observe(observer, element)
+          Ok(observer)
+        }
+      }
+    }
+  }
+}
+
+// ============================================================================
+// LAZY MOUNTING (Intersection Observer)
+// ============================================================================
+
+type lazyMountConfig = {
+  elementId: string,
+  threshold: float,
+}
+
+module IntersectionObserverFFI = {
+  type intersectionObserver
+  type intersectionEntry
+  type intersectionObserverOptions = {threshold: float}
+
+  @new
+  external makeIntersectionObserver: (
+    array<intersectionEntry> => unit,
+    intersectionObserverOptions,
+  ) => intersectionObserver = "IntersectionObserver"
+
+  @send external observe: (intersectionObserver, Dom.element) => unit = "observe"
+  @send external unobserve: (intersectionObserver, Dom.element) => unit = "unobserve"
+  @get external isIntersecting: intersectionEntry => bool = "isIntersecting"
+  @get external target: intersectionEntry => Dom.element = "target"
+}
+
+let mountWhenVisible = (config: lazyMountConfig): Result.t<unit, string> => {
+  switch ShadowDOMFFI.getElementById(config.elementId) {
+  | None => Error(`Element not found: ${config.elementId}`)
+  | Some(element) => {
+      let observer = IntersectionObserverFFI.makeIntersectionObserver(
+        entries => {
+          Array.forEach(entries, entry => {
+            if IntersectionObserverFFI.isIntersecting(entry) {
+              // Element is visible, mount it
+              let _ = mount(config.elementId)
+
+              // Stop observing after mount
+              let target = IntersectionObserverFFI.target(entry)
+              IntersectionObserverFFI.unobserve(observer, target)
+            }
+          })
+        },
+        {threshold: config.threshold},
+      )
+
+      IntersectionObserverFFI.observe(observer, element)
+      Ok()
+    }
+  }
+}
+
+// ============================================================================
+// UNMOUNT OPERATIONS
+// ============================================================================
+
+let unmount = (elementId: string): Result.t<unit, string> => {
+  switch ShadowDOMFFI.getElementById(elementId) {
+  | None => Error(`Element not found: ${elementId}`)
+  | Some(element) => {
+      // Clear element content
+      %raw(`element.innerHTML = ''`)
+
+      // Remove event listeners (if tracked)
+      // In production, would track listeners and remove them
+
+      Ok()
+    }
+  }
+}
+
+let unmountBatch = (elementIds: array<string>): batchMountResult => {
+  let successful = []
+  let failed = []
+
+  Array.forEach(elementIds, id => {
+    switch unmount(id) {
+    | Ok() => Js.Array2.push(successful, id)->ignore
+    | Error(msg) => Js.Array2.push(failed, (id, msg))->ignore
+    }
+  })
+
+  {successful: successful, failed: failed}
+}
+
+// ============================================================================
+// EVENT HANDLING
+// ============================================================================
+
+type eventHandler<'a> = 'a => unit
+
+type mountOptions = {
+  onClick: option<eventHandler<Dom.mouseEvent>>,
+  onMount: option<unit => unit>,
+  onUnmount: option<unit => unit>,
+}
+
+module EventFFI = {
+  @send external addEventListener: (Dom.element, string, Dom.mouseEvent => unit) => unit = "addEventListener"
+  @send external removeEventListener: (Dom.element, string, Dom.mouseEvent => unit) => unit = "removeEventListener"
+}
+
+let mountWithEvents = (
+  elementId: string,
+  options: mountOptions,
+): Result.t<unit, string> => {
+  switch mount(elementId) {
+  | Error(e) => Error(e)
+  | Ok() => {
+      switch ShadowDOMFFI.getElementById(elementId) {
+      | None => Error("Element not found after mount")
+      | Some(element) => {
+          // Attach click listener if provided
+          switch options.onClick {
+          | Some(handler) => EventFFI.addEventListener(element, "click", handler)
+          | None => ()
+          }
+
+          // Call mount callback
+          switch options.onMount {
+          | Some(cb) => cb()
+          | None => ()
+          }
+
+          Ok()
+        }
+      }
+    }
+  }
+}

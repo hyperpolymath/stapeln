@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Update.res - TEA Update (state transitions)
+// Update.res - State transitions (pure functions)
 
 open Model
 open Msg
 
-type effect<'msg> = Tea.Cmd.t<'msg>
-
-let update = (model: model, msg: msg): (model, effect<msg>) => {
+// No effects - pure state updates only
+let update = (model: model, msg: msg): model => {
   switch msg {
   // Component management
   | AddComponent(componentType, position) => {
@@ -20,7 +19,7 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
         ...model,
         components: Array.concat(model.components, [newComponent]),
       }
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | RemoveComponent(id) => {
@@ -35,7 +34,7 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
         connections: newConnections,
         selectedComponent: model.selectedComponent === Some(id) ? None : model.selectedComponent,
       }
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | UpdateComponentPosition(id, position) => {
@@ -43,7 +42,7 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
         comp.id === id ? {...comp, position: position} : comp
       )
       let newModel = {...model, components: newComponents}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | UpdateComponentConfig(id, config) => {
@@ -51,12 +50,12 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
         comp.id === id ? {...comp, config: config} : comp
       )
       let newModel = {...model, components: newComponents}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | SelectComponent(componentId) => {
       let newModel = {...model, selectedComponent: componentId}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   // Connection management
@@ -75,28 +74,28 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
           ...model,
           connections: Array.concat(model.connections, [newConnection]),
         }
-        (newModel, Tea.Cmd.none)
+        newModel
       } else {
         // Invalid connection, don't add
-        (model, Tea.Cmd.none)
+        model
       }
     }
 
   | RemoveConnection(id) => {
       let newConnections = Array.keep(model.connections, conn => conn.id !== id)
       let newModel = {...model, connections: newConnections}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   // Drag and drop
   | StartDragComponent(component, mousePos) => {
       let newModel = {...model, dragState: DraggingComponent(component)}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | StartDragCanvas(mousePos) => {
       let newModel = {...model, dragState: DraggingCanvas(mousePos)}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | DragMove(mousePos) => {
@@ -111,7 +110,7 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
             components: newComponents,
             dragState: DraggingComponent({...component, position: mousePos}),
           }
-          (newModel, Tea.Cmd.none)
+          newModel
         }
 
       | DraggingCanvas(startPos) => {
@@ -127,127 +126,124 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
             canvasOffset: newOffset,
             dragState: DraggingCanvas(mousePos),
           }
-          (newModel, Tea.Cmd.none)
+          newModel
         }
 
-      | NotDragging => (model, Tea.Cmd.none)
+      | NotDragging => model
       }
     }
 
   | DragEnd => {
       let newModel = {...model, dragState: NotDragging}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   // Canvas operations
   | ZoomIn => {
       let newZoom = Float.min(model.zoomLevel *. 1.2, 3.0) // Max 3x zoom
       let newModel = {...model, zoomLevel: newZoom}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | ZoomOut => {
       let newZoom = Float.max(model.zoomLevel /. 1.2, 0.5) // Min 0.5x zoom
       let newModel = {...model, zoomLevel: newZoom}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | ResetZoom => {
       let newModel = {...model, zoomLevel: 1.0, canvasOffset: {x: 0.0, y: 0.0}}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   | PanCanvas(offset) => {
       let newModel = {...model, canvasOffset: offset}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   // Validation
   | ValidateStack => {
-      // TODO: Send validation request to backend
-      // For now, return a mock validation
-      let cmd = Tea.Cmd.call(() => {
-        let result: validationResult = {
-          valid: Array.length(model.components) > 0,
-          errors: [],
-          warnings: Array.length(model.components) === 0
-            ? ["Stack is empty"]
-            : [],
-        }
-        ValidationResult(result)
-      })
-      (model, cmd)
+      // Run validation synchronously
+      let result: validationResult = {
+        valid: Array.length(model.components) > 0,
+        errors: [],
+        warnings: Array.length(model.components) === 0
+          ? ["Stack is empty"]
+          : [],
+      }
+      let newModel = {...model, validationResult: Some(result)}
+      newModel
     }
 
   | ValidationResult(result) => {
       let newModel = {...model, validationResult: Some(result)}
-      (newModel, Tea.Cmd.none)
+      newModel
     }
 
   // Export
   | ExportDesignToJson(description) => {
       Export.exportDesignToJson(model, description)
-      (model, Tea.Cmd.none)
+      model
     }
 
   | ExportToSelurCompose => {
       Export.exportToSelurCompose(model)
-      (model, Tea.Cmd.none)
+      model
     }
 
   | ExportToDockerCompose => {
       Export.exportToDockerCompose(model)
-      (model, Tea.Cmd.none)
+      model
     }
 
   | ExportToPodmanCompose => {
       Export.exportToPodmanCompose(model)
-      (model, Tea.Cmd.none)
+      model
     }
 
   // Import
   | TriggerImportDesign => {
-      // Trigger file picker
+      // Trigger file picker (side effect)
       Import.triggerImport(
         importedModel => ImportDesignSuccess(importedModel),
         error => ImportDesignError(error),
       )
-      (model, Tea.Cmd.none)
+      model
     }
 
   | ImportDesignSuccess(importedModel) => {
       Js.Console.log("Design imported successfully")
-      (importedModel, Tea.Cmd.none)
+      importedModel
     }
 
   | ImportDesignError(error) => {
       Js.Console.error2("Import failed:", error)
       // TODO: Show error message to user
-      (model, Tea.Cmd.none)
+      model
     }
 
   // API communication
   | SaveStack => {
       // TODO: Send stack to backend API
       Js.Console.log("Saving stack...")
-      (model, Tea.Cmd.none)
+      model
     }
 
   | LoadStack(stackId) => {
       // TODO: Load stack from backend API
       Js.Console.log2("Loading stack:", stackId)
-      (model, Tea.Cmd.none)
+      model
     }
 
   | StackSaved(result) => {
       switch result {
       | Ok(stackId) => {
           Js.Console.log2("Stack saved with ID:", stackId)
-          (model, Tea.Cmd.none)
+          model
         }
       | Error(err) => {
           Js.Console.error2("Failed to save stack:", err)
-          (model, Tea.Cmd.none)
+          model
         }
       }
     }
@@ -256,18 +252,13 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
       switch result {
       | Ok(loadedModel) => {
           Js.Console.log("Stack loaded successfully")
-          (loadedModel, Tea.Cmd.none)
+          loadedModel
         }
       | Error(err) => {
           Js.Console.error2("Failed to load stack:", err)
-          (model, Tea.Cmd.none)
+          model
         }
       }
     }
   }
-}
-
-// Subscriptions (for animations, WebSocket, etc.)
-let subscriptions = (_model: model): Tea.Sub.t<msg> => {
-  Tea.Sub.none
 }
