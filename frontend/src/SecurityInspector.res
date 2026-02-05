@@ -193,6 +193,34 @@ let init: state = {
   filterSeverity: None,
 }
 
+// Helper: Calculate overall grade from metrics
+let calculateGrade = (metrics: securityMetrics): grade => {
+  let avg = (metrics.security + metrics.performance + metrics.reliability + metrics.compliance) / 4
+  if avg >= 97 {
+    APlus
+  } else if avg >= 93 {
+    A
+  } else if avg >= 90 {
+    AMinus
+  } else if avg >= 87 {
+    BPlus
+  } else if avg >= 83 {
+    B
+  } else if avg >= 80 {
+    BMinus
+  } else if avg >= 77 {
+    CPlus
+  } else if avg >= 73 {
+    C
+  } else if avg >= 70 {
+    CMinus
+  } else if avg >= 60 {
+    D
+  } else {
+    F
+  }
+}
+
 // Update function
 let update = (msg: msg, state: state): state => {
   switch msg {
@@ -223,34 +251,6 @@ let update = (msg: msg, state: state): state => {
   | RunSecurityScan =>
     // Trigger security scan (placeholder)
     state
-  }
-}
-
-// Helper: Calculate overall grade from metrics
-and calculateGrade = (metrics: securityMetrics): grade => {
-  let avg = (metrics.security + metrics.performance + metrics.reliability + metrics.compliance) / 4
-  if avg >= 97 {
-    APlus
-  } else if avg >= 93 {
-    A
-  } else if avg >= 90 {
-    AMinus
-  } else if avg >= 87 {
-    BPlus
-  } else if avg >= 83 {
-    B
-  } else if avg >= 80 {
-    BMinus
-  } else if avg >= 77 {
-    CPlus
-  } else if avg >= 73 {
-    C
-  } else if avg >= 70 {
-    CMinus
-  } else if avg >= 60 {
-    D
-  } else {
-    F
   }
 }
 
