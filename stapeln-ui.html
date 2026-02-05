@@ -290,6 +290,66 @@
             font-size: 10px;
             color: #8892a6;
         }
+        .node.connection-source {
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.4);
+            animation: pulse-connection 1s infinite;
+            z-index: 12;
+        }
+        @keyframes pulse-connection {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(74, 158, 255, 0.6); }
+        }
+        .node.connection-target-hover {
+            border-color: #00bcd4;
+            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.4);
+        }
+
+        /* Connection Lines */
+        .connection-line {
+            stroke: #4a9eff;
+            stroke-width: 2;
+            fill: none;
+            cursor: pointer;
+            pointer-events: stroke;
+            transition: all 0.2s;
+        }
+        .connection-line:hover {
+            stroke: #00bcd4;
+            stroke-width: 3;
+        }
+        .connection-line.selected {
+            stroke: #7b6cff;
+            stroke-width: 3;
+        }
+        .connection-line.bidirectional {
+            stroke-dasharray: 5, 5;
+        }
+
+        /* Connection Mode Indicator */
+        .connection-mode-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: rgba(74, 158, 255, 0.95);
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+        }
+        .connection-mode-indicator.active {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from { transform: translateX(-50%) translateY(-10px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
 
         /* Properties Panel (Right Sidebar) */
         .properties-panel {
@@ -1157,7 +1217,10 @@
                             <p>
                                 <strong>For people who hate containers.</strong> No YAML. No CLI commands. Just drag, drop, and deploy.
                             </p>
-                            <button class="tour-button" onclick="startTour()">🎓 Start Beginner Tour</button>
+                            <div style="display: flex; gap: 16px; margin-top: 20px;">
+                                <button class="tour-button" onclick="startTour()">🎓 Start Beginner Tour</button>
+                                <button class="tour-button" onclick="showTemplateLibrary()" style="background: linear-gradient(135deg, #7b6cff, #9c27b0);">📚 Load Template</button>
+                            </div>
                         </div>
 
                         <div class="dashboard-grid">
@@ -1368,6 +1431,25 @@
 
                         <!-- Canvas -->
                         <div class="topology-canvas" id="topologyCanvas">
+                            <!-- Connection Mode Indicator -->
+                            <div id="connectionModeIndicator" class="connection-mode-indicator">
+                                🔗 Click target node to create connection
+                            </div>
+                            <!-- SVG Layer for Connections -->
+                            <svg id="connectionSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                                <defs>
+                                    <!-- Arrow markers for directional connections -->
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                        <polygon points="0 0, 10 3, 0 6" fill="#4a9eff" />
+                                    </marker>
+                                    <marker id="arrowhead-selected" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                        <polygon points="0 0, 10 3, 0 6" fill="#7b6cff" />
+                                    </marker>
+                                    <marker id="arrowhead-hover" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                        <polygon points="0 0, 10 3, 0 6" fill="#00bcd4" />
+                                    </marker>
+                                </defs>
+                            </svg>
                             <!-- Nodes will be dynamically added here -->
                         </div>
 
@@ -2498,9 +2580,142 @@ alignment-checks:
                         </div>
                         <div style="margin-top: 12px; font-size: 12px; color: #4a9eff;">⏱️ 35 minutes</div>
                     </div>
+
+                    <!-- Link Configuration -->
+                    <div style="background: #0a0e1a; padding: 24px; border-radius: 12px; border: 2px solid #2a3142; cursor: pointer; transition: all 0.3s;" onclick="startTutorialPath('link-configuration')" onmouseover="this.style.borderColor='#4a9eff'" onmouseout="this.style.borderColor='#2a3142'">
+                        <div style="font-size: 32px; margin-bottom: 12px;">🔗</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #00bcd4;">Networking</div>
+                        <div style="font-size: 14px; color: #8892a6; line-height: 1.6;">
+                            Learn to connect containers and configure network protocols
+                        </div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #4a9eff;">⏱️ 15 minutes</div>
+                    </div>
                 </div>
 
                 <button class="tutorial-btn secondary" onclick="closeTutorialMenu()" style="margin-top: 20px;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Template Library Modal -->
+        <div id="templateModal" class="template-modal">
+            <div class="template-content">
+                <div class="template-header">
+                    <div>
+                        <h2 style="font-size: 28px; font-weight: 700; color: #4a9eff; margin-bottom: 8px;">📚 Template Library</h2>
+                        <p style="color: #8892a6;">Start with a pre-built stack template for common architectures</p>
+                    </div>
+                    <button class="template-close-btn" onclick="closeTemplateLibrary()">×</button>
+                </div>
+
+                <div class="template-gallery">
+                    <div class="template-grid">
+                        <!-- Hello World Template -->
+                        <div class="template-card" onclick="loadTemplate('hello-world')">
+                            <div class="template-icon">🌱</div>
+                            <div class="template-name">Hello World</div>
+                            <div class="template-description">
+                                Single container web app. Perfect for learning the basics.
+                            </div>
+                            <div class="template-badges">
+                                <span class="template-badge badge-beginner">Beginner</span>
+                            </div>
+                            <div class="template-stats">
+                                <span>1 container</span>
+                                <span>5 minutes</span>
+                            </div>
+                        </div>
+
+                        <!-- Three-Tier Web App Template -->
+                        <div class="template-card" onclick="loadTemplate('three-tier')">
+                            <div class="template-icon">🏗️</div>
+                            <div class="template-name">Three-Tier Web App</div>
+                            <div class="template-description">
+                                Classic architecture: Frontend, Backend, and Database layers.
+                            </div>
+                            <div class="template-badges">
+                                <span class="template-badge badge-intermediate">Intermediate</span>
+                            </div>
+                            <div class="template-stats">
+                                <span>3 containers</span>
+                                <span>15 minutes</span>
+                            </div>
+                        </div>
+
+                        <!-- Microservices Template -->
+                        <div class="template-card" onclick="loadTemplate('microservices')">
+                            <div class="template-icon">🔷</div>
+                            <div class="template-name">Microservices</div>
+                            <div class="template-description">
+                                API Gateway + multiple service backends with shared database.
+                            </div>
+                            <div class="template-badges">
+                                <span class="template-badge badge-advanced">Advanced</span>
+                            </div>
+                            <div class="template-stats">
+                                <span>5 containers</span>
+                                <span>25 minutes</span>
+                            </div>
+                        </div>
+
+                        <!-- Event-Driven Template -->
+                        <div class="template-card" onclick="loadTemplate('event-driven')">
+                            <div class="template-icon">⚡</div>
+                            <div class="template-name">Event-Driven</div>
+                            <div class="template-description">
+                                Message queue with producers and consumers for async processing.
+                            </div>
+                            <div class="template-badges">
+                                <span class="template-badge badge-advanced">Advanced</span>
+                            </div>
+                            <div class="template-stats">
+                                <span>6 containers</span>
+                                <span>30 minutes</span>
+                            </div>
+                        </div>
+
+                        <!-- Static Site Template -->
+                        <div class="template-card" onclick="loadTemplate('static-site')">
+                            <div class="template-icon">📄</div>
+                            <div class="template-name">Static Site</div>
+                            <div class="template-description">
+                                CDN + object storage for static website hosting.
+                            </div>
+                            <div class="template-badges">
+                                <span class="template-badge badge-beginner">Beginner</span>
+                            </div>
+                            <div class="template-stats">
+                                <span>2 containers</span>
+                                <span>10 minutes</span>
+                            </div>
+                        </div>
+
+                        <!-- Full-Stack Template -->
+                        <div class="template-card" onclick="loadTemplate('full-stack')">
+                            <div class="template-icon">🚀</div>
+                            <div class="template-name">Full-Stack</div>
+                            <div class="template-description">
+                                Complete production setup: Frontend, Backend, Database, Cache, Queue.
+                            </div>
+                            <div class="template-badges">
+                                <span class="template-badge badge-advanced">Advanced</span>
+                            </div>
+                            <div class="template-stats">
+                                <span>5 containers</span>
+                                <span>35 minutes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; padding: 20px; background: #0a0e1a; border-radius: 12px; border-left: 4px solid #4a9eff;">
+                    <strong style="color: #4a9eff; font-size: 16px;">💡 Template Benefits:</strong>
+                    <ul style="margin-top: 12px; padding-left: 20px; color: #b0b8c4; line-height: 1.8;">
+                        <li>Pre-configured with best practices</li>
+                        <li>All contractile files generated automatically</li>
+                        <li>Ready-to-deploy stack definitions</li>
+                        <li>Learn by example and customize to your needs</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -2546,6 +2761,14 @@ alignment-checks:
         let currentComponent = null;
         let nodes = [];
         let nodeIdCounter = 0;
+
+        // Connection system
+        let connections = [];
+        let connectionIdCounter = 0;
+        let connectionMode = false; // Is user drawing a connection?
+        let connectionSource = null; // Source node for connection being drawn
+        let selectedConnection = null; // Currently selected connection
+        const connectionSvg = document.getElementById('connectionSvg');
 
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2962,6 +3185,77 @@ alignment-checks:
                     highlightElement('.quick-actions-bar button:nth-child(1)');
                 }
             }
+        ],
+
+        'link-configuration': [
+            {
+                title: "Link Configuration Tutorial 🔗",
+                text: "Learn how to draw connections between containers and configure network protocols. You'll understand data flow, directionality, and how services communicate.",
+                step: "Step 1 of 10",
+                action: () => {
+                    showPage('dashboard');
+                }
+            },
+            {
+                title: "Start with Template",
+                text: "Let's use a pre-built template to have components ready. Click the \"📚 Load Template\" button and select \"Three-Tier Web App\".",
+                step: "Step 2 of 10",
+                action: () => {
+                    highlightElement('.tour-button:nth-child(2)');
+                }
+            },
+            {
+                title: "Understanding Connections",
+                text: "You now have 3 containers: Frontend, Backend, Database. Connections show how data flows between them. Think of them as network cables connecting computers.",
+                step: "Step 3 of 10",
+                action: () => {
+                    showPage('topology');
+                }
+            },
+            {
+                title: "Connection Drawing (Future)",
+                text: "In the full version, you'll click a component, then click another to draw a connection. For now, understand: Frontend → Backend → Database is a typical flow.",
+                step: "Step 4 of 10"
+            },
+            {
+                title: "Directionality Matters",
+                text: "Connections have direction:\n• Unidirectional (→): One-way traffic (Frontend calls Backend)\n• Bidirectional (↔): Two-way traffic (WebSocket connections)\n\nMost connections are unidirectional for security.",
+                step: "Step 5 of 10"
+            },
+            {
+                title: "Protocol Selection",
+                text: "Each connection uses a protocol:\n• HTTP/HTTPS: Web APIs (Backend → Database uses this)\n• TCP: Raw socket connections\n• UDP: Fast, unreliable (gaming, video streaming)\n• gRPC: Modern RPC framework (microservices)\n• WebSocket: Real-time bidirectional (chat apps)",
+                step: "Step 6 of 10"
+            },
+            {
+                title: "Port Mapping",
+                text: "Connections link ports:\n• Frontend (port 3000) → Backend (port 8080)\n• Backend (port 8080) → Database (port 5432)\n\nEach service listens on specific ports. stapeln auto-configures these!",
+                step: "Step 7 of 10"
+            },
+            {
+                title: "Security: Network Policies",
+                text: "Connections define firewall rules:\n✓ Frontend can ONLY talk to Backend (not Database directly)\n✓ Backend can talk to Database\n✗ Database CANNOT initiate connections (security!)\n\nThis is Zero Trust networking.",
+                step: "Step 8 of 10"
+            },
+            {
+                title: "Connection Properties Panel",
+                text: "When you click a connection (coming soon), you'll configure:\n• Protocol (HTTP, TCP, gRPC, etc.)\n• Port mapping (source:dest)\n• Encryption (TLS/SSL)\n• Rate limiting\n• Timeout settings\n• Health checks",
+                step: "Step 9 of 10",
+                action: () => {
+                    if (nodes.length > 0) {
+                        highlightElement('#propertiesPanel');
+                    }
+                }
+            },
+            {
+                title: "Link Configuration Complete! ✅",
+                text: "You've learned:\n✓ How connections represent data flow\n✓ Directionality (→ vs ↔)\n✓ Protocol types (HTTP, TCP, gRPC, WebSocket)\n✓ Port mapping\n✓ Network security policies\n\nNext: Try the Validation tool to check your network configuration!",
+                step: "Step 10 of 10",
+                action: () => {
+                    clearHighlights();
+                    highlightElement('.quick-actions-bar button:nth-child(2)');
+                }
+            }
         ]
     };
 
@@ -3170,10 +3464,36 @@ alignment-checks:
             };
             nodes.push(nodeData);
 
-            // Single-click: select and show properties
+            // Single-click: select and show properties OR connection drawing
             node.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selectNodeForProperties(nodeId);
+
+                // Connection drawing mode
+                if (e.ctrlKey || e.metaKey) {
+                    // Ctrl/Cmd + Click = Start drawing connection
+                    if (!connectionMode) {
+                        startConnectionFrom(nodeId);
+                    } else {
+                        finishConnection(nodeId);
+                    }
+                } else if (connectionMode) {
+                    // Already in connection mode, clicking target
+                    finishConnection(nodeId);
+                } else {
+                    // Normal click: show properties
+                    selectNodeForProperties(nodeId);
+                }
+            });
+
+            // Hover effect during connection mode
+            node.addEventListener('mouseenter', () => {
+                if (connectionMode && connectionSource !== nodeId) {
+                    node.classList.add('connection-target-hover');
+                }
+            });
+
+            node.addEventListener('mouseleave', () => {
+                node.classList.remove('connection-target-hover');
             });
 
             // Double-click: navigate to Stack View
@@ -3197,9 +3517,20 @@ alignment-checks:
 
             document.addEventListener('mousemove', (e) => {
                 if (isDragging) {
-                    const rect = canvas.getBoundingClientRect();
+                    const canvasEl = document.getElementById('topologyCanvas');
+                    const rect = canvasEl.getBoundingClientRect();
                     node.style.left = (e.clientX - rect.left - offsetX) + 'px';
                     node.style.top = (e.clientY - rect.top - offsetY) + 'px';
+
+                    // Update node position in data
+                    const nodeData = nodes.find(n => n.id === nodeId);
+                    if (nodeData) {
+                        nodeData.x = parseInt(node.style.left);
+                        nodeData.y = parseInt(node.style.top);
+                    }
+
+                    // Update connection lines connected to this node
+                    renderAllConnections();
                 }
             });
 
@@ -3355,6 +3686,496 @@ alignment-checks:
             alert(`✓ Selected: ${imageName}\n\nBase image configured for ${currentComponent.name}`);
         }
 
+        // ========================================
+        // TEMPLATE LIBRARY FUNCTIONS
+        // ========================================
+
+        function showTemplateLibrary() {
+            document.getElementById('templateModal').classList.add('active');
+        }
+
+        function closeTemplateLibrary() {
+            document.getElementById('templateModal').classList.remove('active');
+        }
+
+        const templates = {
+            'hello-world': {
+                name: 'Hello World',
+                nodes: [
+                    { type: 'App Server', icon: '🌐', name: 'web-server', baseImage: 'lago-grey-minimal', firewall: true, ports: '8080', protocol: 'TCP', resources: { cpu: '0.5', memory: '512Mi' }, x: 400, y: 300 }
+                ],
+                connections: []
+            },
+            'three-tier': {
+                name: 'Three-Tier Web App',
+                nodes: [
+                    { type: 'Frontend', icon: '🎨', name: 'react-frontend', baseImage: 'alpine', firewall: true, ports: '3000', protocol: 'TCP', resources: { cpu: '0.5', memory: '512Mi' }, x: 200, y: 150 },
+                    { type: 'App Server', icon: '⚙️', name: 'api-backend', baseImage: 'lago-grey-minimal', firewall: true, ports: '8080', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 400, y: 150 },
+                    { type: 'Database', icon: '🗄️', name: 'postgres-db', baseImage: 'alpine', firewall: true, ports: '5432', protocol: 'TCP', resources: { cpu: '1', memory: '2Gi' }, x: 600, y: 150 }
+                ],
+                connections: [
+                    { from: 'react-frontend', to: 'api-backend' },
+                    { from: 'api-backend', to: 'postgres-db' }
+                ]
+            },
+            'microservices': {
+                name: 'Microservices',
+                nodes: [
+                    { type: 'Gateway', icon: '🚪', name: 'api-gateway', baseImage: 'lago-grey-minimal', firewall: true, ports: '8080', protocol: 'TCP', resources: { cpu: '0.5', memory: '512Mi' }, x: 200, y: 250 },
+                    { type: 'App Server', icon: '👤', name: 'user-service', baseImage: 'lago-grey-minimal', firewall: true, ports: '8081', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 400, y: 150 },
+                    { type: 'App Server', icon: '📦', name: 'order-service', baseImage: 'lago-grey-minimal', firewall: true, ports: '8082', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 400, y: 250 },
+                    { type: 'App Server', icon: '💳', name: 'payment-service', baseImage: 'lago-grey-minimal', firewall: true, ports: '8083', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 400, y: 350 },
+                    { type: 'Database', icon: '🗄️', name: 'shared-db', baseImage: 'wolfi', firewall: true, ports: '5432', protocol: 'TCP', resources: { cpu: '2', memory: '4Gi' }, x: 600, y: 250 }
+                ],
+                connections: [
+                    { from: 'api-gateway', to: 'user-service' },
+                    { from: 'api-gateway', to: 'order-service' },
+                    { from: 'api-gateway', to: 'payment-service' },
+                    { from: 'user-service', to: 'shared-db' },
+                    { from: 'order-service', to: 'shared-db' },
+                    { from: 'payment-service', to: 'shared-db' }
+                ]
+            },
+            'event-driven': {
+                name: 'Event-Driven',
+                nodes: [
+                    { type: 'Message Queue', icon: '📬', name: 'rabbitmq', baseImage: 'alpine', firewall: true, ports: '5672', protocol: 'TCP', resources: { cpu: '1', memory: '2Gi' }, x: 400, y: 250 },
+                    { type: 'App Server', icon: '📤', name: 'producer-1', baseImage: 'lago-grey-minimal', firewall: true, ports: '8080', protocol: 'TCP', resources: { cpu: '0.5', memory: '512Mi' }, x: 200, y: 150 },
+                    { type: 'App Server', icon: '📤', name: 'producer-2', baseImage: 'lago-grey-minimal', firewall: true, ports: '8081', protocol: 'TCP', resources: { cpu: '0.5', memory: '512Mi' }, x: 200, y: 350 },
+                    { type: 'App Server', icon: '📥', name: 'consumer-1', baseImage: 'lago-grey-minimal', firewall: true, ports: '8082', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 600, y: 150 },
+                    { type: 'App Server', icon: '📥', name: 'consumer-2', baseImage: 'lago-grey-minimal', firewall: true, ports: '8083', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 600, y: 250 },
+                    { type: 'App Server', icon: '📥', name: 'consumer-3', baseImage: 'lago-grey-minimal', firewall: true, ports: '8084', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 600, y: 350 }
+                ],
+                connections: [
+                    { from: 'producer-1', to: 'rabbitmq' },
+                    { from: 'producer-2', to: 'rabbitmq' },
+                    { from: 'rabbitmq', to: 'consumer-1' },
+                    { from: 'rabbitmq', to: 'consumer-2' },
+                    { from: 'rabbitmq', to: 'consumer-3' }
+                ]
+            },
+            'static-site': {
+                name: 'Static Site',
+                nodes: [
+                    { type: 'Frontend', icon: '🌐', name: 'nginx-cdn', baseImage: 'scratch', firewall: true, ports: '80', protocol: 'TCP', resources: { cpu: '0.25', memory: '256Mi' }, x: 300, y: 250 },
+                    { type: 'Database', icon: '📦', name: 'object-storage', baseImage: 'scratch', firewall: true, ports: '9000', protocol: 'TCP', resources: { cpu: '0.5', memory: '512Mi' }, x: 500, y: 250 }
+                ],
+                connections: [
+                    { from: 'nginx-cdn', to: 'object-storage' }
+                ]
+            },
+            'full-stack': {
+                name: 'Full-Stack',
+                nodes: [
+                    { type: 'Frontend', icon: '🎨', name: 'nextjs-app', baseImage: 'alpine', firewall: true, ports: '3000', protocol: 'TCP', resources: { cpu: '1', memory: '1Gi' }, x: 200, y: 150 },
+                    { type: 'App Server', icon: '⚙️', name: 'api-server', baseImage: 'lago-grey-minimal', firewall: true, ports: '8080', protocol: 'TCP', resources: { cpu: '2', memory: '2Gi' }, x: 400, y: 150 },
+                    { type: 'Database', icon: '🗄️', name: 'postgres', baseImage: 'wolfi', firewall: true, ports: '5432', protocol: 'TCP', resources: { cpu: '2', memory: '4Gi' }, x: 600, y: 150 },
+                    { type: 'Cache', icon: '⚡', name: 'redis-cache', baseImage: 'alpine', firewall: true, ports: '6379', protocol: 'TCP', resources: { cpu: '0.5', memory: '1Gi' }, x: 400, y: 300 },
+                    { type: 'Message Queue', icon: '📬', name: 'worker-queue', baseImage: 'alpine', firewall: true, ports: '5672', protocol: 'TCP', resources: { cpu: '1', memory: '2Gi' }, x: 600, y: 300 }
+                ],
+                connections: [
+                    { from: 'nextjs-app', to: 'api-server' },
+                    { from: 'api-server', to: 'postgres' },
+                    { from: 'api-server', to: 'redis-cache' },
+                    { from: 'api-server', to: 'worker-queue' }
+                ]
+            }
+        };
+
+        function loadTemplate(templateId) {
+            const template = templates[templateId];
+            if (!template) {
+                alert('Template not found!');
+                return;
+            }
+
+            // Clear existing topology
+            nodes = [];
+            connections = [];
+            const canvas = document.getElementById('topologyCanvas');
+
+            // Clear canvas but keep SVG layer
+            const svgLayer = document.getElementById('connectionSvg');
+            const modeIndicator = document.getElementById('connectionModeIndicator');
+            canvas.innerHTML = '';
+            canvas.appendChild(modeIndicator);
+            canvas.appendChild(svgLayer);
+
+            nodeIdCounter = 0;
+            connectionIdCounter = 0;
+
+            // Clear existing connection lines
+            svgLayer.querySelectorAll('.connection-line').forEach(line => line.remove());
+
+            // Create nodes from template
+            template.nodes.forEach(nodeData => {
+                createNode({
+                    type: nodeData.type,
+                    icon: nodeData.icon,
+                    name: nodeData.name
+                }, nodeData.x, nodeData.y);
+
+                // Update the last created node with template data
+                const lastNode = nodes[nodes.length - 1];
+                lastNode.baseImage = nodeData.baseImage;
+                lastNode.firewall = nodeData.firewall;
+                lastNode.ports = nodeData.ports;
+                lastNode.protocol = nodeData.protocol;
+                lastNode.resources = nodeData.resources;
+            });
+
+            // Load connections from template (after delay to ensure nodes are positioned)
+            if (template.connections && template.connections.length > 0) {
+                setTimeout(() => {
+                    template.connections.forEach(connData => {
+                        const sourceNode = nodes.find(n => n.name === connData.from);
+                        const targetNode = nodes.find(n => n.name === connData.to);
+
+                        if (sourceNode && targetNode) {
+                            const connectionId = `conn-${connectionIdCounter++}`;
+                            const connection = {
+                                id: connectionId,
+                                from: sourceNode.id,
+                                to: targetNode.id,
+                                fromName: sourceNode.name,
+                                toName: targetNode.name,
+                                protocol: connData.protocol || 'HTTP',
+                                bidirectional: connData.bidirectional || false,
+                                ports: connData.ports || { source: sourceNode.ports, target: targetNode.ports },
+                                encrypted: connData.encrypted !== false // Default to true
+                            };
+                            connections.push(connection);
+                            renderConnection(connection);
+                        }
+                    });
+                }, 300);
+            }
+
+            // Close modal
+            closeTemplateLibrary();
+
+            // Switch to topology view
+            showPage('topology');
+
+            // Show success message
+            alert(`✓ Template loaded: ${template.name}\n\n` +
+                  `${template.nodes.length} containers configured\n` +
+                  `All components pre-configured with:\n` +
+                  `  • Base images selected\n` +
+                  `  • Firewall enabled\n` +
+                  `  • Resource limits set\n` +
+                  `  • Port configurations\n\n` +
+                  `Next: Review the topology and click "🚀 Deploy Stack"`);
+
+            // Auto-run validation
+            setTimeout(() => {
+                toggleValidation();
+                runValidation();
+            }, 500);
+        }
+
+        // ========================================
+        // CONNECTION DRAWING SYSTEM
+        // ========================================
+
+        function startConnectionFrom(sourceNodeId) {
+            connectionMode = true;
+            connectionSource = sourceNodeId;
+
+            // Visual feedback
+            document.getElementById(sourceNodeId).classList.add('connection-source');
+            document.getElementById('connectionModeIndicator').classList.add('active');
+
+            console.log(`Connection mode activated. Source: ${sourceNodeId}`);
+        }
+
+        function finishConnection(targetNodeId) {
+            if (!connectionMode || !connectionSource) return;
+
+            if (connectionSource === targetNodeId) {
+                alert('Cannot connect a node to itself!');
+                cancelConnection();
+                return;
+            }
+
+            // Check if connection already exists
+            const existingConnection = connections.find(c =>
+                (c.from === connectionSource && c.to === targetNodeId) ||
+                (c.to === connectionSource && c.from === targetNodeId && c.bidirectional)
+            );
+
+            if (existingConnection) {
+                alert('Connection already exists between these nodes!');
+                cancelConnection();
+                return;
+            }
+
+            // Create new connection
+            const connectionId = `conn-${connectionIdCounter++}`;
+            const sourceNode = nodes.find(n => n.id === connectionSource);
+            const targetNode = nodes.find(n => n.id === targetNodeId);
+
+            const connection = {
+                id: connectionId,
+                from: connectionSource,
+                to: targetNodeId,
+                fromName: sourceNode.name,
+                toName: targetNode.name,
+                protocol: 'HTTP',
+                bidirectional: false,
+                ports: { source: sourceNode.ports || '8080', target: targetNode.ports || '8080' },
+                encrypted: true
+            };
+
+            connections.push(connection);
+            renderConnection(connection);
+
+            console.log(`Connection created: ${sourceNode.name} → ${targetNode.name}`);
+
+            // Cancel connection mode
+            cancelConnection();
+
+            // Show success
+            alert(`✓ Connection created!\n\n${sourceNode.name} → ${targetNode.name}\n\nProtocol: ${connection.protocol}\nClick the connection line to configure protocol, ports, and encryption.`);
+        }
+
+        function cancelConnection() {
+            connectionMode = false;
+            if (connectionSource) {
+                document.getElementById(connectionSource).classList.remove('connection-source');
+            }
+            connectionSource = null;
+            document.getElementById('connectionModeIndicator').classList.remove('active');
+
+            // Remove hover states
+            document.querySelectorAll('.connection-target-hover').forEach(el => {
+                el.classList.remove('connection-target-hover');
+            });
+        }
+
+        function renderConnection(connection) {
+            const sourceNode = document.getElementById(connection.from);
+            const targetNode = document.getElementById(connection.to);
+
+            if (!sourceNode || !targetNode) {
+                console.error('Cannot render connection: node not found');
+                return;
+            }
+
+            // Calculate node centers
+            const sourceRect = sourceNode.getBoundingClientRect();
+            const targetRect = targetNode.getBoundingClientRect();
+            const canvasRect = document.getElementById('topologyCanvas').getBoundingClientRect();
+
+            const x1 = sourceRect.left - canvasRect.left + sourceRect.width / 2;
+            const y1 = sourceRect.top - canvasRect.top + sourceRect.height / 2;
+            const x2 = targetRect.left - canvasRect.left + targetRect.width / 2;
+            const y2 = targetRect.top - canvasRect.top + targetRect.height / 2;
+
+            // Create SVG path (curved line)
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const curve = Math.abs(dx) * 0.5; // Control point offset
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('id', connection.id);
+            path.setAttribute('class', 'connection-line' + (connection.bidirectional ? ' bidirectional' : ''));
+            path.setAttribute('d', `M ${x1} ${y1} Q ${x1 + curve} ${y1}, ${(x1 + x2) / 2} ${(y1 + y2) / 2} T ${x2} ${y2}`);
+
+            // Add arrowhead marker for unidirectional connections
+            if (!connection.bidirectional) {
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+            }
+
+            // Make line clickable
+            path.style.pointerEvents = 'stroke';
+            path.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectConnection(connection.id);
+            });
+
+            path.addEventListener('mouseover', () => {
+                if (!path.classList.contains('selected')) {
+                    path.style.stroke = '#00bcd4';
+                    path.style.strokeWidth = '3';
+                }
+            });
+
+            path.addEventListener('mouseout', () => {
+                if (!path.classList.contains('selected')) {
+                    path.style.stroke = '#4a9eff';
+                    path.style.strokeWidth = '2';
+                }
+            });
+
+            connectionSvg.appendChild(path);
+        }
+
+        function renderAllConnections() {
+            // Clear existing lines
+            const existingLines = connectionSvg.querySelectorAll('.connection-line');
+            existingLines.forEach(line => line.remove());
+
+            // Render all connections
+            connections.forEach(conn => renderConnection(conn));
+        }
+
+        function selectConnection(connectionId) {
+            const connection = connections.find(c => c.id === connectionId);
+            if (!connection) return;
+
+            selectedConnection = connectionId;
+
+            // Visual feedback
+            document.querySelectorAll('.connection-line').forEach(line => {
+                line.classList.remove('selected');
+                line.setAttribute('marker-end', 'url(#arrowhead)');
+            });
+            const line = document.getElementById(connectionId);
+            line.classList.add('selected');
+            line.setAttribute('marker-end', 'url(#arrowhead-selected)');
+
+            // Show connection properties panel
+            showConnectionProperties(connection);
+        }
+
+        function showConnectionProperties(connection) {
+            const panel = document.getElementById('propertiesPanel');
+            const title = document.getElementById('propTitle');
+            const content = document.getElementById('propContent');
+
+            title.textContent = `🔗 ${connection.fromName} → ${connection.toName}`;
+
+            content.innerHTML = `
+                <div class="property-group">
+                    <div class="property-label">Protocol</div>
+                    <select class="property-input" id="connProtocol" onchange="updateConnectionProperty('${connection.id}', 'protocol', this.value)">
+                        <option value="HTTP" ${connection.protocol === 'HTTP' ? 'selected' : ''}>HTTP</option>
+                        <option value="HTTPS" ${connection.protocol === 'HTTPS' ? 'selected' : ''}>HTTPS</option>
+                        <option value="TCP" ${connection.protocol === 'TCP' ? 'selected' : ''}>TCP</option>
+                        <option value="UDP" ${connection.protocol === 'UDP' ? 'selected' : ''}>UDP</option>
+                        <option value="gRPC" ${connection.protocol === 'gRPC' ? 'selected' : ''}>gRPC</option>
+                        <option value="WebSocket" ${connection.protocol === 'WebSocket' ? 'selected' : ''}>WebSocket</option>
+                    </select>
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Direction</div>
+                    <div class="property-toggle" onclick="toggleConnectionBidirectional('${connection.id}')">
+                        <span>${connection.bidirectional ? '↔ Bidirectional' : '→ Unidirectional'}</span>
+                        <div class="toggle-switch ${connection.bidirectional ? 'active' : ''}">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Encryption</div>
+                    <div class="property-toggle" onclick="toggleConnectionEncryption('${connection.id}')">
+                        <span>${connection.encrypted ? '🔒 Encrypted (TLS)' : '🔓 Plain Text'}</span>
+                        <div class="toggle-switch ${connection.encrypted ? 'active' : ''}">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Port Mapping</div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="property-input" value="${connection.ports.source}"
+                               onchange="updateConnectionPorts('${connection.id}', 'source', this.value)"
+                               placeholder="Source port" style="flex: 1;">
+                        <span style="color: #8892a6;">→</span>
+                        <input type="text" class="property-input" value="${connection.ports.target}"
+                               onchange="updateConnectionPorts('${connection.id}', 'target', this.value)"
+                               placeholder="Target port" style="flex: 1;">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <button class="property-input" onclick="deleteConnection('${connection.id}')"
+                            style="background: #f44336; border-color: #d32f2f; cursor: pointer; font-weight: 600;">
+                        🗑️ Delete Connection
+                    </button>
+                </div>
+
+                <div style="margin-top: 16px; padding: 12px; background: #0a0e1a; border-radius: 8px; border-left: 3px solid #4a9eff;">
+                    <div style="font-size: 12px; color: #8892a6; line-height: 1.6;">
+                        <strong style="color: #4a9eff;">💡 Connection Info:</strong><br>
+                        • Protocol: ${connection.protocol}<br>
+                        • ${connection.bidirectional ? 'Two-way communication' : 'One-way only'}<br>
+                        • ${connection.encrypted ? 'TLS/SSL encrypted' : 'Unencrypted (not recommended)'}<br>
+                        • ${connection.fromName}:${connection.ports.source} → ${connection.toName}:${connection.ports.target}
+                    </div>
+                </div>
+            `;
+
+            panel.classList.add('active');
+        }
+
+        function updateConnectionProperty(connectionId, property, value) {
+            const connection = connections.find(c => c.id === connectionId);
+            if (connection) {
+                connection[property] = value;
+                console.log(`Updated ${property} for ${connection.fromName} → ${connection.toName}: ${value}`);
+
+                // Refresh properties panel
+                showConnectionProperties(connection);
+            }
+        }
+
+        function toggleConnectionBidirectional(connectionId) {
+            const connection = connections.find(c => c.id === connectionId);
+            if (connection) {
+                connection.bidirectional = !connection.bidirectional;
+
+                // Update visual
+                const line = document.getElementById(connectionId);
+                if (connection.bidirectional) {
+                    line.classList.add('bidirectional');
+                    line.removeAttribute('marker-end');
+                } else {
+                    line.classList.remove('bidirectional');
+                    line.setAttribute('marker-end', 'url(#arrowhead-selected)');
+                }
+
+                showConnectionProperties(connection);
+            }
+        }
+
+        function toggleConnectionEncryption(connectionId) {
+            const connection = connections.find(c => c.id === connectionId);
+            if (connection) {
+                connection.encrypted = !connection.encrypted;
+                showConnectionProperties(connection);
+            }
+        }
+
+        function updateConnectionPorts(connectionId, side, value) {
+            const connection = connections.find(c => c.id === connectionId);
+            if (connection) {
+                connection.ports[side] = value;
+                console.log(`Updated ${side} port for connection ${connectionId}: ${value}`);
+            }
+        }
+
+        function deleteConnection(connectionId) {
+            if (!confirm('Delete this connection?')) return;
+
+            // Remove from array
+            connections = connections.filter(c => c.id !== connectionId);
+
+            // Remove SVG element
+            const line = document.getElementById(connectionId);
+            if (line) line.remove();
+
+            // Hide properties panel
+            document.getElementById('propertiesPanel').classList.remove('active');
+            selectedConnection = null;
+
+            console.log(`Connection deleted: ${connectionId}`);
+        }
+
         // Click outside canvas to deselect
         canvas.addEventListener('click', (e) => {
             if (e.target === canvas) {
@@ -3377,6 +4198,28 @@ alignment-checks:
             else if (e.key === '7') showPage('settings');
             else if (e.key === '?') toggleHelp();
             else if (e.key === 'v' && e.ctrlKey) runValidation(); // Ctrl+V to validate
+            else if (e.key === 'Escape') {
+                // Cancel connection mode
+                if (connectionMode) {
+                    cancelConnection();
+                }
+                // Deselect connection
+                if (selectedConnection) {
+                    selectedConnection = null;
+                    document.querySelectorAll('.connection-line').forEach(line => {
+                        line.classList.remove('selected');
+                        line.setAttribute('marker-end', 'url(#arrowhead)');
+                    });
+                    document.getElementById('propertiesPanel').classList.remove('active');
+                }
+            }
+            else if (e.key === 'Delete' || e.key === 'Backspace') {
+                // Delete selected connection
+                if (selectedConnection) {
+                    e.preventDefault();
+                    deleteConnection(selectedConnection);
+                }
+            }
         });
 
         // ========================================
@@ -3664,10 +4507,36 @@ alignment-checks:
             };
             nodes.push(nodeData);
 
-            // Single-click: select and show properties
+            // Single-click: select and show properties OR connection drawing
             node.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selectNodeForProperties(nodeId);
+
+                // Connection drawing mode
+                if (e.ctrlKey || e.metaKey) {
+                    // Ctrl/Cmd + Click = Start drawing connection
+                    if (!connectionMode) {
+                        startConnectionFrom(nodeId);
+                    } else {
+                        finishConnection(nodeId);
+                    }
+                } else if (connectionMode) {
+                    // Already in connection mode, clicking target
+                    finishConnection(nodeId);
+                } else {
+                    // Normal click: show properties
+                    selectNodeForProperties(nodeId);
+                }
+            });
+
+            // Hover effect during connection mode
+            node.addEventListener('mouseenter', () => {
+                if (connectionMode && connectionSource !== nodeId) {
+                    node.classList.add('connection-target-hover');
+                }
+            });
+
+            node.addEventListener('mouseleave', () => {
+                node.classList.remove('connection-target-hover');
             });
 
             // Double-click: navigate to Stack View
@@ -3691,9 +4560,20 @@ alignment-checks:
 
             document.addEventListener('mousemove', (e) => {
                 if (isDragging) {
-                    const rect = canvas.getBoundingClientRect();
+                    const canvasEl = document.getElementById('topologyCanvas');
+                    const rect = canvasEl.getBoundingClientRect();
                     node.style.left = (e.clientX - rect.left - offsetX) + 'px';
                     node.style.top = (e.clientY - rect.top - offsetY) + 'px';
+
+                    // Update node position in data
+                    const nodeData = nodes.find(n => n.id === nodeId);
+                    if (nodeData) {
+                        nodeData.x = parseInt(node.style.left);
+                        nodeData.y = parseInt(node.style.top);
+                    }
+
+                    // Update connection lines connected to this node
+                    renderAllConnections();
                 }
             });
 
