@@ -169,7 +169,6 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
       ~transition="all 0.2s",
       (),
     )}>
-    {/* Port info */}
     <div style={ReactDOM.Style.make(~display="flex", ~alignItems="center", ~gap="16px", ())}>
       <span style={ReactDOM.Style.make(~fontSize="24px", ())}>
         {riskIndicator(port.risk)->React.string}
@@ -184,7 +183,6 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
       </div>
     </div>
 
-    {/* State toggle */}
     <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
       <button
         onClick={_ => dispatch(SetPortState(port.number, Closed))}
@@ -238,7 +236,6 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
       </button>
     </div>
 
-    {/* State indicator */}
     <div
       style={ReactDOM.Style.make(
         ~padding="6px 12px",
@@ -368,7 +365,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ~minHeight="100vh",
       (),
     )}>
-    {/* Header */}
     <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
       <h1
         style={ReactDOM.Style.make(
@@ -387,7 +383,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </p>
     </div>
 
-    {/* Summary stats */}
     <div
       style={ReactDOM.Style.make(
         ~display="grid",
@@ -424,7 +419,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ->React.array}
     </div>
 
-    {/* Ephemeral config toggle */}
     <button
       onClick={_ => dispatch(ToggleEphemeralConfig)}
       style={ReactDOM.Style.make(
@@ -442,15 +436,12 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {(state.showEphemeralConfig ? "Hide" : "Configure") ++ " Ephemeral Settings"->React.string}
     </button>
 
-    {/* Ephemeral config panel */}
     {state.showEphemeralConfig ? viewEphemeralConfig(state, dispatch) : React.null}
 
-    {/* Port list */}
     <div style={ReactDOM.Style.make(~marginTop="24px", ())}>
       {Array.map(state.ports, port => viewPortRow(port, dispatch))->React.array}
     </div>
 
-    {/* Security warning */}
     <div
       style={ReactDOM.Style.make(
         ~marginTop="32px",

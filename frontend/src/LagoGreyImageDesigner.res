@@ -87,7 +87,7 @@ let make = () => {
         // Remove it
         {
           ...prev,
-          formations: Array.filter(prev.formations, cf =>
+          formations: Belt.Array.keep(prev.formations, cf =>
             formationName(cf.formation) != formationName(formation)
           ),
           totalSize: prev.totalSize - formationSize(formation),
@@ -138,7 +138,6 @@ let make = () => {
     </header>
 
     <div className="designer-layout">
-      {/* Left sidebar - Component catalog */}
       <div className="sidebar">
         <div className="section">
           <h2> {"Base Image"->React.string} </h2>
@@ -199,7 +198,6 @@ let make = () => {
         </div>
       </div>
 
-      {/* Center - Canvas/Preview */}
       <div className="canvas">
         <div className="canvas-header">
           <h2> {"Your Lago Grey Image"->React.string} </h2>
@@ -223,7 +221,6 @@ let make = () => {
         </div>
 
         <div className="canvas-content">
-          {/* Base layer */}
           <div className="layer base-layer">
             <div className="layer-icon"> {"📦"->React.string} </div>
             <div className="layer-info">
@@ -244,7 +241,6 @@ let make = () => {
             </div>
           </div>
 
-          {/* Ice formations */}
           {Array.map(state.formations, cf => {
             <div key={formationName(cf.formation)} className="layer formation-layer">
               <div className="layer-icon"> {formationIcon(cf.formation)->React.string} </div>
@@ -255,7 +251,6 @@ let make = () => {
             </div>
           })->React.array}
 
-          {/* Empty state */}
           {Array.length(state.formations) == 0
             ? <div className="empty-state">
                 <p> {"👈 Select components from the sidebar to add them"->React.string} </p>
@@ -291,7 +286,6 @@ let make = () => {
         </div>
       </div>
 
-      {/* Right sidebar - Info & Export */}
       <div className="info-panel">
         <div className="section">
           <h2> {"Ice Formation Guide"->React.string} </h2>

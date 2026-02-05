@@ -239,7 +239,7 @@ let update = (msg: msg, state: state): state => {
 
   | ApplyFix(vulnId) =>
     // Remove fixed vulnerability
-    let updatedVulns = Array.filter(state.vulnerabilities, v => v.id != vulnId)
+    let updatedVulns = Belt.Array.keep(state.vulnerabilities, v => v.id != vulnId)
     // Recalculate metrics
     let newMetrics = {
       ...state.metrics,
@@ -374,7 +374,6 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
     )}
     onClick={_ => dispatch(SelectVulnerability(vuln.id))}>
     <div style={ReactDOM.Style.make(~display="flex", ~alignItems="flex-start", ~gap="12px", ())}>
-      {/* Severity badge */}
       <div
         style={ReactDOM.Style.make(
           ~padding="4px 12px",
@@ -605,7 +604,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ~minHeight="100vh",
       (),
     )}>
-    {/* Header */}
     <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
       <h1
         style={ReactDOM.Style.make(
@@ -624,7 +622,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </p>
     </div>
 
-    {/* Overall Grade */}
     <div
       style={ReactDOM.Style.make(
         ~display="flex",
@@ -654,7 +651,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </div>
     </div>
 
-    {/* Metrics Dashboard */}
     <div
       style={ReactDOM.Style.make(
         ~padding="24px",
@@ -674,7 +670,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {viewMetricBar("Compliance", state.metrics.compliance, "#9c27b0")}
     </div>
 
-    {/* Quick Checks */}
     <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
       <h3 style={ReactDOM.Style.make(~fontSize="20px", ~fontWeight="700", ~color="#e0e6ed", ~marginBottom="16px", ())}>
         {"✓ Quick Security Checks"->React.string}
@@ -682,7 +677,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {Array.map(state.checks, check => viewSecurityCheck(check))->React.array}
     </div>
 
-    {/* Vulnerabilities */}
     <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
       <div style={ReactDOM.Style.make(~display="flex", ~justifyContent="space-between", ~alignItems="center", ~marginBottom="16px", ())}>
         <h3 style={ReactDOM.Style.make(~fontSize="20px", ~fontWeight="700", ~color="#e0e6ed", ())}>
@@ -730,7 +724,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           </div>}
     </div>
 
-    {/* Exposed Ports */}
     <div>
       <h3 style={ReactDOM.Style.make(~fontSize="20px", ~fontWeight="700", ~color="#e0e6ed", ~marginBottom="16px", ())}>
         {"🔌 Exposed Ports Analysis"->React.string}
@@ -738,7 +731,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {Array.map(state.exposedPorts, port => viewExposedPort(port))->React.array}
     </div>
 
-    {/* Security Note */}
     <div
       style={ReactDOM.Style.make(
         ~marginTop="32px",

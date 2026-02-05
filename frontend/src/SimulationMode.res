@@ -212,7 +212,7 @@ let update = (msg: msg, state: state): state => {
     })
 
     // Remove delivered packets after delay
-    let filteredPackets = Array.filter(updatedPackets, p =>
+    let filteredPackets = Belt.Array.keep(updatedPackets, p =>
       p.status != Delivered || p.progress < 1.2
     )
 
@@ -471,7 +471,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ~minHeight="100vh",
       (),
     )}>
-    {/* Header */}
     <div style={ReactDOM.Style.make(~marginBottom="24px", ())}>
       <h1
         style={ReactDOM.Style.make(
@@ -490,7 +489,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </p>
     </div>
 
-    {/* Control panel */}
     <div
       style={ReactDOM.Style.make(
         ~display="flex",
@@ -502,7 +500,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ~marginBottom="24px",
         (),
       )}>
-      {/* Playback controls */}
       <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
         {!state.isRunning
           ? <button
@@ -553,7 +550,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         </button>
       </div>
 
-      {/* Speed controls */}
       <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
         {[Slow, Normal, Fast, VeryFast]
         ->Array.map(speed =>
@@ -577,7 +573,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ->React.array}
       </div>
 
-      {/* Packet injection */}
       <button
         onClick={_ => dispatch(SendPacket("node-1", "node-3", HTTPS))}
         style={ReactDOM.Style.make(
@@ -595,9 +590,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </button>
     </div>
 
-    {/* Main canvas area */}
     <div style={ReactDOM.Style.make(~display="flex", ~gap="24px", ())}>
-      {/* Canvas */}
       <div
         style={ReactDOM.Style.make(
           ~flex="1",
@@ -609,13 +602,10 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~overflow="hidden",
           (),
         )}>
-        {/* Render nodes */}
         {Array.map(state.nodes, node => viewNode(node))->React.array}
 
-        {/* Render packets */}
         {Array.map(state.packets, packet => viewPacket(packet, dispatch))->React.array}
 
-        {/* Connection lines (static) */}
         <svg
           style={ReactDOM.Style.make(
             ~position="absolute",
@@ -627,7 +617,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             ~zIndex="5",
             (),
           )}>
-          {/* Example: node-1 to node-2 */}
           <line
             x1="150"
             y1="250"
@@ -637,7 +626,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             strokeWidth="2"
             strokeDasharray="5,5"
           />
-          {/* Example: node-2 to node-3 */}
           <line
             x1="450"
             y1="250"
@@ -650,9 +638,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         </svg>
       </div>
 
-      {/* Side panels */}
       <div style={ReactDOM.Style.make(~width="300px", ~display="flex", ~flexDirection="column", ~gap="16px", ())}>
-        {/* Stats panel */}
         {state.showStats
           ? <div
               style={ReactDOM.Style.make(
@@ -713,7 +699,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             </div>
           : React.null}
 
-        {/* Event log panel */}
         {state.showEventLog
           ? <div
               style={ReactDOM.Style.make(
@@ -758,7 +743,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </div>
     </div>
 
-    {/* Info note */}
     <div
       style={ReactDOM.Style.make(
         ~marginTop="24px",

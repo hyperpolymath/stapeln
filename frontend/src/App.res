@@ -131,7 +131,6 @@ let make = () => {
       }}
     </div>
 
-    {/* Footer with Idris² badge */}
     <div
       style={ReactDOM.Style.make(
         ~position="fixed",

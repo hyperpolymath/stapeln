@@ -400,11 +400,9 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       (),
     )}
     onClick={_ => dispatch(SelectGap(gap.id))}>
-    {/* Header */}
     <div style={ReactDOM.Style.make(~display="flex", ~justifyContent="space-between", ~alignItems="flex-start", ~marginBottom="12px", ())}>
       <div style={ReactDOM.Style.make(~flex="1", ())}>
         <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ~marginBottom="8px", ~flexWrap="wrap", ())}>
-          {/* Category badge */}
           <span
             style={ReactDOM.Style.make(
               ~padding="4px 12px",
@@ -418,7 +416,6 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
             {categoryLabel(gap.category)->React.string}
           </span>
 
-          {/* Severity badge */}
           <span
             style={ReactDOM.Style.make(
               ~padding="4px 12px",
@@ -432,10 +429,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
             {severityLabel(gap.severity)->React.string}
           </span>
 
-          {/* Confidence badge */}
           {gap.fixAvailable ? confidenceBadge(gap.fixConfidence) : React.null}
 
-          {/* Fix status */}
           {switch fixStatus {
           | Some(status) =>
             <span style={ReactDOM.Style.make(~fontSize="18px", ())}>
@@ -451,12 +446,10 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       </div>
     </div>
 
-    {/* Description */}
     <p style={ReactDOM.Style.make(~fontSize="13px", ~color="#8892a6", ~lineHeight="1.6", ~marginBottom="12px", ())}>
       {gap.description->React.string}
     </p>
 
-    {/* Impact */}
     <div
       style={ReactDOM.Style.make(
         ~padding="12px",
@@ -474,9 +467,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       </span>
     </div>
 
-    {/* Metadata */}
     <div style={ReactDOM.Style.make(~display="flex", ~gap="24px", ~marginBottom="16px", ~flexWrap="wrap", ())}>
-      {/* Source */}
       <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
         <span style={ReactDOM.Style.make(~marginRight="6px", ())}>
           {sourceIcon(gap.source)->React.string}
@@ -486,7 +477,6 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         </strong>
       </div>
 
-      {/* Affected components */}
       <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
         {"Affects: "->React.string}
         <strong style={ReactDOM.Style.make(~color="#ff9800", ())}>
@@ -496,7 +486,6 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         </strong>
       </div>
 
-      {/* Effort */}
       <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
         {"⏱️ "->React.string}
         <strong style={ReactDOM.Style.make(~color="#4caf50", ())}>
@@ -505,7 +494,6 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       </div>
     </div>
 
-    {/* Tags */}
     <div style={ReactDOM.Style.make(~display="flex", ~gap="6px", ~marginBottom="16px", ~flexWrap="wrap", ())}>
       {Array.map(gap.tags, tag =>
         <span
@@ -525,7 +513,6 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       )->React.array}
     </div>
 
-    {/* Fix section */}
     {gap.fixAvailable
       ? <div>
           {switch gap.fixDescription {
@@ -566,7 +553,6 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           | None => React.null
           }}
 
-          {/* Action buttons */}
           <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
             {switch fixStatus {
             | Some(Applied) | Some(Verified) =>
@@ -692,7 +678,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ~minHeight="100vh",
       (),
     )}>
-    {/* Header */}
     <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
       <h1
         style={ReactDOM.Style.make(
@@ -711,7 +696,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </p>
     </div>
 
-    {/* Summary stats */}
     <div
       style={ReactDOM.Style.make(
         ~display="grid",
@@ -747,7 +731,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       })->React.array}
     </div>
 
-    {/* Action bar */}
     <div
       style={ReactDOM.Style.make(
         ~display="flex",
@@ -804,7 +787,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </label>
     </div>
 
-    {/* Gaps list */}
     <div>
       {Array.length(filteredGaps) > 0
         ? Array.map(filteredGaps, gap =>
@@ -831,7 +813,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           </div>}
     </div>
 
-    {/* Intelligence note */}
     <div
       style={ReactDOM.Style.make(
         ~marginTop="32px",
