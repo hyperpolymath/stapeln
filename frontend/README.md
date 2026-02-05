@@ -20,6 +20,8 @@ This architecture ensures correctness at every layer with no runtime cost for ve
 - **Lifecycle Hooks**: beforeMount, afterMount, beforeUnmount, afterUnmount, onError
 - **Recovery Strategies**: Retry, Fallback, CreateIfMissing patterns
 - **Lifecycle State Machine**: Formally proven state transitions
+- **Error Boundaries**: React-style error handling with user-friendly UI
+- **Loading States**: Spinner, skeleton, overlay, wrapper (WCAG AAA compliant)
 
 **Performance:**
 - Mount time: 0.08-0.25ms
