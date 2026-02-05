@@ -1,5 +1,5 @@
 {
-  "name": "stackur-frontend",
+  "name": "@hyperpolymath/stapeln-frontend",
   "sources": [
     {
       "dir": "src",

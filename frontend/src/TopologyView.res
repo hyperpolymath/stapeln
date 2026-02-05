@@ -17,7 +17,7 @@ type rec ciscoComponent = {
   position: position,
   size: (float, float), // width, height
   ports: array<string>,
-  config: Js.Dict.t<string>,
+  config: dict<string>,
   children: array<ciscoComponent>, // For nested containers
 }
 
@@ -34,7 +34,7 @@ let toCiscoComponent = (comp: component): ciscoComponent => {
 
   {
     id: comp.id,
-    shape: shape,
+    shape,
     label: componentTypeToString(comp.componentType),
     position: comp.position,
     size: (150.0, 100.0), // Default size
@@ -119,8 +119,7 @@ let rec renderShape = (comp: ciscoComponent, isSelected: bool, isDark: bool) => 
         let childX = x +. 20.0 +. Float.fromInt(idx) *. 30.0
         let childY = y +. 40.0
         renderShape({...child, position: {x: childX, y: childY}}, false, isDark)
-      })
-      ->React.array}
+      })->React.array}
     </>
   }
 }
@@ -172,13 +171,10 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         backgroundColor: isDark ? "#000000" : "#FFFFFF",
         borderLeft: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
         color: isDark ? "#FFFFFF" : "#000000",
-      }}>
-      <h3 style={{fontSize: "1.2rem", marginBottom: "1rem"}}>
-        {"Configuration" ->React.string}
-      </h3>
-      <p style={{opacity: "0.7"}}>
-        {"Click a component to configure it" ->React.string}
-      </p>
+      }}
+    >
+      <h3 style={{fontSize: "1.2rem", marginBottom: "1rem"}}> {"Configuration"->React.string} </h3>
+      <p style={{opacity: "0.7"}}> {"Click a component to configure it"->React.string} </p>
     </aside>
 
   | Some(comp) =>
@@ -192,35 +188,36 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         ~borderLeft=isDark ? "2px solid #CCCCCC" : "2px solid #333333",
         ~color=isDark ? "#FFFFFF" : "#000000",
         (),
-      )}>
+      )}
+    >
       <h3 style={{fontSize: "1.2rem", marginBottom: "1rem"}}>
-        {componentTypeToString(comp.componentType) ->React.string}
+        {componentTypeToString(comp.componentType)->React.string}
       </h3>
 
       <form onSubmit={e => e->ReactEvent.Form.preventDefault}>
         // Shape selector
         <fieldset style={{marginBottom: "1rem", border: "none", padding: "0"}}>
           <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
-            {"Shape" ->React.string}
+            {"Shape"->React.string}
           </legend>
           <label style={{display: "block", marginBottom: "0.5rem"}}>
             <input type_="radio" name="shape" value="box" defaultChecked=true />
-            {" Box" ->React.string}
+            {" Box"->React.string}
           </label>
           <label style={{display: "block", marginBottom: "0.5rem"}}>
             <input type_="radio" name="shape" value="oval" />
-            {" Oval" ->React.string}
+            {" Oval"->React.string}
           </label>
           <label style={{display: "block"}}>
             <input type_="radio" name="shape" value="gateway" />
-            {" Gateway" ->React.string}
+            {" Gateway"->React.string}
           </label>
         </fieldset>
 
         // Ports
         <fieldset style={{marginBottom: "1rem", border: "none", padding: "0"}}>
           <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
-            {"Ports" ->React.string}
+            {"Ports"->React.string}
           </legend>
           <input
             type_="text"
@@ -240,10 +237,10 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         // Resources
         <fieldset style={{marginBottom: "1rem", border: "none", padding: "0"}}>
           <legend style={{fontWeight: "600", marginBottom: "0.5rem"}}>
-            {"Resources" ->React.string}
+            {"Resources"->React.string}
           </legend>
           <label style={{display: "block", marginBottom: "0.5rem"}}>
-            {"CPU (cores)" ->React.string}
+            {"CPU (cores)"->React.string}
             <input
               type_="number"
               defaultValue="1.0"
@@ -263,7 +260,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
             />
           </label>
           <label style={{display: "block"}}>
-            {"Memory (MB)" ->React.string}
+            {"Memory (MB)"->React.string}
             <input
               type_="number"
               defaultValue="512"
@@ -299,8 +296,9 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               ~fontWeight="600",
               ~cursor="pointer",
               (),
-            )}>
-            {"Apply" ->React.string}
+            )}
+          >
+            {"Apply"->React.string}
           </button>
           <button
             type_="button"
@@ -316,8 +314,9 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               ~fontWeight="600",
               ~cursor="pointer",
               (),
-            )}>
-            {"Cancel" ->React.string}
+            )}
+          >
+            {"Cancel"->React.string}
           </button>
         </div>
       </form>
@@ -338,22 +337,13 @@ let view = (model: model, isDark: bool, dispatch) => {
       ~backgroundColor=isDark ? "#000000" : "#FFFFFF",
       ~color=isDark ? "#FFFFFF" : "#000000",
       (),
-    )}>
+    )}
+  >
     // Main SVG canvas
-    <svg
-      width="100%"
-      height="100%"
-      role="graphics-document"
-      ariaLabel="Container network topology">
+    <svg width="100%" height="100%" role="graphics-document" ariaLabel="Container network topology">
       // Define arrowhead marker for connections
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="10"
-          refX="9"
-          refY="3"
-          orient="auto">
+        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
           <polygon points="0 0, 10 3, 0 6" fill={isDark ? "#66B2FF" : "#0052CC"} />
         </marker>
       </defs>
@@ -373,7 +363,7 @@ let view = (model: model, isDark: bool, dispatch) => {
       // Render connections first (below components)
       {Array.map(model.connections, conn =>
         renderConnection(conn, model.components, isDark)
-      ) -> React.array}
+      )->React.array}
 
       // Render components
       {Array.map(ciscoComponents, comp => {
@@ -385,7 +375,8 @@ let view = (model: model, isDark: bool, dispatch) => {
         <g
           key=comp.id
           onClick={_ => dispatch(SelectComponent(Some(comp.id)))}
-          style={ReactDOM.Style.make(~cursor="pointer", ())}>
+          style={ReactDOM.Style.make(~cursor="pointer", ())}
+        >
           {renderShape(comp, isSelected, isDark)}
           <text
             x={Float.toString(comp.position.x +. fst(comp.size) /. 2.0)}
@@ -398,11 +389,12 @@ let view = (model: model, isDark: bool, dispatch) => {
               ~fontWeight="600",
               ~pointerEvents="none",
               (),
-            )}>
-            {comp.label ->React.string}
+            )}
+          >
+            {comp.label->React.string}
           </text>
         </g>
-      }) -> React.array}
+      })->React.array}
     </svg>
 
     // Configuration panel

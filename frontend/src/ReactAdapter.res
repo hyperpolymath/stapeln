@@ -46,11 +46,11 @@ let useDomMounterWithHooks = (
 
   React.useEffect(() => {
     let hooks: lifecycleHooks = {
-      beforeMount: beforeMount,
-      afterMount: afterMount,
-      beforeUnmount: beforeUnmount,
-      afterUnmount: afterUnmount,
-      onError: onError,
+      beforeMount,
+      afterMount,
+      beforeUnmount,
+      afterUnmount,
+      onError,
     }
 
     switch mountWithLifecycle(elementId, hooks) {
@@ -70,10 +70,10 @@ let useDomMounterWithHooks = (
 }
 
 // Mount with security policy
-let useDomMounterSecure = (
-  elementId: string,
-  policy: option<DomMounterSecurity.securityPolicy>,
-): (bool, option<string>) => {
+let useDomMounterSecure = (elementId: string, policy: option<DomMounterSecurity.securityPolicy>): (
+  bool,
+  option<string>,
+) => {
   let (mounted, setMounted) = React.useState(() => false)
   let (error, setError) = React.useState(() => None)
 
@@ -88,9 +88,11 @@ let useDomMounterSecure = (
     | Error(msg) => setError(_ => Some(msg))
     }
 
-    Some(() => {
-      setMounted(_ => false)
-    })
+    Some(
+      () => {
+        setMounted(_ => false)
+      },
+    )
   }, [elementId])
 
   (mounted, error)
@@ -113,14 +115,14 @@ let useDomMounterMonitored = (elementId: string): (bool, option<string>, healthS
     }
 
     // Health check interval
-    let intervalId = Js.Global.setInterval(() => {
+    let intervalId = setInterval(() => {
       let (healthStatus, _msg) = healthCheck(elementId)
       setHealth(_ => healthStatus)
     }, 5000) // Check every 5 seconds
 
     Some(
       () => {
-        Js.Global.clearInterval(intervalId)
+        clearInterval(intervalId)
         let _ = stopMonitoring(elementId)
         setMounted(_ => false)
       },

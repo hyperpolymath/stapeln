@@ -27,14 +27,14 @@ let importDesignFromFile = (
   readFileAsText(file, jsonStr => {
     switch deserializeDesign(jsonStr) {
     | Ok((metadata, model)) => {
-        Js.Console.log2("Imported design created at:", metadata.created)
-        Js.Console.log2("Author:", metadata.author)
-        Js.Console.log2("Description:", metadata.description)
-        Js.Console.log2("Components:", Array.length(model.components))
+        Console.log2("Imported design created at:", metadata.created)
+        Console.log2("Author:", metadata.author)
+        Console.log2("Description:", metadata.description)
+        Console.log2("Components:", Array.length(model.components))
         onSuccess(model)
       }
     | Error(err) => {
-        Js.Console.error2("Import error:", err)
+        Console.error2("Import error:", err)
         onError(err)
       }
     }
@@ -49,23 +49,27 @@ let triggerImport = (onSuccess: model => unit, onError: string => unit) => {
   input->WebAPI.setAttribute("accept", ".json,application/json")
 
   // Set onchange handler
-  input->WebAPI.elementToHtml
-    ->Belt.Option.forEach(htmlElement => {
-      htmlElement->WebAPI.addEventListener("change", _evt => {
-        // Get selected files
-        htmlElement
-        ->WebAPI.htmlToInput
-        ->Belt.Option.flatMap(WebAPI.getFiles)
-        ->Belt.Option.flatMap(fileList => fileList->WebAPI.item(0))
-        ->Belt.Option.forEach(file => {
+  input
+  ->WebAPI.elementToHtml
+  ->Belt.Option.forEach(htmlElement => {
+    htmlElement->WebAPI.addEventListener("change", _evt => {
+      // Get selected files
+      htmlElement
+      ->WebAPI.htmlToInput
+      ->Belt.Option.flatMap(WebAPI.getFiles)
+      ->Belt.Option.flatMap(fileList => fileList->WebAPI.item(0))
+      ->Belt.Option.forEach(
+        file => {
           importDesignFromFile(file, onSuccess, onError)
-        })
-      })
+        },
+      )
     })
+  })
 
   // Trigger click
-  input->WebAPI.elementToHtml
-    ->Belt.Option.forEach(htmlElement => {
-      htmlElement->WebAPI.click
-    })
+  input
+  ->WebAPI.elementToHtml
+  ->Belt.Option.forEach(htmlElement => {
+    htmlElement->WebAPI.click
+  })
 }

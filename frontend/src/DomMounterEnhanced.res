@@ -30,17 +30,17 @@ type mountError =
 let errorToUserMessage = (error: mountError): string => {
   switch error {
   | ElementNotFound(id) =>
-      `Element with ID "${id}" not found. Check your HTML for <div id="${id}"></div>`
+    `Element with ID "${id}" not found. Check your HTML for <div id="${id}"></div>`
   | InvalidElementId(id) =>
-      `Element ID "${id}" is invalid. IDs must be non-empty alphanumeric strings (with dash/underscore allowed).`
+    `Element ID "${id}" is invalid. IDs must be non-empty alphanumeric strings (with dash/underscore allowed).`
   | ElementAlreadyMounted(id) =>
-      `Element "${id}" already has content. Use unmount() first or choose a different element.`
+    `Element "${id}" already has content. Use unmount() first or choose a different element.`
   | ParentNotFound(id) =>
-      `Cannot find parent element for "${id}". Ensure the element is in the document.`
+    `Cannot find parent element for "${id}". Ensure the element is in the document.`
   | PermissionDenied(id) =>
-      `Permission denied mounting to "${id}". This may be a protected or restricted element.`
+    `Permission denied mounting to "${id}". This may be a protected or restricted element.`
   | HealthCheckFailed(id, reason) =>
-      `Health check failed for "${id}": ${reason}. The element may not be suitable for mounting.`
+    `Health check failed for "${id}": ${reason}. The element may not be suitable for mounting.`
   }
 }
 
@@ -137,13 +137,13 @@ let healthCheck = (elementId: string): (healthStatus, string) => {
   | Healthy => "Element ID is valid and healthy"
   | Degraded => "Element exists but may have issues"
   | Failed =>
-      if String.length(elementId) == 0 {
-        "Element ID is empty"
-      } else if String.length(elementId) > 255 {
-        "Element ID is too long (max 255 characters)"
-      } else {
-        "Element ID contains invalid characters"
-      }
+    if String.length(elementId) == 0 {
+      "Element ID is empty"
+    } else if String.length(elementId) > 255 {
+      "Element ID is too long (max 255 characters)"
+    } else {
+      "Element ID contains invalid characters"
+    }
   }
 
   (status, message)
@@ -187,13 +187,11 @@ let rec executeRecovery = (
 
       switch result {
       | RecoverySuccess => Ok(elementId)
-      | RetryExhausted => {
-          // Try one more time with n-1
-          if n > 1 {
-            executeRecovery(elementId, Retry(n - 1), originalError)
-          } else {
-            Error(originalError)
-          }
+      | RetryExhausted => // Try one more time with n-1
+        if n > 1 {
+          executeRecovery(elementId, Retry(n - 1), originalError)
+        } else {
+          Error(originalError)
         }
       | _ => Error(originalError)
       }
@@ -211,20 +209,18 @@ let rec executeRecovery = (
       }
     }
 
-  | CreateIfMissing => {
-      // Would need JS bridge to create element
-      Error(originalError) // Not yet implemented
-    }
+  | CreateIfMissing => // Would need JS bridge to create element
+    Error(originalError) // Not yet implemented
 
   | _ => Error(originalError)
   }
 }
 
 // Mount with automatic recovery
-let mountWithRecovery = (
-  elementId: string,
-  strategy: recoveryStrategy,
-): Result.t<string, mountError> => {
+let mountWithRecovery = (elementId: string, strategy: recoveryStrategy): Result.t<
+  string,
+  mountError,
+> => {
   // First, try health check
   let (health, reason) = healthCheck(elementId)
 
@@ -235,10 +231,8 @@ let mountWithRecovery = (
       let error = HealthCheckFailed(elementId, reason)
       executeRecovery(elementId, strategy, error)
     }
-  | Degraded => {
-      // Element exists but degraded - still attempt mount
-      Ok(elementId)
-    }
+  | Degraded => // Element exists but degraded - still attempt mount
+    Ok(elementId)
   }
 }
 
@@ -257,7 +251,10 @@ let executeHook = (hook: option<'a => 'b>, arg: 'a): unit => {
 }
 
 // Execute lifecycle hook with Result
-let executeHookResult = (hook: option<'a => Result.t<unit, string>>, arg: 'a): Result.t<unit, string> => {
+let executeHookResult = (hook: option<'a => Result.t<unit, string>>, arg: 'a): Result.t<
+  unit,
+  string,
+> => {
   switch hook {
   | Some(fn) => fn(arg)
   | None => Ok()
@@ -265,10 +262,7 @@ let executeHookResult = (hook: option<'a => Result.t<unit, string>>, arg: 'a): R
 }
 
 // Mount with full lifecycle hooks
-let mountWithLifecycle = (
-  elementId: string,
-  hooks: lifecycleHooks,
-): Result.t<unit, string> => {
+let mountWithLifecycle = (elementId: string, hooks: lifecycleHooks): Result.t<unit, string> => {
   // BeforeMount hook
   switch executeHookResult(hooks.beforeMount, elementId) {
   | Error(e) => {
@@ -300,10 +294,7 @@ let mountWithLifecycle = (
 }
 
 // Unmount with lifecycle hooks
-let unmountWithLifecycle = (
-  elementId: string,
-  hooks: lifecycleHooks,
-): Result.t<unit, string> => {
+let unmountWithLifecycle = (elementId: string, hooks: lifecycleHooks): Result.t<unit, string> => {
   // BeforeUnmount hook
   executeHook(hooks.beforeUnmount, elementId)
 
@@ -359,7 +350,7 @@ type mountConfig = {
 
 let defaultConfig = (elementId: string): mountConfig => {
   {
-    elementId: elementId,
+    elementId,
     recovery: Some(Retry(3)), // Default: retry 3 times
     lifecycle: defaultHooks,
     monitoring: false,
@@ -375,23 +366,17 @@ let mountEnhanced = (config: mountConfig): Result.t<unit, string> => {
 
   // Try recovery if configured
   switch config.recovery {
-  | Some(strategy) => {
-      switch mountWithRecovery(config.elementId, strategy) {
-      | Ok(elementId) => {
-          // Mount with lifecycle hooks
-          mountWithLifecycle(elementId, config.lifecycle)
-        }
-      | Error(err) => {
-          let msg = errorToUserMessage(err)
-          executeHook(config.lifecycle.onError, msg)
-          Error(msg)
-        }
+  | Some(strategy) => switch mountWithRecovery(config.elementId, strategy) {
+    | Ok(elementId) => // Mount with lifecycle hooks
+      mountWithLifecycle(elementId, config.lifecycle)
+    | Error(err) => {
+        let msg = errorToUserMessage(err)
+        executeHook(config.lifecycle.onError, msg)
+        Error(msg)
       }
     }
-  | None => {
-      // Mount with lifecycle hooks
-      mountWithLifecycle(config.elementId, config.lifecycle)
-    }
+  | None => // Mount with lifecycle hooks
+    mountWithLifecycle(config.elementId, config.lifecycle)
   }
 }
 
@@ -411,15 +396,15 @@ let mountWith = (
   (),
 ): Result.t<unit, string> => {
   let hooks = {
-    beforeMount: beforeMount,
-    afterMount: afterMount,
-    beforeUnmount: beforeUnmount,
-    afterUnmount: afterUnmount,
-    onError: onError,
+    beforeMount,
+    afterMount,
+    beforeUnmount,
+    afterUnmount,
+    onError,
   }
 
   let config = {
-    elementId: elementId,
+    elementId,
     recovery: Some(Retry(3)),
     lifecycle: hooks,
     monitoring: false,

@@ -44,17 +44,17 @@ type networkEvent =
 // Simulation speed
 type simSpeed =
   | Paused
-  | Slow      // 0.5x
-  | Normal    // 1.0x
-  | Fast      // 2.0x
-  | VeryFast  // 4.0x
+  | Slow // 0.5x
+  | Normal // 1.0x
+  | Fast // 2.0x
+  | VeryFast // 4.0x
 
 // Visualization mode
 type vizMode =
-  | PacketView      // Show individual packets
-  | FlowView        // Show aggregated flows
-  | HeatmapView     // Show traffic intensity
-  | SecurityView    // Highlight security events
+  | PacketView // Show individual packets
+  | FlowView // Show aggregated flows
+  | HeatmapView // Show traffic intensity
+  | SecurityView // Highlight security events
 
 // Node position (for animation path calculation)
 type nodePosition = {
@@ -124,14 +124,11 @@ let init: state = {
 // Update function
 let update = (msg: msg, state: state): state => {
   switch msg {
-  | StartSimulation =>
-    {...state, isRunning: true}
+  | StartSimulation => {...state, isRunning: true}
 
-  | PauseSimulation =>
-    {...state, isRunning: false}
+  | PauseSimulation => {...state, isRunning: false}
 
-  | StopSimulation =>
-    {
+  | StopSimulation => {
       ...state,
       isRunning: false,
       packets: [],
@@ -139,11 +136,9 @@ let update = (msg: msg, state: state): state => {
       currentTime: 0.0,
     }
 
-  | SetSpeed(speed) =>
-    {...state, speed: speed}
+  | SetSpeed(speed) => {...state, speed}
 
-  | SetMode(mode) =>
-    {...state, mode: mode}
+  | SetMode(mode) => {...state, mode}
 
   | SendPacket(sourceId, targetId, packetType) =>
     let sourceNode = Belt.Array.getBy(state.nodes, n => n.id == sourceId)
@@ -154,7 +149,7 @@ let update = (msg: msg, state: state): state => {
       let packetId = "packet-" ++ Float.toString(Date.now())
       let newPacket = {
         id: packetId,
-        packetType: packetType,
+        packetType,
         status: InTransit,
         sourceNode: sourceId,
         targetNode: targetId,
@@ -188,7 +183,7 @@ let update = (msg: msg, state: state): state => {
 
     let updatedPackets = Array.map(state.packets, packet => {
       if packet.status == InTransit {
-        let newProgress = packet.progress +. (deltaTime *. speedMultiplier *. 0.001)
+        let newProgress = packet.progress +. deltaTime *. speedMultiplier *. 0.001
 
         if newProgress >= 1.0 {
           // Packet arrived
@@ -251,17 +246,13 @@ let update = (msg: msg, state: state): state => {
       totalPacketsDropped: state.totalPacketsDropped + 1,
     }
 
-  | SelectPacket(packetId) =>
-    {...state, selectedPacket: Some(packetId)}
+  | SelectPacket(packetId) => {...state, selectedPacket: Some(packetId)}
 
-  | ToggleStats =>
-    {...state, showStats: !state.showStats}
+  | ToggleStats => {...state, showStats: !state.showStats}
 
-  | ToggleEventLog =>
-    {...state, showEventLog: !state.showEventLog}
+  | ToggleEventLog => {...state, showEventLog: !state.showEventLog}
 
-  | ClearEvents =>
-    {...state, events: []}
+  | ClearEvents => {...state, events: []}
   }
 }
 
@@ -330,7 +321,8 @@ let viewNode = (node: nodePosition): React.element => {
       ~padding="8px",
       ~zIndex="10",
       (),
-    )}>
+    )}
+  >
     <div style={ReactDOM.Style.make(~fontSize="24px", ~marginBottom="4px", ())}>
       {"🖥️"->React.string}
     </div>
@@ -342,7 +334,8 @@ let viewNode = (node: nodePosition): React.element => {
         ~textAlign="center",
         ~lineHeight="1.2",
         (),
-      )}>
+      )}
+    >
       {node.name->React.string}
     </div>
   </div>
@@ -379,7 +372,8 @@ let viewPacket = (packet: packet, dispatch: msg => unit): React.element => {
       ~transition="all 0.1s",
       ~boxShadow="0 0 10px " ++ packetTypeColor(packet.packetType),
       (),
-    )}>
+    )}
+  >
     {(packet.encrypted ? "🔒" : "📦")->React.string}
   </div>
 }
@@ -387,20 +381,25 @@ let viewPacket = (packet: packet, dispatch: msg => unit): React.element => {
 // View: Event log entry
 let viewEvent = (event: networkEvent, index: int): React.element => {
   let (icon, color, message) = switch event {
-  | PacketSent(src, tgt, pType) =>
-    ("📤", "#4a9eff", `Packet sent: ${src} → ${tgt} (${packetTypeLabel(pType)})`)
-  | PacketReceived(packetId) =>
-    ("📥", "#4caf50", `Packet received: ${packetId}`)
-  | PacketDropped(packetId, reason) =>
-    ("❌", "#f44336", `Packet dropped: ${packetId} - ${reason}`)
-  | ConnectionEstablished(src, tgt) =>
-    ("🔗", "#4caf50", `Connection: ${src} ↔ ${tgt}`)
-  | ConnectionClosed(src, tgt) =>
-    ("🔌", "#9e9e9e", `Disconnected: ${src} ↔ ${tgt}`)
-  | FirewallBlock(src, tgt, port) =>
-    ("🚫", "#ff9800", `Firewall blocked: ${src} → ${tgt}:${Int.toString(port)}`)
-  | LatencySpike(node, latency) =>
-    ("⚠️", "#ff9800", `Latency spike: ${node} (${Float.toString(latency)}ms)`)
+  | PacketSent(src, tgt, pType) => (
+      "📤",
+      "#4a9eff",
+      `Packet sent: ${src} → ${tgt} (${packetTypeLabel(pType)})`,
+    )
+  | PacketReceived(packetId) => ("📥", "#4caf50", `Packet received: ${packetId}`)
+  | PacketDropped(packetId, reason) => ("❌", "#f44336", `Packet dropped: ${packetId} - ${reason}`)
+  | ConnectionEstablished(src, tgt) => ("🔗", "#4caf50", `Connection: ${src} ↔ ${tgt}`)
+  | ConnectionClosed(src, tgt) => ("🔌", "#9e9e9e", `Disconnected: ${src} ↔ ${tgt}`)
+  | FirewallBlock(src, tgt, port) => (
+      "🚫",
+      "#ff9800",
+      `Firewall blocked: ${src} → ${tgt}:${Int.toString(port)}`,
+    )
+  | LatencySpike(node, latency) => (
+      "⚠️",
+      "#ff9800",
+      `Latency spike: ${node} (${Float.toString(latency)}ms)`,
+    )
   }
 
   <div
@@ -414,10 +413,9 @@ let viewEvent = (event: networkEvent, index: int): React.element => {
       ~color="#b0b8c4",
       ~fontFamily="monospace",
       (),
-    )}>
-    <span style={ReactDOM.Style.make(~marginRight="8px", ())}>
-      {icon->React.string}
-    </span>
+    )}
+  >
+    <span style={ReactDOM.Style.make(~marginRight="8px", ())}> {icon->React.string} </span>
     {message->React.string}
   </div>
 }
@@ -465,12 +463,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
   <div
     className="simulation-mode"
-    style={ReactDOM.Style.make(
-      ~padding="32px",
-      ~background="#0a0e1a",
-      ~minHeight="100vh",
-      (),
-    )}>
+    style={ReactDOM.Style.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
+  >
     <div style={ReactDOM.Style.make(~marginBottom="24px", ())}>
       <h1
         style={ReactDOM.Style.make(
@@ -479,7 +473,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~background="linear-gradient(135deg, #4a9eff, #00bcd4)",
           ~marginBottom="8px",
           (),
-        )}>
+        )}
+      >
         {"🎮 Simulation Mode"->React.string}
       </h1>
       <p style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
@@ -497,7 +492,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ~borderRadius="12px",
         ~marginBottom="24px",
         (),
-      )}>
+      )}
+    >
       <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
         {!state.isRunning
           ? <button
@@ -512,7 +508,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 ~fontWeight="600",
                 ~cursor="pointer",
                 (),
-              )}>
+              )}
+            >
               {"▶️ Start"->React.string}
             </button>
           : <button
@@ -527,7 +524,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 ~fontWeight="600",
                 ~cursor="pointer",
                 (),
-              )}>
+              )}
+            >
               {"⏸️ Pause"->React.string}
             </button>}
 
@@ -543,7 +541,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             ~fontWeight="600",
             ~cursor="pointer",
             (),
-          )}>
+          )}
+        >
           {"⏹️ Stop"->React.string}
         </button>
       </div>
@@ -564,7 +563,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               ~fontWeight="600",
               ~cursor="pointer",
               (),
-            )}>
+            )}
+          >
             {speedLabel(speed)->React.string}
           </button>
         )
@@ -583,7 +583,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~fontWeight="600",
           ~cursor="pointer",
           (),
-        )}>
+        )}
+      >
         {"📤 Send Test Packet"->React.string}
       </button>
     </div>
@@ -599,7 +600,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~borderRadius="16px",
           ~overflow="hidden",
           (),
-        )}>
+        )}
+      >
         {Array.map(state.nodes, node => viewNode(node))->React.array}
 
         {Array.map(state.packets, packet => viewPacket(packet, dispatch))->React.array}
@@ -614,7 +616,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             ~pointerEvents="none",
             ~zIndex="5",
             (),
-          )}>
+          )}
+        >
           <line
             x1="150"
             y1="250"
@@ -636,7 +639,15 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         </svg>
       </div>
 
-      <div style={ReactDOM.Style.make(~width="300px", ~display="flex", ~flexDirection="column", ~gap="16px", ())}>
+      <div
+        style={ReactDOM.Style.make(
+          ~width="300px",
+          ~display="flex",
+          ~flexDirection="column",
+          ~gap="16px",
+          (),
+        )}
+      >
         {state.showStats
           ? <div
               style={ReactDOM.Style.make(
@@ -645,7 +656,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 ~border="2px solid #2a3142",
                 ~borderRadius="12px",
                 (),
-              )}>
+              )}
+            >
               <h3
                 style={ReactDOM.Style.make(
                   ~fontSize="16px",
@@ -653,13 +665,28 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   ~color="#e0e6ed",
                   ~marginBottom="16px",
                   (),
-                )}>
+                )}
+              >
                 {"📊 Statistics"->React.string}
               </h3>
 
-              <div style={ReactDOM.Style.make(~display="flex", ~flexDirection="column", ~gap="12px", ())}>
+              <div
+                style={ReactDOM.Style.make(
+                  ~display="flex",
+                  ~flexDirection="column",
+                  ~gap="12px",
+                  (),
+                )}
+              >
                 <div>
-                  <div style={ReactDOM.Style.make(~fontSize="24px", ~fontWeight="700", ~color="#4a9eff", ())}>
+                  <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="24px",
+                      ~fontWeight="700",
+                      ~color="#4a9eff",
+                      (),
+                    )}
+                  >
                     {Int.toString(state.totalPacketsSent)->React.string}
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
@@ -668,7 +695,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 </div>
 
                 <div>
-                  <div style={ReactDOM.Style.make(~fontSize="24px", ~fontWeight="700", ~color="#4caf50", ())}>
+                  <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="24px",
+                      ~fontWeight="700",
+                      ~color="#4caf50",
+                      (),
+                    )}
+                  >
                     {Int.toString(state.totalPacketsDelivered)->React.string}
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
@@ -677,7 +711,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 </div>
 
                 <div>
-                  <div style={ReactDOM.Style.make(~fontSize="24px", ~fontWeight="700", ~color="#f44336", ())}>
+                  <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="24px",
+                      ~fontWeight="700",
+                      ~color="#f44336",
+                      (),
+                    )}
+                  >
                     {Int.toString(state.totalPacketsDropped)->React.string}
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
@@ -686,7 +727,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 </div>
 
                 <div>
-                  <div style={ReactDOM.Style.make(~fontSize="24px", ~fontWeight="700", ~color="#ff9800", ())}>
+                  <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="24px",
+                      ~fontWeight="700",
+                      ~color="#ff9800",
+                      (),
+                    )}
+                  >
                     {Int.toString(Array.length(state.packets))->React.string}
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
@@ -708,9 +756,24 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 ~overflow="auto",
                 ~maxHeight="400px",
                 (),
-              )}>
-              <div style={ReactDOM.Style.make(~display="flex", ~justifyContent="space-between", ~marginBottom="12px", ())}>
-                <h3 style={ReactDOM.Style.make(~fontSize="16px", ~fontWeight="700", ~color="#e0e6ed", ())}>
+              )}
+            >
+              <div
+                style={ReactDOM.Style.make(
+                  ~display="flex",
+                  ~justifyContent="space-between",
+                  ~marginBottom="12px",
+                  (),
+                )}
+              >
+                <h3
+                  style={ReactDOM.Style.make(
+                    ~fontSize="16px",
+                    ~fontWeight="700",
+                    ~color="#e0e6ed",
+                    (),
+                  )}
+                >
                   {"📋 Event Log"->React.string}
                 </h3>
                 <button
@@ -724,7 +787,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                     ~fontSize="11px",
                     ~cursor="pointer",
                     (),
-                  )}>
+                  )}
+                >
                   {"Clear"->React.string}
                 </button>
               </div>
@@ -733,7 +797,15 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 ? Array.mapWithIndex(state.events, (index, event) =>
                     viewEvent(event, index)
                   )->React.array
-                : <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ~textAlign="center", ~padding="20px", ())}>
+                : <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="12px",
+                      ~color="#8892a6",
+                      ~textAlign="center",
+                      ~padding="20px",
+                      (),
+                    )}
+                  >
                     {"No events yet"->React.string}
                   </div>}
             </div>
@@ -749,7 +821,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ~border="2px solid #4a9eff",
         ~borderRadius="12px",
         (),
-      )}>
+      )}
+    >
       <strong style={ReactDOM.Style.make(~fontSize="13px", ~color="#4a9eff", ())}>
         {"💡 Simulation Tips: "->React.string}
       </strong>

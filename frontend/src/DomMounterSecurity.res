@@ -113,12 +113,7 @@ let logAudit = (
   severity: auditSeverity,
   message: string,
 ): Result.t<unit, string> => {
-  let code = FFI.audit_log_entry(
-    operation,
-    elementId,
-    FFI.severityToInt(severity),
-    message,
-  )
+  let code = FFI.audit_log_entry(operation, elementId, FFI.severityToInt(severity), message)
 
   if code == 0 {
     Ok()
@@ -128,7 +123,11 @@ let logAudit = (
 }
 
 let logMountAttempt = (elementId: string, success: bool): unit => {
-  let severity = if success { Info } else { Error }
+  let severity = if success {
+    Info
+  } else {
+    Error
+  }
   let message = if success {
     `Successfully mounted to ${elementId}`
   } else {
@@ -139,12 +138,7 @@ let logMountAttempt = (elementId: string, success: bool): unit => {
 }
 
 let logSecurityViolation = (elementId: string, reason: string): unit => {
-  let _ = logAudit(
-    "security_violation",
-    elementId,
-    Critical,
-    `Security violation: ${reason}`,
-  )
+  let _ = logAudit("security_violation", elementId, Critical, `Security violation: ${reason}`)
 }
 
 let getAuditLogCount = (): int => {
@@ -159,10 +153,7 @@ let clearAuditLog = (): unit => {
 // SANDBOXING
 // ============================================================================
 
-let createSandboxedMount = (
-  elementId: string,
-  mode: sandboxMode,
-): Result.t<unit, string> => {
+let createSandboxedMount = (elementId: string, mode: sandboxMode): Result.t<unit, string> => {
   let code = FFI.create_sandboxed_mount(elementId, FFI.sandboxModeToInt(mode))
 
   switch code {
@@ -173,11 +164,7 @@ let createSandboxedMount = (
   }
 }
 
-let validateSandboxConfig = (
-  allowScripts: bool,
-  allowSameOrigin: bool,
-  allowForms: bool,
-): bool => {
+let validateSandboxConfig = (allowScripts: bool, allowSameOrigin: bool, allowForms: bool): bool => {
   let code = FFI.validate_sandbox_config(
     allowScripts ? 1 : 0,
     allowSameOrigin ? 1 : 0,
@@ -198,10 +185,7 @@ let defaultSecurityPolicy: securityPolicy = {
   maxElementIdLength: 255,
 }
 
-let secureMount = (
-  elementId: string,
-  policy: securityPolicy,
-): Result.t<unit, string> => {
+let secureMount = (elementId: string, policy: securityPolicy): Result.t<unit, string> => {
   // Step 1: CSP validation
   let cspResult = if policy.requireCSP {
     switch validateCSP(elementId) {
@@ -226,17 +210,15 @@ let secureMount = (
 
   switch cspResult {
   | Error(e) => Error(e)
-  | Ok() => {
-      // Step 2: Length validation
-      if String.length(elementId) > policy.maxElementIdLength {
-        Error(`Element ID exceeds maximum length of ${Int.toString(policy.maxElementIdLength)}`)
-      } else {
-        // Step 3: Log mount attempt
-        if policy.enableAuditLog {
-          logMountAttempt(elementId, true)
-        }
-        Ok()
+  | Ok() => // Step 2: Length validation
+    if String.length(elementId) > policy.maxElementIdLength {
+      Error(`Element ID exceeds maximum length of ${Int.toString(policy.maxElementIdLength)}`)
+    } else {
+      // Step 3: Log mount attempt
+      if policy.enableAuditLog {
+        logMountAttempt(elementId, true)
       }
+      Ok()
     }
   }
 }
@@ -251,18 +233,12 @@ let mountSecure = (elementId: string): Result.t<unit, string> => {
 }
 
 // Mount with custom security policy
-let mountWithPolicy = (
-  elementId: string,
-  policy: securityPolicy,
-): Result.t<unit, string> => {
+let mountWithPolicy = (elementId: string, policy: securityPolicy): Result.t<unit, string> => {
   secureMount(elementId, policy)
 }
 
 // Mount in sandbox
-let mountSandboxed = (
-  elementId: string,
-  mode: sandboxMode,
-): Result.t<unit, string> => {
+let mountSandboxed = (elementId: string, mode: sandboxMode): Result.t<unit, string> => {
   // Validate with security policy first
   switch secureMount(elementId, defaultSecurityPolicy) {
   | Error(e) => Error(e)

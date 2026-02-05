@@ -86,10 +86,10 @@ let update = (msg: msg, state: state): state => {
       // Generate warnings if critical ports are open
       let warnings = StateSync.generatePortWarnings(newPortConfig.ports)
       let stateWithToasts = if Array.length(warnings) > 0 {
-        let firstWarning = Array.get(warnings, 0)
+        let firstWarning = warnings[0]
         let toastMsg = switch firstWarning {
-        | Some(w) when String.includes(w, "CRITICAL") => Toast.error(w)
-        | Some(w) when String.includes(w, "HIGH") => Toast.warning(w)
+        | Some(w) if String.includes(w, "CRITICAL") => Toast.error(w)
+        | Some(w) if String.includes(w, "HIGH") => Toast.warning(w)
         | Some(w) => Toast.info(w)
         | None => Toast.info("Port configuration updated")
         }
@@ -106,11 +106,7 @@ let update = (msg: msg, state: state): state => {
 
       // Calculate new system health
       let gapCount = Array.length(state.gapAnalysis.gaps)
-      let systemHealth = StateSync.calculateSystemHealth(
-        newSecurityMetrics,
-        impact,
-        gapCount,
-      )
+      let systemHealth = StateSync.calculateSystemHealth(newSecurityMetrics, impact, gapCount)
 
       {
         ...stateWithToasts,
@@ -209,13 +205,11 @@ let update = (msg: msg, state: state): state => {
       }
     }
 
-  | SyncSecurityToGaps =>
-      // Already handled in SecurityInspectorMsg
-      state
+  | SyncSecurityToGaps => // Already handled in SecurityInspectorMsg
+    state
 
-  | SyncGapsToSecurity =>
-      // Already handled in GapAnalysisMsg
-      state
+  | SyncGapsToSecurity => // Already handled in GapAnalysisMsg
+    state
 
   | UpdateSystemHealth => {
       let portImpact = StateSync.calculatePortSecurityImpact(state.portConfig.ports)
@@ -249,82 +243,88 @@ let make = () => {
   <ErrorBoundary
     onError={errorMsg => {
       // Log errors for debugging
-      Js.Console.error2("Application error:", errorMsg)
-    }}>
+      Console.error2("Application error:", errorMsg)
+    }}
+  >
     <div style={ReactDOM.Style.make(~display="flex", ~height="100vh", ())}>
-      <Navigation currentRoute={state.currentRoute} onNavigate={route => dispatch(NavigateTo(route))} />
-
-    <div style={ReactDOM.Style.make(~flex="1", ~display="flex", ~flexDirection="column", ~overflow="hidden", ())}>
-      <Breadcrumb currentRoute={state.currentRoute} />
-
-      <div
-        style={ReactDOM.Style.make(
-          ~padding="16px 20px",
-          ~background="rgba(10, 14, 26, 0.95)",
-          ~borderBottom="1px solid #2a3142",
-          (),
-        )}>
-        <HealthIndicator health={state.systemHealth} />
-      </div>
+      <Navigation
+        currentRoute={state.currentRoute} onNavigate={route => dispatch(NavigateTo(route))}
+      />
 
       <div
         style={ReactDOM.Style.make(
           ~flex="1",
-          ~overflowY="auto",
-          ~background="#0a0e1a",
+          ~display="flex",
+          ~flexDirection="column",
+          ~overflow="hidden",
           (),
-        )}>
-        {switch state.currentRoute {
-        | NetworkView => TopologyView.view(state.model, state.isDark, stackMsg => dispatch(StackMsg(stackMsg)))
-        | StackView => StackView.view(state.model)
-        | LagoGreyView => <LagoGreyImageDesigner />
-        | PortConfigView =>
-          <PortConfigPanel
-            initialState={state.portConfig}
-            onStateChange={newState => dispatch(PortConfigMsg(PortConfigPanel.SelectPort(0)))}
-          />
-        | SecurityView =>
-          <SecurityInspector
-            initialState={state.securityInspector}
-            onStateChange={newState =>
-              dispatch(SecurityInspectorMsg(SecurityInspector.UpdateMetrics(newState.metrics)))}
-          />
-        | GapAnalysisView =>
-          <GapAnalysis
-            initialState={state.gapAnalysis}
-            onStateChange={newState =>
-              dispatch(GapAnalysisMsg(GapAnalysis.SelectGap("0")))}
-          />
-        | SimulationView =>
-          <SimulationMode
-            initialState={state.simulationMode}
-            onStateChange={newState =>
-              dispatch(SimulationModeMsg(SimulationMode.ToggleStats))}
-          />
-        | SettingsView => Settings.view(Settings.defaultSettings, state.isDark)
-        | NotFound =>
-          <div
-            style={ReactDOM.Style.make(
-              ~display="flex",
-              ~alignItems="center",
-              ~justifyContent="center",
-              ~height="100%",
-              (),
-            )}>
-            <div style={ReactDOM.Style.make(~textAlign="center", ())}>
-              <div style={ReactDOM.Style.make(~fontSize="72px", ~marginBottom="20px", ())}>
-                {"404"->React.string}
-              </div>
-              <div style={ReactDOM.Style.make(~fontSize="24px", ~color="#8892a6", ())}>
-                {"Page not found"->React.string}
+        )}
+      >
+        <Breadcrumb currentRoute={state.currentRoute} />
+
+        <div
+          style={ReactDOM.Style.make(
+            ~padding="16px 20px",
+            ~background="rgba(10, 14, 26, 0.95)",
+            ~borderBottom="1px solid #2a3142",
+            (),
+          )}
+        >
+          <HealthIndicator health={state.systemHealth} />
+        </div>
+
+        <div style={ReactDOM.Style.make(~flex="1", ~overflowY="auto", ~background="#0a0e1a", ())}>
+          {switch state.currentRoute {
+          | NetworkView =>
+            TopologyView.view(state.model, state.isDark, stackMsg => dispatch(StackMsg(stackMsg)))
+          | StackView => StackView.view(state.model)
+          | LagoGreyView => <LagoGreyImageDesigner />
+          | PortConfigView =>
+            <PortConfigPanel
+              initialState={state.portConfig}
+              onStateChange={newState => dispatch(PortConfigMsg(PortConfigPanel.SelectPort(0)))}
+            />
+          | SecurityView =>
+            <SecurityInspector
+              initialState={state.securityInspector}
+              onStateChange={newState =>
+                dispatch(SecurityInspectorMsg(SecurityInspector.UpdateMetrics(newState.metrics)))}
+            />
+          | GapAnalysisView =>
+            <GapAnalysis
+              initialState={state.gapAnalysis}
+              onStateChange={newState => dispatch(GapAnalysisMsg(GapAnalysis.SelectGap("0")))}
+            />
+          | SimulationView =>
+            <SimulationMode
+              initialState={state.simulationMode}
+              onStateChange={newState => dispatch(SimulationModeMsg(SimulationMode.ToggleStats))}
+            />
+          | SettingsView => Settings.view(Settings.defaultSettings, state.isDark)
+          | NotFound =>
+            <div
+              style={ReactDOM.Style.make(
+                ~display="flex",
+                ~alignItems="center",
+                ~justifyContent="center",
+                ~height="100%",
+                (),
+              )}
+            >
+              <div style={ReactDOM.Style.make(~textAlign="center", ())}>
+                <div style={ReactDOM.Style.make(~fontSize="72px", ~marginBottom="20px", ())}>
+                  {"404"->React.string}
+                </div>
+                <div style={ReactDOM.Style.make(~fontSize="24px", ~color="#8892a6", ())}>
+                  {"Page not found"->React.string}
+                </div>
               </div>
             </div>
-          </div>
-        }}
+          }}
+        </div>
       </div>
-    </div>
 
-    <Toast toasts={state.toastState.toasts} dispatch={msg => dispatch(ToastMsg(msg))} />
+      <Toast toasts={state.toastState.toasts} dispatch={msg => dispatch(ToastMsg(msg))} />
     </div>
   </ErrorBoundary>
 }

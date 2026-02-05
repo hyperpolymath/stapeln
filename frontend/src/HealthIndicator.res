@@ -25,16 +25,11 @@ let make = (~health: int) => {
       ~border="2px solid " ++ color,
       ~borderRadius="8px",
       (),
-    )}>
-    <div style={ReactDOM.Style.make(~fontSize="20px", ())}>{" ❤️"->React.string}</div>
+    )}
+  >
+    <div style={ReactDOM.Style.make(~fontSize="20px", ())}> {" ❤️"->React.string} </div>
     <div>
-      <div
-        style={ReactDOM.Style.make(
-          ~fontSize="12px",
-          ~color="#8892a6",
-          ~marginBottom="2px",
-          (),
-        )}>
+      <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ~marginBottom="2px", ())}>
         {"System Health"->React.string}
       </div>
       <div style={ReactDOM.Style.make(~fontSize="18px", ~fontWeight="700", ~color, ())}>
