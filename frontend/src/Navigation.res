@@ -25,8 +25,6 @@ let make = (~currentRoute: AppRouter.route, ~onNavigate: AppRouter.route => unit
           ~fontSize="24px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
-          ~webkitBackgroundClip="text",
-          ~webkitTextFillColor="transparent",
           ~margin="0",
           (),
         )}>

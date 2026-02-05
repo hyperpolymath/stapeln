@@ -453,11 +453,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         lastTime := currentTime
 
         dispatch(UpdatePacketPositions(deltaTime))
-        animationId := requestAnimationFrame(animate)
+        animationId := %raw(`requestAnimationFrame(animate)`)
       }
 
-      animationId := requestAnimationFrame(animate)
-      Some(() => cancelAnimationFrame(animationId.contents))
+      animationId := %raw(`requestAnimationFrame(animate)`)
+      Some(() => %raw(`cancelAnimationFrame(animationId.contents)`))
     } else {
       None
     }
@@ -477,8 +477,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #00bcd4)",
-          ~webkitBackgroundClip="text",
-          ~webkitTextFillColor="transparent",
           ~marginBottom="8px",
           (),
         )}>

@@ -246,18 +246,19 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
             <input
               type_="number"
               defaultValue="1.0"
-              step="0.1"
+              step=0.1
               min="0.1"
               ariaLabel="CPU cores"
-              style={`
-                width: 100%;
-                padding: 0.5rem;
-                margin-top: 0.25rem;
-                background-color: ${isDark ? "#1A1A1A" : "#F5F5F5"};
-                color: ${isDark ? "#FFFFFF" : "#000000"};
-                border: 1px solid ${isDark ? "#CCCCCC" : "#333333"};
-                border-radius: 4px;
-              `}
+              style={ReactDOM.Style.make(
+                ~width="100%",
+                ~padding="0.5rem",
+                ~marginTop="0.25rem",
+                ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
+                ~color=isDark ? "#FFFFFF" : "#000000",
+                ~border=isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                ~borderRadius="4px",
+                (),
+              )}
             />
           </label>
           <label style={{display: "block"}}>

@@ -68,21 +68,21 @@ type fixStatus =
   | Verified
   | Failed(string)
 
+type sortOption =
+  | BySeverity
+  | ByCategory
+  | ByEffort
+  | BySource
+
 type state = {
   gaps: array<gap>,
-  appliedFixes: Map.t<string, fixStatus>,
+  appliedFixes: Belt.Map.String.t<fixStatus>,
   selectedGap: option<string>,
   filterCategory: option<gapCategory>,
   filterSeverity: option<gapSeverity>,
   showOnlyFixable: bool,
   sortBy: sortOption,
 }
-
-and sortOption =
-  | BySeverity
-  | ByCategory
-  | ByEffort
-  | BySource
 
 // Message types
 type msg =
@@ -228,7 +228,7 @@ let init: state = {
       tags: ["sbom", "supply-chain", "compliance"],
     },
   ],
-  appliedFixes: Map.make(),
+  appliedFixes: Belt.Map.String.empty,
   selectedGap: None,
   filterCategory: None,
   filterSeverity: None,
@@ -684,8 +684,6 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
-          ~webkitBackgroundClip="text",
-          ~webkitTextFillColor="transparent",
           ~marginBottom="8px",
           (),
         )}>

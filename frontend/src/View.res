@@ -143,7 +143,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         border-bottom: 2px solid ${isDark ? Colors.darkBorder : Colors.lightBorder};
       `}>
       <h1
-        style="margin: 0; font-size: 2rem; font-weight: 700;"
+        style={ReactDOM.Style.make(~margin="0", ~fontSize="2rem", ~fontWeight="700", ())}
         id="main-title">
         {"stackur" ->React.string}
         <span style={{fontSize: "0.9rem", fontWeight: "400", opacity: "0.8", marginLeft: "0.5rem"}}>
@@ -154,9 +154,8 @@ let renderParagonStack = (model: model, isDark: bool) => {
       // Theme toggle (system aware)
       <button
         ariaLabel="Toggle dark/light theme"
-        ariaBraille="Theme"
         role="switch"
-        aria-checked={isDark ? "true" : "false"}
+        ariaChecked={isDark ? "true" : "false"}
         style={`
           padding: 0.75rem 1.5rem;
           background-color: ${isDark ? Colors.darkPrimary : Colors.lightPrimary};
@@ -208,7 +207,6 @@ let renderParagonStack = (model: model, isDark: bool) => {
                   style="margin-bottom: 0.75rem;">
                   <button
                     ariaLabel={"Add " ++ name ++ " to stack. " ++ desc}
-                    ariaBraille={name}
                     style={`
                       width: 100%;
                       padding: 1rem;
