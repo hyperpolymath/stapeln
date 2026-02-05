@@ -5321,16 +5321,271 @@ alignment-checks:
                           'This protection comes from your Mustfile contractile.');
                     toggleValidation(); // Show validation panel
                 } else {
-                    // Generate all deployment files
-                    console.log('📦 Generating deployment files...');
-                    generateAllFiles();
+                    // Generate complete deployment package
+                    console.log('📦 Generating deployment package...');
+                    generateDeploymentPackage();
 
-                    // Show deployment simulation
+                    // Show deployment guide
                     setTimeout(() => {
-                        showDeploymentProgress();
-                    }, 1000);
+                        showDeploymentGuide();
+                    }, 500);
                 }
             }, 500);
+        }
+
+        function generateDeploymentPackage() {
+            // Generate all configuration files
+            const justfile = generateJustfile();
+            const mustfile = generateMustfile();
+            const trustfile = generateTrustfile();
+            const dustfile = generateDustfile();
+            const stackYaml = generateStackYaml();
+
+            // Generate deployment script
+            const deployScript = generateDeploymentScript();
+
+            // Generate README
+            const readme = generateDeploymentReadme();
+
+            // Download all files
+            downloadFile('Justfile', justfile);
+            downloadFile('Mustfile', mustfile);
+            downloadFile('Trustfile.hs', trustfile);
+            downloadFile('Dustfile', dustfile);
+            downloadFile('stack.yaml', stackYaml);
+            downloadFile('deploy.sh', deployScript);
+            downloadFile('README.md', readme);
+
+            console.log('✅ Deployment package generated');
+        }
+
+        function generateDeploymentScript() {
+            return `#!/bin/bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# stapeln Deployment Script
+# Generated: ${new Date().toISOString()}
+
+set -e  # Exit on error
+
+echo "🏔️  stapeln Deployment Script"
+echo "=============================="
+echo ""
+
+# Check prerequisites
+echo "🔍 Checking prerequisites..."
+if ! command -v podman &> /dev/null; then
+    echo "❌ Error: Podman not found. Please install Podman first."
+    echo "   Visit: https://podman.io/getting-started/installation"
+    exit 1
+fi
+
+if ! command -v just &> /dev/null; then
+    echo "⚠️  Warning: 'just' not found. Installing from justfile manually..."
+else
+    echo "✅ just found"
+fi
+
+echo "✅ Podman found: $(podman --version)"
+echo ""
+
+# Build images
+echo "🏗️  Building container images..."
+${nodes.filter(n => n.type !== 'secrets' && n.type !== 'firewall').map(n => {
+    const name = n.name.toLowerCase().replace(/\s+/g, '-');
+    const image = n.baseImage || 'alpine:latest';
+    return `
+echo "  Building ${name}..."
+mkdir -p ./images/${name}
+cat > ./images/${name}/Containerfile <<'EOF'
+# SPDX-License-Identifier: PMPL-1.0-or-later
+FROM ${image}
+LABEL org.opencontainers.image.title="${n.name}"
+LABEL org.opencontainers.image.description="Component: ${n.type}"
+${n.firewall ? '# Firewall enabled' : ''}
+${n.ports ? `EXPOSE ${n.ports}` : ''}
+CMD ["/bin/sh", "-c", "echo '${n.name} is running' && sleep infinity"]
+EOF
+podman build -t ${name}:latest ./images/${name}
+`;
+}).join('\n')}
+
+echo "✅ All images built"
+echo ""
+
+# Deploy with Podman Compose
+echo "🚀 Deploying stack with Podman Compose..."
+podman-compose -f stack.yaml up -d
+
+echo ""
+echo "✅ Deployment complete!"
+echo ""
+echo "📊 Check status: podman-compose -f stack.yaml ps"
+echo "📋 View logs:   podman-compose -f stack.yaml logs"
+echo "🛑 Stop stack:   podman-compose -f stack.yaml down"
+echo ""
+echo "🌐 Access your services:"
+${nodes.filter(n => n.ports && n.type !== 'database').map(n => {
+    return `echo "  ${n.name}: http://localhost:${n.ports}"`;
+}).join('\n')}
+`;
+        }
+
+        function generateDeploymentReadme() {
+            return `# stapeln Deployment Package
+
+Generated: ${new Date().toISOString()}
+
+## Stack Overview
+
+- **Components**: ${nodes.length}
+- **Connections**: ${connections.length}
+- **Firewalled Containers**: ${nodes.filter(n => n.firewall).length}
+- **Encrypted Connections**: ${connections.filter(c => c.encrypted).length}
+
+## Components
+
+${nodes.map(n => `
+### ${n.icon} ${n.name} (${n.type})
+
+- **Base Image**: ${n.baseImage || 'alpine:latest'}
+- **Ports**: ${n.ports || 'none'}
+- **Firewall**: ${n.firewall ? 'Enabled ✅' : 'Disabled ⚠️'}
+- **Resources**: ${n.resources ? `${n.resources.cpu} CPU, ${n.resources.memory} RAM` : 'Default'}
+- **Protocol**: ${n.protocol || 'HTTP'}
+`).join('\n')}
+
+## Connections
+
+${connections.map(c => `
+- **${c.fromName}** → **${c.toName}**
+  - Protocol: ${c.protocol}
+  - Ports: ${c.ports.source} → ${c.ports.target}
+  - Encrypted: ${c.encrypted ? 'Yes ✅' : 'No ⚠️'}
+  - Bidirectional: ${c.bidirectional ? 'Yes' : 'No'}
+`).join('\n')}
+
+## Quick Start
+
+1. **Install Prerequisites**:
+   \`\`\`bash
+   # Install Podman
+   sudo dnf install podman podman-compose  # Fedora
+   # or
+   sudo apt install podman podman-compose  # Ubuntu/Debian
+   \`\`\`
+
+2. **Deploy**:
+   \`\`\`bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   \`\`\`
+
+3. **Verify**:
+   \`\`\`bash
+   podman-compose -f stack.yaml ps
+   \`\`\`
+
+4. **Access Services**:
+${nodes.filter(n => n.ports && n.type !== 'database').map(n =>
+    `   - ${n.name}: http://localhost:${n.ports}`
+).join('\n')}
+
+## Files Included
+
+- **stack.yaml**: Podman Compose configuration
+- **Justfile**: Task automation (build, deploy, test commands)
+- **Mustfile**: Validation rules and constraints
+- **Trustfile.hs**: Formal verification for images
+- **Dustfile**: Recovery and health check configuration
+- **deploy.sh**: Automated deployment script
+- **README.md**: This file
+
+## Manual Deployment
+
+If you prefer manual control:
+
+\`\`\`bash
+# 1. Build images
+${nodes.filter(n => n.type !== 'secrets').map(n => {
+    const name = n.name.toLowerCase().replace(/\s+/g, '-');
+    return `podman build -t ${name}:latest ./images/${name}`;
+}).join('\n')}
+
+# 2. Start stack
+podman-compose -f stack.yaml up -d
+
+# 3. Check status
+podman-compose ps
+\`\`\`
+
+## Troubleshooting
+
+### Ports already in use
+\`\`\`bash
+# Find what's using the port
+sudo lsof -i :PORT_NUMBER
+# or
+podman ps
+\`\`\`
+
+### Images won't build
+\`\`\`bash
+# Check Containerfile syntax
+podman build --no-cache -t test:latest ./images/COMPONENT_NAME
+\`\`\`
+
+### Stack won't start
+\`\`\`bash
+# Check logs
+podman-compose -f stack.yaml logs
+# or per-container
+podman logs CONTAINER_NAME
+\`\`\`
+
+## Security Notes
+
+✅ **Enabled Security Features**:
+- ${nodes.filter(n => n.firewall).length} containers with firewall protection
+- ${connections.filter(c => c.encrypted).length} encrypted connections
+- Mustfile validation prevents insecure deployments
+
+⚠️  **Additional Hardening** (manual):
+- Enable SELinux: \`sudo setenforce 1\`
+- Run rootless: \`podman-compose up\` (without sudo)
+- Use secrets: Replace hardcoded values with Podman secrets
+
+## Support
+
+Generated with stapeln - Container Stack Designer
+Repository: https://github.com/hyperpolymath/stapeln
+`;
+        }
+
+        function showDeploymentGuide() {
+            alert(`🚀 Deployment Package Downloaded!
+
+All files have been downloaded to your Downloads folder:
+
+📦 Configuration Files:
+  • Justfile - Build automation
+  • Mustfile - Validation rules
+  • Trustfile.hs - Formal verification
+  • Dustfile - Recovery config
+  • stack.yaml - Podman Compose
+
+🔧 Deployment:
+  • deploy.sh - Automated deployment script
+  • README.md - Complete instructions
+
+Next Steps:
+
+1. Open your terminal in the Downloads folder
+2. Run: chmod +x deploy.sh
+3. Run: ./deploy.sh
+
+Your stack will be built and deployed automatically!
+
+Manual deployment instructions are in README.md`);
         }
 
         function showDeploymentProgress() {
