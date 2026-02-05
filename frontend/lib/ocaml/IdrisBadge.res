@@ -3,9 +3,9 @@
 
 // Badge variants
 type badgeStyle =
-  | Compact     // Small inline badge
-  | Standard    // Medium standalone badge
-  | Detailed    // Large badge with proof details
+  | Compact // Small inline badge
+  | Standard // Medium standalone badge
+  | Detailed // Large badge with proof details
 
 type proofType =
   | MemorySafety
@@ -53,7 +53,8 @@ let viewCompactBadge = (): React.element => {
       ~textTransform="uppercase",
       ~letterSpacing="0.5px",
       (),
-    )}>
+    )}
+  >
     {"⚡"->React.string}
     {"Idris²"->React.string}
   </span>
@@ -72,13 +73,9 @@ let viewStandardBadge = (): React.element => {
       ~borderRadius="8px",
       ~boxShadow="0 4px 12px rgba(188, 19, 254, 0.3)",
       (),
-    )}>
-    <div
-      style={ReactDOM.Style.make(
-        ~fontSize="24px",
-        ~lineHeight="1",
-        (),
-      )}>
+    )}
+  >
+    <div style={ReactDOM.Style.make(~fontSize="24px", ~lineHeight="1", ())}>
       {"⚡"->React.string}
     </div>
     <div>
@@ -90,7 +87,8 @@ let viewStandardBadge = (): React.element => {
           ~fontFamily="monospace",
           ~lineHeight="1.2",
           (),
-        )}>
+        )}
+      >
         {"Idris² inside"->React.string}
       </div>
       <div
@@ -100,7 +98,8 @@ let viewStandardBadge = (): React.element => {
           ~fontWeight="600",
           ~marginTop="2px",
           (),
-        )}>
+        )}
+      >
         {"Formally Verified"->React.string}
       </div>
     </div>
@@ -117,7 +116,8 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
       ~borderRadius="12px",
       ~boxShadow="0 8px 24px rgba(188, 19, 254, 0.4)",
       (),
-    )}>
+    )}
+  >
     <div
       style={ReactDOM.Style.make(
         ~display="flex",
@@ -125,13 +125,9 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
         ~gap="12px",
         ~marginBottom="16px",
         (),
-      )}>
-      <div
-        style={ReactDOM.Style.make(
-          ~fontSize="32px",
-          ~lineHeight="1",
-          (),
-        )}>
+      )}
+    >
+      <div style={ReactDOM.Style.make(~fontSize="32px", ~lineHeight="1", ())}>
         {"⚡"->React.string}
       </div>
       <div>
@@ -144,7 +140,8 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
             ~background="linear-gradient(135deg, #bc13fe, #f72585)",
             ~lineHeight="1.2",
             (),
-          )}>
+          )}
+        >
           {"Idris² inside"->React.string}
         </div>
         <div
@@ -154,19 +151,14 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
             ~fontWeight="600",
             ~marginTop="4px",
             (),
-          )}>
+          )}
+        >
           {"Dependently-typed formal verification"->React.string}
         </div>
       </div>
     </div>
 
-    <div
-      style={ReactDOM.Style.make(
-        ~display="flex",
-        ~flexDirection="column",
-        ~gap="8px",
-        (),
-      )}>
+    <div style={ReactDOM.Style.make(~display="flex", ~flexDirection="column", ~gap="8px", ())}>
       {Array.map(proofs, proof =>
         <div
           key={proofLabel(proof)}
@@ -179,17 +171,14 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
             ~border="1px solid rgba(188, 19, 254, 0.3)",
             ~borderRadius="6px",
             (),
-          )}>
+          )}
+        >
           <span style={ReactDOM.Style.make(~fontSize="16px", ())}>
             {proofEmoji(proof)->React.string}
           </span>
           <span
-            style={ReactDOM.Style.make(
-              ~fontSize="13px",
-              ~fontWeight="600",
-              ~color="white",
-              (),
-            )}>
+            style={ReactDOM.Style.make(~fontSize="13px", ~fontWeight="600", ~color="white", ())}
+          >
             {proofLabel(proof)->React.string}
           </span>
           <span
@@ -199,7 +188,8 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
               ~fontWeight="700",
               ~color="#4ade80",
               (),
-            )}>
+            )}
+          >
             {"✓ PROVEN"->React.string}
           </span>
         </div>
@@ -215,7 +205,8 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
         ~color="rgba(255, 255, 255, 0.6)",
         ~textAlign="center",
         (),
-      )}>
+      )}
+    >
       {"Compile-time guarantees backed by dependent type theory"->React.string}
     </div>
   </div>
@@ -241,7 +232,7 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 // @react.component
 // let makeWithTooltip = (~showTooltip: bool=false) => {
 //   let (hover, setHover) = React.useState(() => false)
-// 
+//
 //   <div
 //     style={ReactDOM.Style.make(
 //       ~position="relative",
@@ -251,7 +242,7 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 //     onMouseEnter={_ => setHover(_ => true)}
 //     onMouseLeave={_ => setHover(_ => false)}>
 //     {viewCompactBadge()}
-// 
+//
 //     {hover || showTooltip
 //       ? <div
 //           style={ReactDOM.Style.make(

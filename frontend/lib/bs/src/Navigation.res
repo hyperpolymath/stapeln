@@ -13,13 +13,9 @@ let make = (~currentRoute: AppRouter.route, ~onNavigate: AppRouter.route => unit
       ~flexDirection="column",
       ~overflowY="auto",
       (),
-    )}>
-    <div
-      style={ReactDOM.Style.make(
-        ~padding="24px 20px",
-        ~borderBottom="1px solid #2a3142",
-        (),
-      )}>
+    )}
+  >
+    <div style={ReactDOM.Style.make(~padding="24px 20px", ~borderBottom="1px solid #2a3142", ())}>
       <h1
         style={ReactDOM.Style.make(
           ~fontSize="24px",
@@ -27,7 +23,8 @@ let make = (~currentRoute: AppRouter.route, ~onNavigate: AppRouter.route => unit
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
           ~margin="0",
           (),
-        )}>
+        )}
+      >
         {"stapeln"->React.string}
       </h1>
       <p style={ReactDOM.Style.make(~fontSize="11px", ~color="#8892a6", ~margin="4px 0 0 0", ())}>
@@ -58,11 +55,10 @@ let make = (~currentRoute: AppRouter.route, ~onNavigate: AppRouter.route => unit
             ~cursor="pointer",
             ~transition="all 0.2s",
             (),
-          )}>
-          <span style={ReactDOM.Style.make(~fontSize="18px", ())}>
-            {item.icon->React.string}
-          </span>
-          <span>{item.label->React.string}</span>
+          )}
+        >
+          <span style={ReactDOM.Style.make(~fontSize="18px", ())}> {item.icon->React.string} </span>
+          <span> {item.label->React.string} </span>
         </button>
       })->React.array}
     </nav>
@@ -74,7 +70,8 @@ let make = (~currentRoute: AppRouter.route, ~onNavigate: AppRouter.route => unit
         ~display="flex",
         ~justifyContent="center",
         (),
-      )}>
+      )}
+    >
       <IdrisBadge style=Compact />
     </div>
   </div>

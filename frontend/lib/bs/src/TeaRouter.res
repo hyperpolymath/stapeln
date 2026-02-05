@@ -89,11 +89,9 @@ module Route = {
       if Match.prefix(path, segments) {
         let prefixLen = List.length(parsePath(path))
         switch List.drop(segments, prefixLen) {
-        | Some(remaining) => {
-            switch Match.param(remaining) {
-            | Some((param, _)) => Some(constructor(param))
-            | None => None
-            }
+        | Some(remaining) => switch Match.param(remaining) {
+          | Some((param, _)) => Some(constructor(param))
+          | None => None
           }
         | None => None
         }

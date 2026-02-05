@@ -18,11 +18,11 @@ type gapSeverity =
 
 // Fix confidence level
 type fixConfidence =
-  | Verified    // Formally verified fix
-  | High        // High confidence automated fix
-  | Medium      // Moderate confidence, may need review
-  | Low         // Low confidence, manual review required
-  | Manual      // No automated fix available
+  | Verified // Formally verified fix
+  | High // High confidence automated fix
+  | Medium // Moderate confidence, may need review
+  | Low // Low confidence, manual review required
+  | Manual // No automated fix available
 
 // Issue provenance (where the issue was detected)
 type issueSource =
@@ -111,7 +111,9 @@ let init: state = {
       affectedComponents: ["node-1", "node-2", "node-3"],
       fixAvailable: true,
       fixConfidence: High,
-      fixDescription: Some("Add /health endpoints to all services. Configure readiness and liveness probes."),
+      fixDescription: Some(
+        "Add /health endpoints to all services. Configure readiness and liveness probes.",
+      ),
       fixCommands: Some([
         "Add health check route to application code",
         "Update stack.yaml with healthcheck configuration",
@@ -132,7 +134,9 @@ let init: state = {
       affectedComponents: ["node-2", "node-3"],
       fixAvailable: true,
       fixConfidence: Verified,
-      fixDescription: Some("Enable TLS on PostgreSQL connection. Generate TLS certificates. Update connection string."),
+      fixDescription: Some(
+        "Enable TLS on PostgreSQL connection. Generate TLS certificates. Update connection string.",
+      ),
       fixCommands: Some([
         "Generate TLS certificates with Ed448",
         "Configure PostgreSQL to require SSL",
@@ -154,7 +158,9 @@ let init: state = {
       affectedComponents: ["node-2"],
       fixAvailable: true,
       fixConfidence: High,
-      fixDescription: Some("Add USER directive to Containerfile. Create non-privileged user with minimal permissions."),
+      fixDescription: Some(
+        "Add USER directive to Containerfile. Create non-privileged user with minimal permissions.",
+      ),
       fixCommands: Some([
         "Add to Containerfile: RUN adduser -D appuser",
         "Add to Containerfile: USER appuser",
@@ -239,8 +245,7 @@ let init: state = {
 // Update function
 let update = (msg: msg, state: state): state => {
   switch msg {
-  | SelectGap(gapId) =>
-    {...state, selectedGap: Some(gapId)}
+  | SelectGap(gapId) => {...state, selectedGap: Some(gapId)}
 
   | ApplyFix(gapId) =>
     let updatedFixes = Belt.Map.String.set(state.appliedFixes, gapId, InProgress)
@@ -253,20 +258,15 @@ let update = (msg: msg, state: state): state => {
     let updatedFixes = Belt.Map.String.set(state.appliedFixes, gapId, Verified)
     {...state, appliedFixes: updatedFixes}
 
-  | FilterByCategory(category) =>
-    {...state, filterCategory: category}
+  | FilterByCategory(category) => {...state, filterCategory: category}
 
-  | FilterBySeverity(severity) =>
-    {...state, filterSeverity: severity}
+  | FilterBySeverity(severity) => {...state, filterSeverity: severity}
 
-  | ToggleShowOnlyFixable =>
-    {...state, showOnlyFixable: !state.showOnlyFixable}
+  | ToggleShowOnlyFixable => {...state, showOnlyFixable: !state.showOnlyFixable}
 
-  | ChangeSortOrder(sortBy) =>
-    {...state, sortBy: sortBy}
+  | ChangeSortOrder(sortBy) => {...state, sortBy}
 
-  | RunGapAnalysis =>
-    // Trigger gap analysis (placeholder)
+  | RunGapAnalysis => // Trigger gap analysis (placeholder)
     state
 
   | ApplyAllAutoFixes =>
@@ -369,7 +369,8 @@ let confidenceBadge = (confidence: fixConfidence): React.element => {
       ~fontSize="11px",
       ~fontWeight="700",
       (),
-    )}>
+    )}
+  >
     {label->React.string}
   </span>
 }
@@ -399,10 +400,27 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       ~transition="all 0.2s",
       (),
     )}
-    onClick={_ => dispatch(SelectGap(gap.id))}>
-    <div style={ReactDOM.Style.make(~display="flex", ~justifyContent="space-between", ~alignItems="flex-start", ~marginBottom="12px", ())}>
+    onClick={_ => dispatch(SelectGap(gap.id))}
+  >
+    <div
+      style={ReactDOM.Style.make(
+        ~display="flex",
+        ~justifyContent="space-between",
+        ~alignItems="flex-start",
+        ~marginBottom="12px",
+        (),
+      )}
+    >
       <div style={ReactDOM.Style.make(~flex="1", ())}>
-        <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ~marginBottom="8px", ~flexWrap="wrap", ())}>
+        <div
+          style={ReactDOM.Style.make(
+            ~display="flex",
+            ~gap="8px",
+            ~marginBottom="8px",
+            ~flexWrap="wrap",
+            (),
+          )}
+        >
           <span
             style={ReactDOM.Style.make(
               ~padding="4px 12px",
@@ -412,7 +430,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
               ~fontSize="11px",
               ~fontWeight="700",
               (),
-            )}>
+            )}
+          >
             {categoryLabel(gap.category)->React.string}
           </span>
 
@@ -425,7 +444,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
               ~fontSize="11px",
               ~fontWeight="700",
               (),
-            )}>
+            )}
+          >
             {severityLabel(gap.severity)->React.string}
           </span>
 
@@ -440,13 +460,29 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           }}
         </div>
 
-        <h3 style={ReactDOM.Style.make(~fontSize="18px", ~fontWeight="700", ~color="#e0e6ed", ~marginBottom="8px", ())}>
+        <h3
+          style={ReactDOM.Style.make(
+            ~fontSize="18px",
+            ~fontWeight="700",
+            ~color="#e0e6ed",
+            ~marginBottom="8px",
+            (),
+          )}
+        >
           {gap.title->React.string}
         </h3>
       </div>
     </div>
 
-    <p style={ReactDOM.Style.make(~fontSize="13px", ~color="#8892a6", ~lineHeight="1.6", ~marginBottom="12px", ())}>
+    <p
+      style={ReactDOM.Style.make(
+        ~fontSize="13px",
+        ~color="#8892a6",
+        ~lineHeight="1.6",
+        ~marginBottom="12px",
+        (),
+      )}
+    >
       {gap.description->React.string}
     </p>
 
@@ -458,7 +494,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         ~borderRadius="8px",
         ~marginBottom="12px",
         (),
-      )}>
+      )}
+    >
       <strong style={ReactDOM.Style.make(~fontSize="12px", ~color="#f44336", ())}>
         {"Impact: "->React.string}
       </strong>
@@ -467,7 +504,15 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       </span>
     </div>
 
-    <div style={ReactDOM.Style.make(~display="flex", ~gap="24px", ~marginBottom="16px", ~flexWrap="wrap", ())}>
+    <div
+      style={ReactDOM.Style.make(
+        ~display="flex",
+        ~gap="24px",
+        ~marginBottom="16px",
+        ~flexWrap="wrap",
+        (),
+      )}
+    >
       <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
         <span style={ReactDOM.Style.make(~marginRight="6px", ())}>
           {sourceIcon(gap.source)->React.string}
@@ -494,7 +539,15 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       </div>
     </div>
 
-    <div style={ReactDOM.Style.make(~display="flex", ~gap="6px", ~marginBottom="16px", ~flexWrap="wrap", ())}>
+    <div
+      style={ReactDOM.Style.make(
+        ~display="flex",
+        ~gap="6px",
+        ~marginBottom="16px",
+        ~flexWrap="wrap",
+        (),
+      )}
+    >
       {Array.map(gap.tags, tag =>
         <span
           key={tag}
@@ -506,7 +559,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
             ~fontSize="10px",
             ~fontWeight="600",
             (),
-          )}>
+          )}
+        >
           {"#"->React.string}
           {tag->React.string}
         </span>
@@ -525,7 +579,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                 ~borderRadius="8px",
                 ~marginBottom="12px",
                 (),
-              )}>
+              )}
+            >
               <strong style={ReactDOM.Style.make(~fontSize="12px", ~color="#4caf50", ())}>
                 {"Fix: "->React.string}
               </strong>
@@ -539,15 +594,27 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           {switch gap.fixCommands {
           | Some(commands) =>
             <div style={ReactDOM.Style.make(~marginBottom="12px", ())}>
-              <div style={ReactDOM.Style.make(~fontSize="12px", ~fontWeight="600", ~color="#8892a6", ~marginBottom="6px", ())}>
+              <div
+                style={ReactDOM.Style.make(
+                  ~fontSize="12px",
+                  ~fontWeight="600",
+                  ~color="#8892a6",
+                  ~marginBottom="6px",
+                  (),
+                )}
+              >
                 {"Steps:"->React.string}
               </div>
-              <ol style={ReactDOM.Style.make(~paddingLeft="20px", ~fontSize="12px", ~color="#b0b8c4", ~lineHeight="1.8", ())}>
-                {Array.map(commands, cmd =>
-                  <li key={cmd}>
-                    {cmd->React.string}
-                  </li>
-                )->React.array}
+              <ol
+                style={ReactDOM.Style.make(
+                  ~paddingLeft="20px",
+                  ~fontSize="12px",
+                  ~color="#b0b8c4",
+                  ~lineHeight="1.8",
+                  (),
+                )}
+              >
+                {Array.map(commands, cmd => <li key={cmd}> {cmd->React.string} </li>)->React.array}
               </ol>
             </div>
           | None => React.null
@@ -569,7 +636,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                   ~cursor="not-allowed",
                   ~opacity="0.7",
                   (),
-                )}>
+                )}
+              >
                 {"✓ Fix Applied"->React.string}
               </button>
             | _ =>
@@ -588,7 +656,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                   ~fontWeight="600",
                   ~cursor="pointer",
                   (),
-                )}>
+                )}
+              >
                 {"🔧 Apply Fix"->React.string}
               </button>
             }}
@@ -610,7 +679,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                   ~fontWeight="600",
                   ~cursor="pointer",
                   (),
-                )}>
+                )}
+              >
                 {"🔐 Verify Fix"->React.string}
               </button>
             | _ => React.null
@@ -626,7 +696,8 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
             ~fontSize="12px",
             ~color="#9e9e9e",
             (),
-          )}>
+          )}
+        >
           {"⚠️ No automated fix available. Manual remediation required."->React.string}
         </div>}
   </div>
@@ -672,12 +743,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
   <div
     className="gap-analysis"
-    style={ReactDOM.Style.make(
-      ~padding="32px",
-      ~background="#0a0e1a",
-      ~minHeight="100vh",
-      (),
-    )}>
+    style={ReactDOM.Style.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
+  >
     <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
       <h1
         style={ReactDOM.Style.make(
@@ -686,7 +753,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
           ~marginBottom="8px",
           (),
-        )}>
+        )}
+      >
         {"🔍 Gap Analysis"->React.string}
       </h1>
       <p style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
@@ -701,11 +769,22 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ~gap="16px",
         ~marginBottom="32px",
         (),
-      )}>
+      )}
+    >
       {[
         ("Total Gaps", Int.toString(Array.length(state.gaps)), "#4a9eff"),
-        ("Critical", Int.toString(Array.reduce(state.gaps, 0, (acc, g) => g.severity == Critical ? acc + 1 : acc)), "#f44336"),
-        ("Auto-Fixable", Int.toString(Array.reduce(state.gaps, 0, (acc, g) => g.fixAvailable ? acc + 1 : acc)), "#4caf50"),
+        (
+          "Critical",
+          Int.toString(
+            Array.reduce(state.gaps, 0, (acc, g) => g.severity == Critical ? acc + 1 : acc),
+          ),
+          "#f44336",
+        ),
+        (
+          "Auto-Fixable",
+          Int.toString(Array.reduce(state.gaps, 0, (acc, g) => g.fixAvailable ? acc + 1 : acc)),
+          "#4caf50",
+        ),
         ("Applied", Int.toString(Belt.Map.String.size(state.appliedFixes)), "#ff9800"),
       ]
       ->Array.map(((label, count, color)) => {
@@ -718,15 +797,25 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             ~borderRadius="12px",
             ~textAlign="center",
             (),
-          )}>
-          <div style={ReactDOM.Style.make(~fontSize="36px", ~fontWeight="700", ~color, ~marginBottom="8px", ())}>
+          )}
+        >
+          <div
+            style={ReactDOM.Style.make(
+              ~fontSize="36px",
+              ~fontWeight="700",
+              ~color,
+              ~marginBottom="8px",
+              (),
+            )}
+          >
             {count->React.string}
           </div>
           <div style={ReactDOM.Style.make(~fontSize="13px", ~color="#8892a6", ())}>
             {label->React.string}
           </div>
         </div>
-      })->React.array}
+      })
+      ->React.array}
     </div>
 
     <div
@@ -740,7 +829,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ~borderRadius="12px",
         ~marginBottom="24px",
         (),
-      )}>
+      )}
+    >
       <div style={ReactDOM.Style.make(~display="flex", ~gap="12px", ())}>
         <button
           onClick={_ => dispatch(RunGapAnalysis)}
@@ -754,7 +844,8 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             ~fontWeight="600",
             ~cursor="pointer",
             (),
-          )}>
+          )}
+        >
           {"🔍 Run Analysis"->React.string}
         </button>
 
@@ -770,12 +861,23 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             ~fontWeight="600",
             ~cursor="pointer",
             (),
-          )}>
+          )}
+        >
           {"⚡ Apply All Auto-Fixes"->React.string}
         </button>
       </div>
 
-      <label style={ReactDOM.Style.make(~display="flex", ~alignItems="center", ~gap="8px", ~fontSize="13px", ~color="#8892a6", ~cursor="pointer", ())}>
+      <label
+        style={ReactDOM.Style.make(
+          ~display="flex",
+          ~alignItems="center",
+          ~gap="8px",
+          ~fontSize="13px",
+          ~color="#8892a6",
+          ~cursor="pointer",
+          (),
+        )}
+      >
         <input
           type_="checkbox"
           checked={state.showOnlyFixable}
@@ -798,11 +900,20 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               ~borderRadius="16px",
               ~textAlign="center",
               (),
-            )}>
+            )}
+          >
             <div style={ReactDOM.Style.make(~fontSize="64px", ~marginBottom="16px", ())}>
               {"✅"->React.string}
             </div>
-            <div style={ReactDOM.Style.make(~fontSize="24px", ~fontWeight="700", ~color="#4caf50", ~marginBottom="12px", ())}>
+            <div
+              style={ReactDOM.Style.make(
+                ~fontSize="24px",
+                ~fontWeight="700",
+                ~color="#4caf50",
+                ~marginBottom="12px",
+                (),
+              )}
+            >
               {"No Gaps Detected"->React.string}
             </div>
             <div style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
@@ -819,8 +930,17 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         ~border="2px solid #4a9eff",
         ~borderRadius="12px",
         (),
-      )}>
-      <h4 style={ReactDOM.Style.make(~fontSize="16px", ~fontWeight="700", ~color="#4a9eff", ~marginBottom="12px", ())}>
+      )}
+    >
+      <h4
+        style={ReactDOM.Style.make(
+          ~fontSize="16px",
+          ~fontWeight="700",
+          ~color="#4a9eff",
+          ~marginBottom="12px",
+          (),
+        )}
+      >
         {"🤖 AI-Powered Gap Analysis"->React.string}
       </h4>
       <p style={ReactDOM.Style.make(~fontSize="13px", ~color="#b0b8c4", ~lineHeight="1.8", ())}>

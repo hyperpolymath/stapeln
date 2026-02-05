@@ -8,40 +8,33 @@ type msg =
   | AddComponent(componentType, position)
   | RemoveComponent(string)
   | UpdateComponentPosition(string, position)
-  | UpdateComponentConfig(string, Js.Dict.t<string>)
+  | UpdateComponentConfig(string, dict<string>)
   | SelectComponent(option<string>)
-
   // Connection management
   | AddConnection(string, string) // from, to
   | RemoveConnection(string)
-
   // Drag and drop
   | StartDragComponent(component, position)
   | StartDragCanvas(position)
   | DragMove(position)
   | DragEnd
-
   // Canvas operations
   | ZoomIn
   | ZoomOut
   | ResetZoom
   | PanCanvas(position)
-
   // Validation
   | ValidateStack
   | ValidationResult(validationResult)
-
   // Export
   | ExportDesignToJson(string) // description
   | ExportToSelurCompose
   | ExportToDockerCompose
   | ExportToPodmanCompose
-
   // Import
   | TriggerImportDesign
   | ImportDesignSuccess(model)
   | ImportDesignError(string)
-
   // API communication
   | SaveStack
   | LoadStack(string)

@@ -2,16 +2,16 @@
 // Model.res - TEA Model (application state)
 
 type componentType =
-  | CerroTorre       // Container builder (.ctp bundles)
-  | LagoGrey         // Base image designer (Alpine/Chainguard alternative)
-  | Svalinn          // Edge gateway
-  | Selur            // IPC bridge
-  | Vordr            // Runtime/orchestrator
-  | Podman           // Container runtime
-  | Docker           // Container runtime
-  | Nerdctl          // Container runtime
-  | Volume           // Persistent storage
-  | Network          // Networking
+  | CerroTorre // Container builder (.ctp bundles)
+  | LagoGrey // Base image designer (Alpine/Chainguard alternative)
+  | Svalinn // Edge gateway
+  | Selur // IPC bridge
+  | Vordr // Runtime/orchestrator
+  | Podman // Container runtime
+  | Docker // Container runtime
+  | Nerdctl // Container runtime
+  | Volume // Persistent storage
+  | Network // Networking
 
 type position = {
   x: float,
@@ -22,7 +22,7 @@ type component = {
   id: string,
   componentType: componentType,
   position: position,
-  config: Js.Dict.t<string>, // Component-specific configuration
+  config: dict<string>, // Component-specific configuration
 }
 
 type connection = {

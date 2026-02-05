@@ -3,14 +3,14 @@
 
 // Ice formation types
 type iceFormation =
-  | Floe(string, int)        // < 1MB
-  | Iceberg(string, int)     // 1-75MB
-  | Glacier(string, int)     // 75MB+
+  | Floe(string, int) // < 1MB
+  | Iceberg(string, int) // 1-75MB
+  | Glacier(string, int) // 75MB+
 
 type baseImage =
-  | Distroless  // ~10MB
-  | Alpine      // ~60MB
-  | Scratch     // 0MB
+  | Distroless // ~10MB
+  | Alpine // ~60MB
+  | Scratch // 0MB
 
 type canvasFormation = {
   formation: iceFormation,
@@ -65,9 +65,7 @@ let availableFloes = [
   Floe("obli-pkg", 56_000),
 ]
 
-let availableIcebergs = [
-  Iceberg("liboqs", 11_000_000),
-]
+let availableIcebergs = [Iceberg("liboqs", 11_000_000)]
 
 @react.component
 let make = () => {
@@ -124,9 +122,7 @@ let make = () => {
   }
 
   let isFormationSelected = (formation: iceFormation): bool => {
-    Array.some(state.formations, cf =>
-      formationName(cf.formation) == formationName(formation)
-    )
+    Array.some(state.formations, cf => formationName(cf.formation) == formationName(formation))
   }
 
   <div className="lago-grey-designer">
@@ -144,19 +140,22 @@ let make = () => {
           <div className="base-options">
             <button
               className={state.baseImage == Distroless ? "base-btn active" : "base-btn"}
-              onClick={_ => setBaseImage(Distroless)}>
+              onClick={_ => setBaseImage(Distroless)}
+            >
               <div className="base-name"> {"Distroless"->React.string} </div>
               <div className="base-size"> {"~10 MB, ~20 files"->React.string} </div>
             </button>
             <button
               className={state.baseImage == Alpine ? "base-btn active" : "base-btn"}
-              onClick={_ => setBaseImage(Alpine)}>
+              onClick={_ => setBaseImage(Alpine)}
+            >
               <div className="base-name"> {"Alpine"->React.string} </div>
               <div className="base-size"> {"~60 MB, ~5,000 files"->React.string} </div>
             </button>
             <button
               className={state.baseImage == Scratch ? "base-btn active" : "base-btn"}
-              onClick={_ => setBaseImage(Scratch)}>
+              onClick={_ => setBaseImage(Scratch)}
+            >
               <div className="base-name"> {"Scratch"->React.string} </div>
               <div className="base-size"> {"0 MB (empty)"->React.string} </div>
             </button>
@@ -171,10 +170,13 @@ let make = () => {
               <button
                 key={formationName(floe)}
                 className={selected ? "component-btn selected" : "component-btn"}
-                onClick={_ => toggleFormation(floe)}>
+                onClick={_ => toggleFormation(floe)}
+              >
                 <span className="component-icon"> {formationIcon(floe)->React.string} </span>
                 <span className="component-name"> {formationName(floe)->React.string} </span>
-                <span className="component-size"> {formatBytes(formationSize(floe))->React.string} </span>
+                <span className="component-size">
+                  {formatBytes(formationSize(floe))->React.string}
+                </span>
               </button>
             })->React.array}
           </div>
@@ -188,10 +190,13 @@ let make = () => {
               <button
                 key={formationName(iceberg)}
                 className={selected ? "component-btn selected" : "component-btn"}
-                onClick={_ => toggleFormation(iceberg)}>
+                onClick={_ => toggleFormation(iceberg)}
+              >
                 <span className="component-icon"> {formationIcon(iceberg)->React.string} </span>
                 <span className="component-name"> {formationName(iceberg)->React.string} </span>
-                <span className="component-size"> {formatBytes(formationSize(iceberg))->React.string} </span>
+                <span className="component-size">
+                  {formatBytes(formationSize(iceberg))->React.string}
+                </span>
               </button>
             })->React.array}
           </div>
@@ -204,18 +209,18 @@ let make = () => {
           <div className="size-display">
             <span className="size-label"> {"Total Size:"->React.string} </span>
             <span className="size-value"> {formatBytes(state.totalSize)->React.string} </span>
-            <span className={
-              state.totalSize <= 17_500_000 ? "classification success" : "classification warning"
-            }>
-              {
-                if state.totalSize < 1_000_000 {
-                  "🧊 Floe"
-                } else if state.totalSize <= 75_000_000 {
-                  "🏔️ Small Iceberg"
-                } else {
-                  "🌊 Glacier"
-                }->React.string
-              }
+            <span
+              className={state.totalSize <= 17_500_000
+                ? "classification success"
+                : "classification warning"}
+            >
+              {if state.totalSize < 1_000_000 {
+                "🧊 Floe"
+              } else if state.totalSize <= 75_000_000 {
+                "🏔️ Small Iceberg"
+              } else {
+                "🌊 Glacier"
+              }->React.string}
             </span>
           </div>
         </div>
@@ -246,7 +251,9 @@ let make = () => {
               <div className="layer-icon"> {formationIcon(cf.formation)->React.string} </div>
               <div className="layer-info">
                 <div className="layer-name"> {formationName(cf.formation)->React.string} </div>
-                <div className="layer-size"> {formatBytes(formationSize(cf.formation))->React.string} </div>
+                <div className="layer-size">
+                  {formatBytes(formationSize(cf.formation))->React.string}
+                </div>
               </div>
             </div>
           })->React.array}
@@ -254,7 +261,9 @@ let make = () => {
           {Array.length(state.formations) == 0
             ? <div className="empty-state">
                 <p> {"👈 Select components from the sidebar to add them"->React.string} </p>
-                <p className="hint"> {"Click on Floes or Icebergs to build your image"->React.string} </p>
+                <p className="hint">
+                  {"Click on Floes or Icebergs to build your image"->React.string}
+                </p>
               </div>
             : React.null}
         </div>
@@ -266,18 +275,24 @@ let make = () => {
               <div className="comparison-item">
                 <span className="label"> {"vs Alpine (60 MB):"->React.string} </span>
                 <span className="value">
-                  {(state.totalSize <= 60_000_000
-                    ? Float.toString((1.0 -. Float.fromInt(state.totalSize) /. 60_000_000.) *. 100.0) ++ "% smaller ✅"
-                    : Float.toString((Float.fromInt(state.totalSize) /. 60_000_000. -. 1.0) *. 100.0) ++ "% larger ⚠️"
+                  {(
+                    state.totalSize <= 60_000_000
+                      ? Float.toString(
+                          (1.0 -. Float.fromInt(state.totalSize) /. 60_000_000.) *. 100.0,
+                        ) ++ "% smaller ✅"
+                      : Float.toString(
+                          (Float.fromInt(state.totalSize) /. 60_000_000. -. 1.0) *. 100.0,
+                        ) ++ "% larger ⚠️"
                   )->React.string}
                 </span>
               </div>
               <div className="comparison-item">
                 <span className="label"> {"Target (17.5 MB):"->React.string} </span>
                 <span className={state.totalSize <= 17_500_000 ? "value success" : "value warning"}>
-                  {(state.totalSize <= 17_500_000
-                    ? "✅ Under target!"
-                    : "⚠️ " ++ formatBytes(state.totalSize - 17_500_000) ++ " over"
+                  {(
+                    state.totalSize <= 17_500_000
+                      ? "✅ Under target!"
+                      : "⚠️ " ++ formatBytes(state.totalSize - 17_500_000) ++ " over"
                   )->React.string}
                 </span>
               </div>
@@ -326,11 +341,14 @@ let make = () => {
                   | Alpine => LagoGreyExport.Alpine
                   | Scratch => LagoGreyExport.Scratch
                   },
-                  formations: (Array.map(state.formations, cf => cf.formation) :> array<LagoGreyExport.iceFormation>),
+                  formations: (Array.map(state.formations, cf => cf.formation) :> array<
+                    LagoGreyExport.iceFormation,
+                  >),
                   totalSize: state.totalSize,
                 }
                 LagoGreyExport.exportDockerfile(exportState)
-              }}>
+              }}
+            >
               {"📄 Dockerfile"->React.string}
             </button>
             <button
@@ -342,11 +360,14 @@ let make = () => {
                   | Alpine => LagoGreyExport.Alpine
                   | Scratch => LagoGreyExport.Scratch
                   },
-                  formations: (Array.map(state.formations, cf => cf.formation) :> array<LagoGreyExport.iceFormation>),
+                  formations: (Array.map(state.formations, cf => cf.formation) :> array<
+                    LagoGreyExport.iceFormation,
+                  >),
                   totalSize: state.totalSize,
                 }
                 LagoGreyExport.exportCompletePackage(exportState)
-              }}>
+              }}
+            >
               {"📦 Complete Package"->React.string}
             </button>
             <button
@@ -358,15 +379,20 @@ let make = () => {
                   | Alpine => LagoGreyExport.Alpine
                   | Scratch => LagoGreyExport.Scratch
                   },
-                  formations: (Array.map(state.formations, cf => cf.formation) :> array<LagoGreyExport.iceFormation>),
+                  formations: (Array.map(state.formations, cf => cf.formation) :> array<
+                    LagoGreyExport.iceFormation,
+                  >),
                   totalSize: state.totalSize,
                 }
                 LagoGreyExport.exportManifest(exportState)
-              }}>
+              }}
+            >
               {"📋 Manifest JSON"->React.string}
             </button>
           </div>
-          <p className="export-note"> {"Click to download. Run 'podman build' to create image."->React.string} </p>
+          <p className="export-note">
+            {"Click to download. Run 'podman build' to create image."->React.string}
+          </p>
         </div>
 
         <div className="section">

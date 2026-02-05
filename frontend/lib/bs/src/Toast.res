@@ -40,21 +40,19 @@ let update = (msg: msg, state: state): state => {
       message,
       toastType,
       duration,
-      timestamp: Js.Date.now(),
+      timestamp: Date.now(),
     }
     {
       toasts: Array.concat(state.toasts, [newToast]),
       nextId: state.nextId + 1,
     }
 
-  | DismissToast(id) =>
-    {
+  | DismissToast(id) => {
       ...state,
       toasts: Array.keep(state.toasts, t => t.id != id),
     }
 
-  | AutoDismissToast(id) =>
-    // Same as DismissToast but triggered by timer
+  | AutoDismissToast(id) => // Same as DismissToast but triggered by timer
     {
       ...state,
       toasts: Array.keep(state.toasts, t => t.id != id),
@@ -112,14 +110,16 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
       ~marginBottom="12px",
       ~animation="slideIn 0.3s ease-out",
       (),
-    )}>
+    )}
+  >
     <div
       style={ReactDOM.Style.make(
         ~fontSize="24px",
         ~lineHeight="1",
         ~color=toastColor(toast.toastType),
         (),
-      )}>
+      )}
+    >
       {toastIcon(toast.toastType)->React.string}
     </div>
 
@@ -133,16 +133,11 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
           ~letterSpacing="0.5px",
           ~marginBottom="4px",
           (),
-        )}>
+        )}
+      >
         {toastLabel(toast.toastType)->React.string}
       </div>
-      <div
-        style={ReactDOM.Style.make(
-          ~fontSize="14px",
-          ~color="#e0e6ed",
-          ~lineHeight="1.4",
-          (),
-        )}>
+      <div style={ReactDOM.Style.make(~fontSize="14px", ~color="#e0e6ed", ~lineHeight="1.4", ())}>
         {toast.message->React.string}
       </div>
     </div>
@@ -159,7 +154,8 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
         ~padding="4px",
         ~transition="color 0.2s",
         (),
-      )}>
+      )}
+    >
       {"×"->React.string}
     </button>
   </div>
@@ -171,9 +167,12 @@ let make = (~toasts: array<toast>, ~dispatch: msg => unit) => {
   // Auto-dismiss toasts after their duration
   React.useEffect1(() => {
     let timeoutIds = Array.map(toasts, toast => {
-      setTimeout(() => {
-        dispatch(AutoDismissToast(toast.id))
-      }, toast.duration)
+      setTimeout(
+        () => {
+          dispatch(AutoDismissToast(toast.id))
+        },
+        toast.duration,
+      )
     })
 
     Some(
@@ -194,7 +193,8 @@ let make = (~toasts: array<toast>, ~dispatch: msg => unit) => {
       ~flexDirection="column",
       ~alignItems="flex-end",
       (),
-    )}>
+    )}
+  >
     {Array.map(toasts, toast => viewToast(toast, dispatch))->React.array}
   </div>
 }

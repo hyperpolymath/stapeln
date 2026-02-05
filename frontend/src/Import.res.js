@@ -45,4 +45,4 @@ export {
   importDesignFromFile,
   triggerImport,
 }
-/* No side effect */
+/* DesignFormat Not a pure module */

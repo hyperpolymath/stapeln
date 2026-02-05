@@ -31,20 +31,18 @@ let mount = (elementId: string): mountResult => {
   // Validate element ID (matches Idris2 ValidElementId proof)
   if String.length(elementId) == 0 {
     Error("Element ID cannot be empty")
-  } else {
-    // Check existence first (matches Idris2 ElementExists proof)
-    if FFI.check_element_exists(elementId) {
-      // Call Zig FFI which implements Idris2 ABI
-      let code = FFI.mount_to_element(elementId)
-      switch FFI.resultFromInt(code) {
-      | Success => Ok()
-      | ElementNotFound => Error("Element not found: " ++ elementId)
-      | InvalidId => Error("Invalid element ID: " ++ elementId)
-      | AlreadyMounted => Error("Element already mounted: " ++ elementId)
-      }
-    } else {
-      Error("Element does not exist in DOM: " ++ elementId)
+  } // Check existence first (matches Idris2 ElementExists proof)
+  else if FFI.check_element_exists(elementId) {
+    // Call Zig FFI which implements Idris2 ABI
+    let code = FFI.mount_to_element(elementId)
+    switch FFI.resultFromInt(code) {
+    | Success => Ok()
+    | ElementNotFound => Error("Element not found: " ++ elementId)
+    | InvalidId => Error("Invalid element ID: " ++ elementId)
+    | AlreadyMounted => Error("Element already mounted: " ++ elementId)
     }
+  } else {
+    Error("Element does not exist in DOM: " ++ elementId)
   }
 }
 
@@ -68,7 +66,7 @@ let mountWithCallback = (
 let mountReactApp = (elementId: string): mountResult => {
   switch mount(elementId) {
   | Ok() => {
-      Js.Console.log("DOM element validated with Idris2 proofs")
+      Console.log("DOM element validated with Idris2 proofs")
       // React rendering happens in App.res after validation
       Ok()
     }

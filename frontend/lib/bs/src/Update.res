@@ -11,9 +11,9 @@ let update = (model: model, msg: msg): model => {
   | AddComponent(componentType, position) => {
       let newComponent: component = {
         id: generateId(),
-        componentType: componentType,
-        position: position,
-        config: Js.Dict.empty(),
+        componentType,
+        position,
+        config: Dict.make(),
       }
       let newModel = {
         ...model,
@@ -24,10 +24,7 @@ let update = (model: model, msg: msg): model => {
 
   | RemoveComponent(id) => {
       let newComponents = Array.keep(model.components, c => c.id !== id)
-      let newConnections = Array.keep(
-        model.connections,
-        conn => conn.from !== id && conn.to !== id,
-      )
+      let newConnections = Array.keep(model.connections, conn => conn.from !== id && conn.to !== id)
       let newModel = {
         ...model,
         components: newComponents,
@@ -39,7 +36,7 @@ let update = (model: model, msg: msg): model => {
 
   | UpdateComponentPosition(id, position) => {
       let newComponents = Array.map(model.components, comp =>
-        comp.id === id ? {...comp, position: position} : comp
+        comp.id === id ? {...comp, position} : comp
       )
       let newModel = {...model, components: newComponents}
       newModel
@@ -47,7 +44,7 @@ let update = (model: model, msg: msg): model => {
 
   | UpdateComponentConfig(id, config) => {
       let newComponents = Array.map(model.components, comp =>
-        comp.id === id ? {...comp, config: config} : comp
+        comp.id === id ? {...comp, config} : comp
       )
       let newModel = {...model, components: newComponents}
       newModel
@@ -98,39 +95,37 @@ let update = (model: model, msg: msg): model => {
       newModel
     }
 
-  | DragMove(mousePos) => {
-      switch model.dragState {
-      | DraggingComponent(component) => {
-          // Update component position during drag
-          let newComponents = Array.map(model.components, comp =>
-            comp.id === component.id ? {...comp, position: mousePos} : comp
-          )
-          let newModel = {
-            ...model,
-            components: newComponents,
-            dragState: DraggingComponent({...component, position: mousePos}),
-          }
-          newModel
+  | DragMove(mousePos) => switch model.dragState {
+    | DraggingComponent(component) => {
+        // Update component position during drag
+        let newComponents = Array.map(model.components, comp =>
+          comp.id === component.id ? {...comp, position: mousePos} : comp
+        )
+        let newModel = {
+          ...model,
+          components: newComponents,
+          dragState: DraggingComponent({...component, position: mousePos}),
         }
-
-      | DraggingCanvas(startPos) => {
-          // Pan the canvas
-          let deltaX = mousePos.x -. startPos.x
-          let deltaY = mousePos.y -. startPos.y
-          let newOffset = {
-            x: model.canvasOffset.x +. deltaX,
-            y: model.canvasOffset.y +. deltaY,
-          }
-          let newModel = {
-            ...model,
-            canvasOffset: newOffset,
-            dragState: DraggingCanvas(mousePos),
-          }
-          newModel
-        }
-
-      | NotDragging => model
+        newModel
       }
+
+    | DraggingCanvas(startPos) => {
+        // Pan the canvas
+        let deltaX = mousePos.x -. startPos.x
+        let deltaY = mousePos.y -. startPos.y
+        let newOffset = {
+          x: model.canvasOffset.x +. deltaX,
+          y: model.canvasOffset.y +. deltaY,
+        }
+        let newModel = {
+          ...model,
+          canvasOffset: newOffset,
+          dragState: DraggingCanvas(mousePos),
+        }
+        newModel
+      }
+
+    | NotDragging => model
     }
 
   | DragEnd => {
@@ -167,9 +162,7 @@ let update = (model: model, msg: msg): model => {
       let result: validationResult = {
         valid: Array.length(model.components) > 0,
         errors: [],
-        warnings: Array.length(model.components) === 0
-          ? ["Stack is empty"]
-          : [],
+        warnings: Array.length(model.components) === 0 ? ["Stack is empty"] : [],
       }
       let newModel = {...model, validationResult: Some(result)}
       newModel
@@ -207,12 +200,12 @@ let update = (model: model, msg: msg): model => {
       Import.triggerImport(
         importedModel => {
           // Log success - actual model update would need to be handled via Tea.Cmd
-          Js.Console.log2("Design imported successfully:", importedModel)
+          Console.log2("Design imported successfully:", importedModel)
           ()
         },
         error => {
           // Log error - actual error handling would need to be handled via Tea.Cmd
-          Js.Console.error2("Import failed:", error)
+          Console.error2("Import failed:", error)
           ()
         },
       )
@@ -220,12 +213,13 @@ let update = (model: model, msg: msg): model => {
     }
 
   | ImportDesignSuccess(importedModel) => {
-      Js.Console.log("Design imported successfully")
+      Console.log("Design imported successfully")
       importedModel
     }
 
   | ImportDesignError(error) => {
-      Js.Console.error2("Import failed:", error)
+      Console.error2("Import failed:", error)
+
       // TODO: Show error message to user
       model
     }
@@ -233,39 +227,35 @@ let update = (model: model, msg: msg): model => {
   // API communication
   | SaveStack => {
       // TODO: Send stack to backend API
-      Js.Console.log("Saving stack...")
+      Console.log("Saving stack...")
       model
     }
 
   | LoadStack(stackId) => {
       // TODO: Load stack from backend API
-      Js.Console.log2("Loading stack:", stackId)
+      Console.log2("Loading stack:", stackId)
       model
     }
 
-  | StackSaved(result) => {
-      switch result {
-      | Ok(stackId) => {
-          Js.Console.log2("Stack saved with ID:", stackId)
-          model
-        }
-      | Error(err) => {
-          Js.Console.error2("Failed to save stack:", err)
-          model
-        }
+  | StackSaved(result) => switch result {
+    | Ok(stackId) => {
+        Console.log2("Stack saved with ID:", stackId)
+        model
+      }
+    | Error(err) => {
+        Console.error2("Failed to save stack:", err)
+        model
       }
     }
 
-  | StackLoaded(result) => {
-      switch result {
-      | Ok(loadedModel) => {
-          Js.Console.log("Stack loaded successfully")
-          loadedModel
-        }
-      | Error(err) => {
-          Js.Console.error2("Failed to load stack:", err)
-          model
-        }
+  | StackLoaded(result) => switch result {
+    | Ok(loadedModel) => {
+        Console.log("Stack loaded successfully")
+        loadedModel
+      }
+    | Error(err) => {
+        Console.error2("Failed to load stack:", err)
+        model
       }
     }
   }

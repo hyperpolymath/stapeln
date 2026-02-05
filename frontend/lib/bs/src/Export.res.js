@@ -68,4 +68,4 @@ export {
   exportToDockerCompose,
   exportToPodmanCompose,
 }
-/* No side effect */
+/* DesignFormat Not a pure module */

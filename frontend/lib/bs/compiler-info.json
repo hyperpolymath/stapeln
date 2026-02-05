@@ -2,7 +2,7 @@
   "version": "12.1.0",
   "bsc_path": "/var/home/hyper/.local/lib/node_modules/rescript/node_modules/@rescript/linux-x64/bin/bsc.exe",
   "bsc_hash": "e71a4b341d54d39d77ed040eac08d002633dac2437fe69da2e0aa643219947ff",
-  "rescript_config_hash": "09e65cd54610e76a656b28b640c1017dacce48325f6af09fffedbc7de9283348",
+  "rescript_config_hash": "f448f86e826d7dafe446caf3f9a9b3d0dd582cafac723f24a9fef60319481f88",
   "runtime_path": "/var/home/hyper/.local/lib/node_modules/rescript/node_modules/@rescript/runtime",
-  "generated_at": "1770304119991"
+  "generated_at": "1770304505458"
 }

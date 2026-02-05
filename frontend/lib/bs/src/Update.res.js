@@ -365,4 +365,4 @@ function update(model, msg) {
 export {
   update,
 }
-/* No side effect */
+/* Export Not a pure module */

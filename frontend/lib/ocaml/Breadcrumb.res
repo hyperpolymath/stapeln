@@ -14,28 +14,17 @@ let make = (~currentRoute: AppRouter.route) => {
       ~background="rgba(30, 36, 49, 0.6)",
       ~borderBottom="1px solid #2a3142",
       (),
-    )}>
+    )}
+  >
     <span style={ReactDOM.Style.make(~fontSize="16px", ())}>
       {AppRouter.getRouteIcon(currentRoute)->React.string}
     </span>
-    <span
-      style={ReactDOM.Style.make(
-        ~fontSize="14px",
-        ~fontWeight="600",
-        ~color="#e0e6ed",
-        (),
-      )}>
+    <span style={ReactDOM.Style.make(~fontSize="14px", ~fontWeight="600", ~color="#e0e6ed", ())}>
       {AppRouter.getRouteLabel(currentRoute)->React.string}
     </span>
     {switch meta {
     | Some(m) =>
-      <span
-        style={ReactDOM.Style.make(
-          ~fontSize="12px",
-          ~color="#8892a6",
-          ~marginLeft="8px",
-          (),
-        )}>
+      <span style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ~marginLeft="8px", ())}>
         {("— " ++ m.description)->React.string}
       </span>
     | None => React.null

@@ -32,7 +32,7 @@ let make = (~children, ~fallback=?, ~onError=?) => {
   // Error handler
   let handleError = React.useCallback1((error, errorInfo) => {
     let errorMsg = switch error {
-    | Some(e) => Js.String.make(e)
+    | Some(e) => String.make(e)
     | None => "Unknown error occurred"
     }
 
@@ -45,8 +45,8 @@ let make = (~children, ~fallback=?, ~onError=?) => {
     }
 
     // Log to console in development
-    Js.Console.error2("Error caught by ErrorBoundary:", error)
-    Js.Console.error2("Error info:", errorInfo)
+    Console.error2("Error caught by ErrorBoundary:", error)
+    Console.error2("Error info:", errorInfo)
   }, [onError])
 
   // Reset error state
@@ -72,25 +72,32 @@ let make = (~children, ~fallback=?, ~onError=?) => {
           ~backgroundColor="#FFF5F5",
           ~color="#C53030",
           (),
-        )}>
-        <div
-          style={ReactDOM.Style.make(
-            ~maxWidth="600px",
-            ~textAlign="center",
-            (),
-          )}>
-          <h1 style={ReactDOM.Style.make(~fontSize="2rem", ~fontWeight="700", ~marginBottom="1rem", ())}>
-            {"⚠️ Something went wrong" ->React.string}
+        )}
+      >
+        <div style={ReactDOM.Style.make(~maxWidth="600px", ~textAlign="center", ())}>
+          <h1
+            style={ReactDOM.Style.make(
+              ~fontSize="2rem",
+              ~fontWeight="700",
+              ~marginBottom="1rem",
+              (),
+            )}
+          >
+            {"⚠️ Something went wrong"->React.string}
           </h1>
 
-          <p style={ReactDOM.Style.make(~fontSize="1rem", ~marginBottom="2rem", ~opacity="0.8", ())}>
+          <p
+            style={ReactDOM.Style.make(~fontSize="1rem", ~marginBottom="2rem", ~opacity="0.8", ())}
+          >
             {switch state.error {
             | Some(msg) => msg
             | None => "An unexpected error occurred. Please try refreshing the page."
             }->React.string}
           </p>
 
-          <div style={ReactDOM.Style.make(~display="flex", ~gap="1rem", ~justifyContent="center", ())}>
+          <div
+            style={ReactDOM.Style.make(~display="flex", ~gap="1rem", ~justifyContent="center", ())}
+          >
             <button
               onClick={_ => handleReset()}
               ariaLabel="Try again"
@@ -104,8 +111,9 @@ let make = (~children, ~fallback=?, ~onError=?) => {
                 ~fontWeight="600",
                 ~cursor="pointer",
                 (),
-              )}>
-              {"Try Again" ->React.string}
+              )}
+            >
+              {"Try Again"->React.string}
             </button>
 
             <button
@@ -123,8 +131,9 @@ let make = (~children, ~fallback=?, ~onError=?) => {
                 ~fontWeight="600",
                 ~cursor="pointer",
                 (),
-              )}>
-              {"Go Home" ->React.string}
+              )}
+            >
+              {"Go Home"->React.string}
             </button>
           </div>
         </div>
@@ -137,7 +146,5 @@ let make = (~children, ~fallback=?, ~onError=?) => {
 
 // Helper to wrap components with error boundary
 let wrap = (~children) => {
-  <make>
-    {children}
-  </make>
+  <make> {children} </make>
 }

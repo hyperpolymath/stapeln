@@ -82,18 +82,20 @@ let renderStackBlock = (component: component, isDark: bool) => {
       justifyContent: "center",
       border: isDark ? "2px solid " ++ Colors.darkBorder : "2px solid " ++ Colors.lightBorder,
       boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-    }}>
-    <h3
-      style={{margin: "0", fontSize: "1.2rem", fontWeight: "600"}}
-      id={component.id ++ "-title"}>
-      {componentName ->React.string}
+    }}
+  >
+    <h3 style={{margin: "0", fontSize: "1.2rem", fontWeight: "600"}} id={component.id ++ "-title"}>
+      {componentName->React.string}
     </h3>
     <p
       style={{margin: "0.5rem 0 0 0", fontSize: "0.9rem", opacity: "0.9"}}
       id={component.id ++ "-desc"}
-      ariaDescribedby={component.id ++ "-title"}>
-      {("Position: " ++ Float.toString(component.position.x) ++ ", " ++
-        Float.toString(component.position.y)) ->React.string}
+      ariaDescribedby={component.id ++ "-title"}
+    >
+      {("Position: " ++
+      Float.toString(component.position.x) ++
+      ", " ++
+      Float.toString(component.position.y))->React.string}
     </p>
 
     // Metadata available via aria-label already
@@ -115,21 +117,30 @@ let renderParagonStack = (model: model, isDark: bool) => {
       ~minHeight="100vh",
       ~fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       (),
-    )}>
-
+    )}
+  >
     // Screen reader announcement region
     <div
       role="status"
       ariaLive=#polite
       ariaAtomic=true
-      style={{position: "absolute", left: "-10000px", width: "1px", height: "1px", overflow: "hidden"}}>
+      style={{
+        position: "absolute",
+        left: "-10000px",
+        width: "1px",
+        height: "1px",
+        overflow: "hidden",
+      }}
+    >
       {switch model.validationResult {
       | None => React.null
       | Some(result) =>
-        (result.valid
-          ? "Stack validation passed"
-          : "Stack validation failed with " ++ Int.toString(Array.length(result.errors)) ++ " errors"
-        ) ->React.string
+        (
+          result.valid
+            ? "Stack validation passed"
+            : "Stack validation failed with " ++
+              Int.toString(Array.length(result.errors)) ++ " errors"
+        )->React.string
       }}
     </div>
 
@@ -141,15 +152,19 @@ let renderParagonStack = (model: model, isDark: bool) => {
         ~justifyContent="space-between",
         ~alignItems="center",
         ~paddingBottom="1.5rem",
-        ~borderBottom=isDark ? "2px solid " ++ Colors.darkBorder : "2px solid " ++ Colors.lightBorder,
+        ~borderBottom=isDark
+          ? "2px solid " ++ Colors.darkBorder
+          : "2px solid " ++ Colors.lightBorder,
         (),
-      )}>
+      )}
+    >
       <h1
         style={ReactDOM.Style.make(~margin="0", ~fontSize="2rem", ~fontWeight="700", ())}
-        id="main-title">
-        {"stackur" ->React.string}
+        id="main-title"
+      >
+        {"stackur"->React.string}
         <span style={{fontSize: "0.9rem", fontWeight: "400", opacity: "0.8", marginLeft: "0.5rem"}}>
-          {"Container Stack Designer" ->React.string}
+          {"Container Stack Designer"->React.string}
         </span>
       </h1>
 
@@ -169,8 +184,9 @@ let renderParagonStack = (model: model, isDark: bool) => {
           ~fontWeight="600",
           ~transition="background-color 0.2s ease",
           (),
-        )}>
-        {(isDark ? "🌙 Dark" : "☀️ Light") ->React.string}
+        )}
+      >
+        {(isDark ? "🌙 Dark" : "☀️ Light")->React.string}
       </button>
     </header>
 
@@ -182,19 +198,29 @@ let renderParagonStack = (model: model, isDark: bool) => {
         style={ReactDOM.Style.make(
           ~width="250px",
           ~paddingRight="2rem",
-          ~borderRight=isDark ? "2px solid " ++ Colors.darkBorder : "2px solid " ++ Colors.lightBorder,
+          ~borderRight=isDark
+            ? "2px solid " ++ Colors.darkBorder
+            : "2px solid " ++ Colors.lightBorder,
           (),
-        )}>
+        )}
+      >
         <h2
-          style={ReactDOM.Style.make(~fontSize="1.3rem", ~fontWeight="600", ~marginBottom="1rem", ())}
-          id="palette-title">
-          {"Components" ->React.string}
+          style={ReactDOM.Style.make(
+            ~fontSize="1.3rem",
+            ~fontWeight="600",
+            ~marginBottom="1rem",
+            (),
+          )}
+          id="palette-title"
+        >
+          {"Components"->React.string}
         </h2>
 
         <nav ariaLabelledby="palette-title">
           <ul
             role="list"
-            style={ReactDOM.Style.make(~listStyle="none", ~padding="0", ~margin="0", ())}>
+            style={ReactDOM.Style.make(~listStyle="none", ~padding="0", ~margin="0", ())}
+          >
             {
               let components = [
                 (CerroTorre, "Cerro Torre", "Build verified container bundles"),
@@ -205,10 +231,9 @@ let renderParagonStack = (model: model, isDark: bool) => {
                 (Docker, "Docker", "Docker Engine runtime"),
                 (Nerdctl, "nerdctl", "containerd CLI"),
               ]
-              components->Array.map(((ct, name, desc)) => {
-                <li
-                  role="listitem"
-                  style={ReactDOM.Style.make(~marginBottom="0.75rem", ())}>
+              components
+              ->Array.map(((ct, name, desc)) => {
+                <li role="listitem" style={ReactDOM.Style.make(~marginBottom="0.75rem", ())}>
                   <button
                     ariaLabel={"Add " ++ name ++ " to stack. " ++ desc}
                     style={ReactDOM.Style.make(
@@ -216,7 +241,9 @@ let renderParagonStack = (model: model, isDark: bool) => {
                       ~padding="1rem",
                       ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
                       ~color=isDark ? Colors.darkText : Colors.lightText,
-                      ~border=isDark ? "2px solid " ++ Colors.darkBorder : "2px solid " ++ Colors.lightBorder,
+                      ~border=isDark
+                        ? "2px solid " ++ Colors.darkBorder
+                        : "2px solid " ++ Colors.lightBorder,
                       ~borderRadius="6px",
                       ~textAlign="left",
                       ~cursor="pointer",
@@ -224,14 +251,25 @@ let renderParagonStack = (model: model, isDark: bool) => {
                       ~fontWeight="500",
                       ~transition="all 0.2s ease",
                       (),
-                    )}>
-                    <div style={ReactDOM.Style.make(~fontWeight="600", ())}>{name->React.string}</div>
-                    <div style={ReactDOM.Style.make(~fontSize="0.8rem", ~opacity="0.8", ~marginTop="0.25rem", ())}>
+                    )}
+                  >
+                    <div style={ReactDOM.Style.make(~fontWeight="600", ())}>
+                      {name->React.string}
+                    </div>
+                    <div
+                      style={ReactDOM.Style.make(
+                        ~fontSize="0.8rem",
+                        ~opacity="0.8",
+                        ~marginTop="0.25rem",
+                        (),
+                      )}
+                    >
                       {desc->React.string}
                     </div>
                   </button>
                 </li>
-              })->React.array
+              })
+              ->React.array
             }
           </ul>
         </nav>
@@ -241,11 +279,18 @@ let renderParagonStack = (model: model, isDark: bool) => {
       <article
         role="article"
         ariaLabel="Current stack configuration"
-        style={ReactDOM.Style.make(~flex="1", ~paddingLeft="2rem", ())}>
+        style={ReactDOM.Style.make(~flex="1", ~paddingLeft="2rem", ())}
+      >
         <h2
-          style={ReactDOM.Style.make(~fontSize="1.3rem", ~fontWeight="600", ~marginBottom="1rem", ())}
-          id="stack-title">
-          {"Stack Configuration" ->React.string}
+          style={ReactDOM.Style.make(
+            ~fontSize="1.3rem",
+            ~fontWeight="600",
+            ~marginBottom="1rem",
+            (),
+          )}
+          id="stack-title"
+        >
+          {"Stack Configuration"->React.string}
         </h2>
 
         {Array.length(model.components) === 0
@@ -255,24 +300,23 @@ let renderParagonStack = (model: model, isDark: bool) => {
               style={ReactDOM.Style.make(
                 ~padding="3rem",
                 ~textAlign="center",
-                ~border=isDark ? "2px dashed " ++ Colors.darkBorder : "2px dashed " ++ Colors.lightBorder,
+                ~border=isDark
+                  ? "2px dashed " ++ Colors.darkBorder
+                  : "2px dashed " ++ Colors.lightBorder,
                 ~borderRadius="8px",
                 ~color=isDark ? Colors.darkSecondary : Colors.lightSecondary,
                 (),
-              )}>
+              )}
+            >
               <p style={ReactDOM.Style.make(~fontSize="1.1rem", ~margin="0", ())}>
-                {"Drag components from the palette to build your stack" ->React.string}
+                {"Drag components from the palette to build your stack"->React.string}
               </p>
             </div>
-          : <div
-              role="region"
-              ariaLabel="Stack components"
-              ariaDescribedby="stack-title">
+          : <div role="region" ariaLabel="Stack components" ariaDescribedby="stack-title">
               {model.components
-              -> Array.map(comp => renderStackBlock(comp, isDark))
-              -> React.array}
-            </div>
-        }
+              ->Array.map(comp => renderStackBlock(comp, isDark))
+              ->React.array}
+            </div>}
       </article>
     </div>
   </main>

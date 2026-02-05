@@ -19,7 +19,8 @@ let spinner = (~size="default", ~color="#0052CC", ~label="Loading...") => {
       ~justifyContent="center",
       ~padding="2rem",
       (),
-    )}>
+    )}
+  >
     <div
       style={ReactDOM.Style.make(
         ~width=spinnerSize,
@@ -39,7 +40,8 @@ let spinner = (~size="default", ~color="#0052CC", ~label="Loading...") => {
         ~height="1px",
         ~overflow="hidden",
         (),
-      )}>
+      )}
+    >
       {label->React.string}
     </span>
   </div>
@@ -71,7 +73,8 @@ let skeletonListItem = () => {
       ~border="1px solid #E2E8F0",
       ~borderRadius="8px",
       (),
-    )}>
+    )}
+  >
     {skeleton(~width="60%", ~height="16px", ~marginBottom="0.75rem")}
     {skeleton(~width="100%", ~height="14px", ~marginBottom="0.5rem")}
     {skeleton(~width="80%", ~height="14px", ~marginBottom="0")}
@@ -98,7 +101,8 @@ let overlay = (~message="Loading...", ~isDark=false) => {
       ~color=isDark ? "#FFFFFF" : "#000000",
       ~zIndex="9999",
       (),
-    )}>
+    )}
+  >
     {spinner(~size="large", ~color=isDark ? "#66B2FF" : "#0052CC", ~label=message)}
     <p style={ReactDOM.Style.make(~marginTop="1rem", ~fontSize="1.1rem", ~fontWeight="600", ())}>
       {message->React.string}

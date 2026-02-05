@@ -24,9 +24,7 @@ type gapToSecuritySync = {
 }
 
 // Calculate security impact from port configuration
-let calculatePortSecurityImpact = (
-  ports: array<PortConfigPanel.port>,
-): portSecurityImpact => {
+let calculatePortSecurityImpact = (ports: array<PortConfigPanel.port>): portSecurityImpact => {
   let openPorts = Array.reduce(ports, 0, (acc, p) =>
     p.state == PortConfigPanel.Open ? acc + 1 : acc
   )
@@ -77,17 +75,14 @@ let syncSecurityToGaps = (
 }
 
 // Sync gap fixes back to security metrics
-let syncGapFixesToSecurity = (
-  gapsBeforeFix: int,
-  gapsAfterFix: int,
-): gapToSecuritySync => {
+let syncGapFixesToSecurity = (gapsBeforeFix: int, gapsAfterFix: int): gapToSecuritySync => {
   let gapsFixed = gapsBeforeFix - gapsAfterFix
 
   // Each gap fixed: +5 security points
   let securityImprovement = gapsFixed * 5
 
   // Compliance improves with gap fixes
-  let newComplianceScore = min(100, 70 + (gapsFixed * 3))
+  let newComplianceScore = min(100, 70 + gapsFixed * 3)
 
   {
     gapsFixed,
@@ -145,14 +140,16 @@ let generatePortWarnings = (ports: array<PortConfigPanel.port>): array<string> =
   if Array.length(openPorts) > 5 {
     Array.push(
       warnings,
-      `HIGH: ${Int.toString(Array.length(openPorts))} ports open - consider reducing attack surface`,
+      `HIGH: ${Int.toString(
+          Array.length(openPorts),
+        )} ports open - consider reducing attack surface`,
     )
   }
 
   // Check for ephemeral ports nearing expiration
   Array.forEach(ports, port => {
     switch port.state {
-    | PortConfigPanel.Ephemeral(duration) when duration < 60 =>
+    | PortConfigPanel.Ephemeral(duration) if duration < 60 =>
       Array.push(
         warnings,
         `INFO: Port ${Int.toString(port.number)} ephemeral pinhole expires in ${Int.toString(
