@@ -4071,6 +4071,37 @@ alignment-checks:
                 </div>
 
                 <div class="property-group">
+                    <div class="property-label">Base Image</div>
+                    <select class="property-select" onchange="updateNodeProperty('${nodeId}', 'baseImage', this.value)">
+                        <option value="">Select base image...</option>
+                        <optgroup label="🏔️ Lago Grey (Minimal)">
+                            <option value="lago-grey:2.1" ${nodeData.baseImage === 'lago-grey:2.1' ? 'selected' : ''}>Lago Grey 2.1 (~2.1MB)</option>
+                            <option value="lago-grey:latest" ${nodeData.baseImage === 'lago-grey:latest' ? 'selected' : ''}>Lago Grey Latest</option>
+                        </optgroup>
+                        <optgroup label="📦 Distroless">
+                            <option value="gcr.io/distroless/static" ${nodeData.baseImage === 'gcr.io/distroless/static' ? 'selected' : ''}>Distroless Static (~2MB)</option>
+                            <option value="gcr.io/distroless/base" ${nodeData.baseImage === 'gcr.io/distroless/base' ? 'selected' : ''}>Distroless Base (~20MB)</option>
+                        </optgroup>
+                        <optgroup label="🏔️ Alpine">
+                            <option value="alpine:3.19" ${nodeData.baseImage === 'alpine:3.19' ? 'selected' : ''}>Alpine 3.19 (~7MB)</option>
+                            <option value="alpine:latest" ${nodeData.baseImage === 'alpine:latest' ? 'selected' : ''}>Alpine Latest</option>
+                        </optgroup>
+                        <optgroup label="🐧 Ubuntu">
+                            <option value="ubuntu:jammy" ${nodeData.baseImage === 'ubuntu:jammy' ? 'selected' : ''}>Ubuntu 22.04 Jammy (~77MB)</option>
+                            <option value="ubuntu:noble" ${nodeData.baseImage === 'ubuntu:noble' ? 'selected' : ''}>Ubuntu 24.04 Noble</option>
+                        </optgroup>
+                        <optgroup label="⚙️ Language-Specific">
+                            <option value="node:20-alpine" ${nodeData.baseImage === 'node:20-alpine' ? 'selected' : ''}>Node 20 Alpine</option>
+                            <option value="python:3.12-alpine" ${nodeData.baseImage === 'python:3.12-alpine' ? 'selected' : ''}>Python 3.12 Alpine</option>
+                            <option value="rust:alpine" ${nodeData.baseImage === 'rust:alpine' ? 'selected' : ''}>Rust Alpine</option>
+                        </optgroup>
+                    </select>
+                    <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">
+                        ${nodeData.baseImage ? '✓ Image selected' : '⚠️ No base image selected'}
+                    </div>
+                </div>
+
+                <div class="property-group">
                     <div class="property-label">Container Firewall</div>
                     <div class="property-toggle" onclick="toggleProperty('${nodeId}', 'firewall')">
                         <span>Enable Firewall</span>
@@ -4080,7 +4111,8 @@ alignment-checks:
 
                 <div class="property-group">
                     <div class="property-label">Ports</div>
-                    <input type="text" class="property-input" value="${nodeData.ports}" placeholder="8080, 443" onchange="updateNodeProperty('${nodeId}', 'ports', this.value)">
+                    <input type="text" class="property-input" value="${nodeData.ports}" placeholder="8080" onchange="updateNodeProperty('${nodeId}', 'ports', this.value)" onblur="checkPortConflict('${nodeId}')">
+                    <div id="port-conflict-${nodeId}" style="font-size: 11px; margin-top: 4px; display: none;"></div>
                 </div>
 
                 <div class="property-group">
@@ -4090,21 +4122,35 @@ alignment-checks:
                         <option value="UDP" ${nodeData.protocol === 'UDP' ? 'selected' : ''}>UDP</option>
                         <option value="HTTP" ${nodeData.protocol === 'HTTP' ? 'selected' : ''}>HTTP</option>
                         <option value="HTTPS" ${nodeData.protocol === 'HTTPS' ? 'selected' : ''}>HTTPS</option>
+                        <option value="gRPC" ${nodeData.protocol === 'gRPC' ? 'selected' : ''}>gRPC</option>
+                        <option value="WebSocket" ${nodeData.protocol === 'WebSocket' ? 'selected' : ''}>WebSocket</option>
                     </select>
                 </div>
 
                 <div class="property-group">
-                    <div class="property-label">CPU Limit</div>
-                    <input type="text" class="property-input" value="${nodeData.resources.cpu}" placeholder="1" onchange="updateNodeResource('${nodeId}', 'cpu', this.value)">
+                    <div class="property-label">CPU Limit: <span id="cpu-value-${nodeId}">${nodeData.resources.cpu || '1.0'}</span> cores</div>
+                    <input type="range" min="0.1" max="4.0" step="0.1" value="${nodeData.resources.cpu || '1.0'}"
+                           class="property-slider"
+                           oninput="updateNodeResourceSlider('${nodeId}', 'cpu', this.value)"
+                           style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8892a6; margin-top: 4px;">
+                        <span>0.1</span><span>2.0</span><span>4.0</span>
+                    </div>
                 </div>
 
                 <div class="property-group">
-                    <div class="property-label">Memory Limit</div>
-                    <input type="text" class="property-input" value="${nodeData.resources.memory}" placeholder="512Mi" onchange="updateNodeResource('${nodeId}', 'memory', this.value)">
+                    <div class="property-label">Memory Limit: <span id="memory-value-${nodeId}">${nodeData.resources.memory || '512M'}</span></div>
+                    <input type="range" min="128" max="8192" step="128" value="${parseInt(nodeData.resources.memory) || 512}"
+                           class="property-slider"
+                           oninput="updateNodeResourceSlider('${nodeId}', 'memory', this.value)"
+                           style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8892a6; margin-top: 4px;">
+                        <span>128M</span><span>2G</span><span>8G</span>
+                    </div>
                 </div>
 
                 <button class="tour-button" style="width: 100%; margin-top: 20px;" onclick="navigateToStackFromPanel('${nodeId}')">
-                    📚 Design Stack →
+                    📚 View in Stack →
                 </button>
             `;
         }
@@ -4128,6 +4174,49 @@ alignment-checks:
         function updateNodeResource(nodeId, resource, value) {
             const nodeData = nodes.find(n => n.id === nodeId);
             nodeData.resources[resource] = value;
+        }
+
+        function updateNodeResourceSlider(nodeId, resource, value) {
+            const nodeData = nodes.find(n => n.id === nodeId);
+
+            if (resource === 'memory') {
+                // Convert to human-readable format
+                const memValue = parseInt(value);
+                const memDisplay = memValue >= 1024 ? `${(memValue / 1024).toFixed(1)}G` : `${memValue}M`;
+                nodeData.resources.memory = memDisplay;
+                document.getElementById(`memory-value-${nodeId}`).textContent = memDisplay;
+            } else if (resource === 'cpu') {
+                nodeData.resources.cpu = parseFloat(value).toFixed(1);
+                document.getElementById(`cpu-value-${nodeId}`).textContent = parseFloat(value).toFixed(1);
+            }
+
+            notifyTopologyChange();
+        }
+
+        function checkPortConflict(nodeId) {
+            const nodeData = nodes.find(n => n.id === nodeId);
+            const port = nodeData.ports;
+            const conflictEl = document.getElementById(`port-conflict-${nodeId}`);
+
+            if (!port) {
+                conflictEl.style.display = 'none';
+                return;
+            }
+
+            // Check for conflicts with other nodes
+            const conflicts = nodes.filter(n =>
+                n.id !== nodeId && n.ports === port
+            );
+
+            if (conflicts.length > 0) {
+                conflictEl.style.display = 'block';
+                conflictEl.style.color = '#f87171';
+                conflictEl.innerHTML = `⚠️ Port conflict with: ${conflicts.map(n => n.name).join(', ')}`;
+            } else {
+                conflictEl.style.display = 'block';
+                conflictEl.style.color = '#4ade80';
+                conflictEl.innerHTML = `✓ Port ${port} available`;
+            }
         }
 
         function navigateToStackFromPanel(nodeId) {
