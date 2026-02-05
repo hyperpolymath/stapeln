@@ -6,10 +6,14 @@ open Msg
 open Update
 
 type page =
-  | NetworkView    // Cisco-style topology (CiscoView.res)
-  | StackView      // Paragon-style vertical (View.res)
-  | LagoGreyView   // Lago Grey image designer
-  | SettingsView   // Settings and preferences
+  | NetworkView       // Cisco-style topology (CiscoView.res)
+  | StackView         // Paragon-style vertical (View.res)
+  | LagoGreyView      // Lago Grey image designer
+  | PortConfigView    // Port configuration with ephemeral pinholes
+  | SecurityView      // Security inspector with attack surface analysis
+  | GapAnalysisView   // Gap analysis with automated remediation
+  | SimulationView    // Packet animation simulation
+  | SettingsView      // Settings and preferences
 
 type appState = {
   currentPage: page,
@@ -27,9 +31,9 @@ let initialAppState = {
 let make = () => {
   let (state, setState) = React.useState(() => initialAppState)
 
-  // Dispatch function for TEA messages
+  // Dispatch function for messages
   let dispatch = (msg: msg) => {
-    let (newModel, _effect) = update(state.model, msg)
+    let newModel = update(state.model, msg)
     setState(prev => {...prev, model: newModel})
   }
 
@@ -42,17 +46,37 @@ let make = () => {
       <button
         className={state.currentPage == NetworkView ? "tab active" : "tab"}
         onClick={_ => switchPage(NetworkView)}>
-        {"🌐 Network View"->React.string}
+        {"🌐 Network"->React.string}
       </button>
       <button
         className={state.currentPage == StackView ? "tab active" : "tab"}
         onClick={_ => switchPage(StackView)}>
-        {"📚 Stack View"->React.string}
+        {"📚 Stack"->React.string}
       </button>
       <button
         className={state.currentPage == LagoGreyView ? "tab active" : "tab"}
         onClick={_ => switchPage(LagoGreyView)}>
-        {"🏔️ Lago Grey Designer"->React.string}
+        {"🏔️ Lago Grey"->React.string}
+      </button>
+      <button
+        className={state.currentPage == PortConfigView ? "tab active" : "tab"}
+        onClick={_ => switchPage(PortConfigView)}>
+        {"🔌 Ports"->React.string}
+      </button>
+      <button
+        className={state.currentPage == SecurityView ? "tab active" : "tab"}
+        onClick={_ => switchPage(SecurityView)}>
+        {"🛡️ Security"->React.string}
+      </button>
+      <button
+        className={state.currentPage == GapAnalysisView ? "tab active" : "tab"}
+        onClick={_ => switchPage(GapAnalysisView)}>
+        {"🔍 Gaps"->React.string}
+      </button>
+      <button
+        className={state.currentPage == SimulationView ? "tab active" : "tab"}
+        onClick={_ => switchPage(SimulationView)}>
+        {"🎮 Simulation"->React.string}
       </button>
       <button
         className={state.currentPage == SettingsView ? "tab active" : "tab"}
@@ -81,6 +105,10 @@ let make = () => {
       | NetworkView => CiscoView.view(state.model, state.isDark, dispatch)
       | StackView => View.view(state.model)
       | LagoGreyView => <LagoGreyImageDesigner />
+      | PortConfigView => <PortConfigPanel />
+      | SecurityView => <SecurityInspector />
+      | GapAnalysisView => <GapAnalysis />
+      | SimulationView => <SimulationMode />
       | SettingsView =>
           <div className="page settings-page">
             <h1>{"Settings"->React.string}</h1>
