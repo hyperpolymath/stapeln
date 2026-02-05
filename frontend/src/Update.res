@@ -185,21 +185,44 @@ let update = (model: model, msg: msg): (model, effect<msg>) => {
     }
 
   // Export
+  | ExportDesignToJson(description) => {
+      Export.exportDesignToJson(model, description)
+      (model, Tea.Cmd.none)
+    }
+
   | ExportToSelurCompose => {
-      // TODO: Generate compose.toml and download
-      Js.Console.log("Exporting to selur-compose format...")
+      Export.exportToSelurCompose(model)
       (model, Tea.Cmd.none)
     }
 
   | ExportToDockerCompose => {
-      // TODO: Generate docker-compose.yml and download
-      Js.Console.log("Exporting to docker-compose format...")
+      Export.exportToDockerCompose(model)
       (model, Tea.Cmd.none)
     }
 
   | ExportToPodmanCompose => {
-      // TODO: Generate podman-compose.yml and download
-      Js.Console.log("Exporting to podman-compose format...")
+      Export.exportToPodmanCompose(model)
+      (model, Tea.Cmd.none)
+    }
+
+  // Import
+  | TriggerImportDesign => {
+      // Trigger file picker
+      Import.triggerImport(
+        importedModel => ImportDesignSuccess(importedModel),
+        error => ImportDesignError(error),
+      )
+      (model, Tea.Cmd.none)
+    }
+
+  | ImportDesignSuccess(importedModel) => {
+      Js.Console.log("Design imported successfully")
+      (importedModel, Tea.Cmd.none)
+    }
+
+  | ImportDesignError(error) => {
+      Js.Console.error2("Import failed:", error)
+      // TODO: Show error message to user
       (model, Tea.Cmd.none)
     }
 

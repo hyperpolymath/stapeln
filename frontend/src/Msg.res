@@ -32,9 +32,15 @@ type msg =
   | ValidationResult(validationResult)
 
   // Export
+  | ExportDesignToJson(string) // description
   | ExportToSelurCompose
   | ExportToDockerCompose
   | ExportToPodmanCompose
+
+  // Import
+  | TriggerImportDesign
+  | ImportDesignSuccess(model)
+  | ImportDesignError(string)
 
   // API communication
   | SaveStack

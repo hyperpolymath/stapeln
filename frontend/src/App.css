@@ -11,10 +11,37 @@
 
 .nav-tabs {
   display: flex;
+  align-items: center;
   background: #1a1a1a;
   border-bottom: 2px solid #333;
   padding: 0;
   margin: 0;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+}
+
+.action-btn {
+  padding: 0.5rem 1rem;
+  background: #2a3f5f;
+  border: 1px solid #42a5f5;
+  border-radius: 4px;
+  color: #64b5f6;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: #42a5f5;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(66, 165, 245, 0.3);
 }
 
 .tab {

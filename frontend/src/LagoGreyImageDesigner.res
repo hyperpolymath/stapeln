@@ -323,17 +323,56 @@ let make = () => {
         <div className="section">
           <h2> {"Export"->React.string} </h2>
           <div className="export-buttons">
-            <button className="export-btn" disabled=true>
+            <button
+              className="export-btn"
+              onClick={_ => {
+                let exportState: LagoGreyExport.lagoGreyState = {
+                  baseImage: switch state.baseImage {
+                  | Distroless => LagoGreyExport.Distroless
+                  | Alpine => LagoGreyExport.Alpine
+                  | Scratch => LagoGreyExport.Scratch
+                  },
+                  formations: Array.map(state.formations, cf => cf.formation),
+                  totalSize: state.totalSize,
+                }
+                LagoGreyExport.exportDockerfile(exportState)
+              }}>
               {"📄 Dockerfile"->React.string}
             </button>
-            <button className="export-btn" disabled=true>
-              {"📦 .zpkg Package"->React.string}
+            <button
+              className="export-btn"
+              onClick={_ => {
+                let exportState: LagoGreyExport.lagoGreyState = {
+                  baseImage: switch state.baseImage {
+                  | Distroless => LagoGreyExport.Distroless
+                  | Alpine => LagoGreyExport.Alpine
+                  | Scratch => LagoGreyExport.Scratch
+                  },
+                  formations: Array.map(state.formations, cf => cf.formation),
+                  totalSize: state.totalSize,
+                }
+                LagoGreyExport.exportCompletePackage(exportState)
+              }}>
+              {"📦 Complete Package"->React.string}
             </button>
-            <button className="export-btn" disabled=true>
-              {"⚙️ Nickel Config"->React.string}
+            <button
+              className="export-btn"
+              onClick={_ => {
+                let exportState: LagoGreyExport.lagoGreyState = {
+                  baseImage: switch state.baseImage {
+                  | Distroless => LagoGreyExport.Distroless
+                  | Alpine => LagoGreyExport.Alpine
+                  | Scratch => LagoGreyExport.Scratch
+                  },
+                  formations: Array.map(state.formations, cf => cf.formation),
+                  totalSize: state.totalSize,
+                }
+                LagoGreyExport.exportManifest(exportState)
+              }}>
+              {"📋 Manifest JSON"->React.string}
             </button>
           </div>
-          <p className="export-note"> {"(Export coming soon)"->React.string} </p>
+          <p className="export-note"> {"Click to download. Run 'podman build' to create image."->React.string} </p>
         </div>
 
         <div className="section">

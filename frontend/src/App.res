@@ -59,6 +59,21 @@ let make = () => {
         onClick={_ => switchPage(SettingsView)}>
         {"⚙️ Settings"->React.string}
       </button>
+
+      <div className="nav-actions">
+        <button
+          className="action-btn"
+          onClick={_ => dispatch(TriggerImportDesign)}
+          title="Import design from JSON file">
+          {"📂 Import"->React.string}
+        </button>
+        <button
+          className="action-btn"
+          onClick={_ => dispatch(ExportDesignToJson("Stack design"))}
+          title="Export design to JSON file">
+          {"💾 Export"->React.string}
+        </button>
+      </div>
     </nav>
 
     <div className="content">
