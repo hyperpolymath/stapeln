@@ -13,7 +13,7 @@ pub const MountResult = enum(c_int) {
 
 /// C-compatible function for mounting to a DOM element
 /// Called from Idris2 via FFI
-export fn mount_to_element(element_id: [*:0]const u8) callconv(.C) c_int {
+export fn mount_to_element(element_id: [*:0]const u8) c_int {
     // Validate element ID
     const id_len = std.mem.len(element_id);
     if (id_len == 0) {
@@ -32,7 +32,7 @@ export fn mount_to_element(element_id: [*:0]const u8) callconv(.C) c_int {
 }
 
 /// Unmount function with memory cleanup
-export fn unmount_from_element(element_id: [*:0]const u8) callconv(.C) c_int {
+export fn unmount_from_element(element_id: [*:0]const u8) c_int {
     const id_len = std.mem.len(element_id);
     if (id_len == 0) {
         return @intFromEnum(MountResult.InvalidId);
@@ -43,7 +43,7 @@ export fn unmount_from_element(element_id: [*:0]const u8) callconv(.C) c_int {
 }
 
 /// Check if element exists before mounting (for proof requirements)
-export fn check_element_exists(element_id: [*:0]const u8) callconv(.C) bool {
+export fn check_element_exists(element_id: [*:0]const u8) bool {
     const id_len = std.mem.len(element_id);
     if (id_len == 0) {
         return false;
