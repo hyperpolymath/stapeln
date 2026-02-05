@@ -1,0 +1,3716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stapeln - Container Stack Designer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0e1a;
+            color: #e0e6ed;
+            overflow: hidden;
+        }
+        #app { display: flex; height: 100vh; flex-direction: column; }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            gap: 2px;
+            background: #151922;
+            padding: 8px 16px;
+            border-bottom: 1px solid #2a3142;
+        }
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #8892a6;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.2s;
+        }
+        .tab:hover { background: #1e2431; color: #b0b8c4; }
+        .tab.active { background: #0a0e1a; color: #4a9eff; border-bottom: 2px solid #4a9eff; }
+
+        /* Quick Actions Bar at Top */
+        .quick-actions-bar {
+            display: flex;
+            gap: 12px;
+            padding: 16px 32px;
+            background: rgba(30, 36, 49, 0.5);
+            border-bottom: 1px solid #2a3142;
+        }
+        .quick-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-btn.primary {
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+        }
+        .quick-btn.secondary {
+            background: #1e2431;
+            color: #b0b8c4;
+            border: 1px solid #2a3142;
+        }
+        .quick-btn:hover { transform: translateY(-2px); }
+
+        /* Content Area */
+        .content { flex: 1; display: flex; overflow: hidden; }
+        .page { display: none; width: 100%; flex: 1; flex-direction: column; }
+        .page.active { display: flex; }
+        .canvas { flex: 1; padding: 32px; overflow: auto; }
+
+        /* Dashboard Cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .dashboard-card {
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 1px solid #2a3142;
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            border-color: #4a9eff;
+            box-shadow: 0 8px 32px rgba(74, 158, 255, 0.2);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .card-icon { font-size: 40px; }
+        .card-progress {
+            font-size: 24px;
+            font-weight: 700;
+            color: #4a9eff;
+        }
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .card-desc {
+            color: #8892a6;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .progress-bar {
+            height: 6px;
+            background: #0f1319;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a9eff, #7b6cff);
+            transition: width 0.3s;
+        }
+        .card-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .tag {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .tag.ready { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .tag.wip { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
+        .tag.planned { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
+
+        /* Welcome Section */
+        .welcome-section {
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 1px solid #4a9eff;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .welcome-section h1 {
+            font-size: 32px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome-section p {
+            color: #b0b8c4;
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+        .tour-button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tour-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.4);
+        }
+
+        /* Topology View Styles */
+        .topology-container {
+            display: flex;
+            height: 100%;
+            gap: 0;
+        }
+
+        /* Component Palette (Left Sidebar) */
+        .component-palette {
+            width: 280px;
+            background: #151922;
+            border-right: 1px solid #2a3142;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .palette-section {
+            margin-bottom: 24px;
+        }
+        .palette-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #8892a6;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+        .palette-item {
+            padding: 12px;
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: grab;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .palette-item:hover {
+            border-color: #4a9eff;
+            transform: translateX(4px);
+        }
+        .palette-item:active {
+            cursor: grabbing;
+        }
+        .palette-item-icon {
+            font-size: 24px;
+        }
+        .palette-item-info {
+            flex: 1;
+        }
+        .palette-item-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .palette-item-desc {
+            font-size: 11px;
+            color: #8892a6;
+        }
+
+        /* Topology Canvas */
+        .topology-canvas {
+            flex: 1;
+            background: radial-gradient(circle at 20% 20%, #0f1319 0%, #0a0e1a 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .topology-canvas.drag-over {
+            background: radial-gradient(circle at 20% 20%, #1a2332 0%, #0f1520 100%);
+        }
+
+        /* Dropped Nodes on Canvas */
+        .node {
+            position: absolute;
+            width: 120px;
+            padding: 16px;
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 2px solid #2a3142;
+            border-radius: 12px;
+            cursor: move;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .node:hover {
+            border-color: #4a9eff;
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.3);
+            z-index: 10;
+        }
+        .node.selected {
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+            z-index: 11;
+        }
+        .node-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+        .node-name {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .node-type {
+            font-size: 10px;
+            color: #8892a6;
+        }
+
+        /* Properties Panel (Right Sidebar) */
+        .properties-panel {
+            width: 320px;
+            background: #151922;
+            border-left: 1px solid #2a3142;
+            padding: 20px;
+            overflow-y: auto;
+            display: none;
+        }
+        .properties-panel.active {
+            display: block;
+        }
+        .properties-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #4a9eff;
+        }
+        .property-group {
+            margin-bottom: 20px;
+        }
+        .property-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #8892a6;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        .property-input {
+            width: 100%;
+            padding: 10px;
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 6px;
+            color: #e0e6ed;
+            font-size: 13px;
+        }
+        .property-input:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+        .property-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .property-toggle:hover {
+            border-color: #4a9eff;
+        }
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #2a3142;
+            border-radius: 12px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .toggle-switch.active {
+            background: #4a9eff;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s;
+        }
+        .toggle-switch.active::after {
+            left: 23px;
+        }
+        .property-select {
+            width: 100%;
+            padding: 10px;
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 6px;
+            color: #e0e6ed;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* Image Selection Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 26, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #4a9eff;
+        }
+        .image-option {
+            padding: 16px;
+            background: #0a0e1a;
+            border: 2px solid #2a3142;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .image-option:hover {
+            border-color: #4a9eff;
+            transform: translateX(4px);
+        }
+        .image-option-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .image-option-icon {
+            font-size: 32px;
+        }
+        .image-option-name {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .image-option-size {
+            margin-left: auto;
+            font-size: 14px;
+            color: #4a9eff;
+            font-weight: 600;
+        }
+        .image-option-desc {
+            font-size: 13px;
+            color: #8892a6;
+            line-height: 1.6;
+        }
+        .modal-close {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #2a3142;
+            border: none;
+            border-radius: 8px;
+            color: #b0b8c4;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .modal-close:hover {
+            background: #343d52;
+        }
+
+        /* Sub-tabs for Scripts & Schemata page */
+        .sub-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 16px 32px;
+            background: #151922;
+            border-bottom: 1px solid #2a3142;
+        }
+        .sub-tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #8892a6;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .sub-tab:hover {
+            background: #1e2431;
+            color: #b0b8c4;
+        }
+        .sub-tab.active {
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+        }
+
+        /* Code editor area */
+        .code-editor-container {
+            padding: 32px;
+            flex: 1;
+            overflow: auto;
+        }
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .editor-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #4a9eff;
+        }
+        .editor-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .editor-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .editor-btn.primary {
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+        }
+        .editor-btn.secondary {
+            background: #1e2431;
+            color: #b0b8c4;
+            border: 1px solid #2a3142;
+        }
+        .editor-btn:hover {
+            transform: translateY(-1px);
+        }
+        .code-editor {
+            width: 100%;
+            min-height: 500px;
+            padding: 20px;
+            background: #0f1319;
+            border: 1px solid #2a3142;
+            border-radius: 12px;
+            color: #e0e6ed;
+            font-family: 'Fira Code', 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+        .code-editor:focus {
+            outline: none;
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+        }
+        .editor-info {
+            margin-top: 16px;
+            padding: 16px;
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #8892a6;
+            line-height: 1.8;
+        }
+        .editor-info strong {
+            color: #4a9eff;
+        }
+        .sub-tab-content {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+        }
+        .sub-tab-content.active {
+            display: flex;
+        }
+
+        /* Help Button */
+        .help-button {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+        .help-button:hover { transform: scale(1.1); }
+
+        /* Simplified styles for other pages */
+        .simple-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .simple-content h2 {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+        .simple-content p {
+            color: #8892a6;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        .component-context {
+            margin-top: 32px;
+            padding: 24px;
+            background: #1e2431;
+            border: 1px solid #4a9eff;
+            border-radius: 12px;
+            text-align: left;
+        }
+        .component-context h3 {
+            color: #4a9eff;
+            margin-bottom: 16px;
+        }
+        .component-context .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a3142;
+        }
+        .component-context .info-label {
+            color: #8892a6;
+        }
+        .component-context .info-value {
+            font-weight: 600;
+        }
+
+        /* Validation Status Indicators */
+        .validation-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 24px;
+            width: 320px;
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 1px solid #2a3142;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            z-index: 999;
+            display: none;
+        }
+        .validation-panel.active {
+            display: block;
+        }
+        .validation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .validation-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #4a9eff;
+        }
+        .validation-close {
+            background: transparent;
+            border: none;
+            color: #8892a6;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+        }
+        .validation-close:hover {
+            color: #e0e6ed;
+        }
+        .validation-item {
+            padding: 12px;
+            background: #0a0e1a;
+            border-left: 3px solid #2a3142;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .validation-item.pass {
+            border-left-color: #4caf50;
+        }
+        .validation-item.fail {
+            border-left-color: #f44336;
+        }
+        .validation-item.warn {
+            border-left-color: #ff9800;
+        }
+        .validation-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .validation-item-name {
+            font-weight: 600;
+        }
+        .validation-item-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+        .validation-item-status.pass {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        .validation-item-status.fail {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        .validation-item-status.warn {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+        .validation-item-desc {
+            color: #8892a6;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .validation-summary {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #0a0e1a;
+            border-radius: 8px;
+        }
+        .validation-stat {
+            flex: 1;
+            text-align: center;
+        }
+        .validation-stat-number {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .validation-stat-number.pass {
+            color: #4caf50;
+        }
+        .validation-stat-number.fail {
+            color: #f44336;
+        }
+        .validation-stat-number.warn {
+            color: #ff9800;
+        }
+        .validation-stat-label {
+            font-size: 11px;
+            color: #8892a6;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .node.validation-fail {
+            border-color: #f44336;
+            box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
+        }
+        .node.validation-warn {
+            border-color: #ff9800;
+            box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
+        }
+        .node.validation-pass {
+            border-color: #4caf50;
+        }
+
+        /* Image Comparison Modal */
+        .comparison-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+        .comparison-modal.active {
+            display: flex;
+        }
+        .comparison-content {
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 1400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .comparison-close-btn {
+            background: transparent;
+            border: none;
+            color: #8892a6;
+            font-size: 32px;
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            line-height: 1;
+        }
+        .comparison-close-btn:hover {
+            color: #e0e6ed;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #2a3142;
+        }
+        .comparison-table th {
+            background: #0a0e1a;
+            font-weight: 700;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: #4a9eff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .comparison-table td {
+            font-size: 14px;
+            vertical-align: top;
+        }
+        .comparison-table tr:hover {
+            background: #252d3d;
+        }
+        .image-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .image-icon {
+            font-size: 32px;
+        }
+        .size-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .size-tiny { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .size-small { background: rgba(139, 195, 74, 0.2); color: #8bc34a; }
+        .size-medium { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
+        .size-large { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 8px 0;
+        }
+        .feature-list li {
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .feature-yes { color: #4caf50; }
+        .feature-no { color: #f44336; }
+        .feature-partial { color: #ff9800; }
+        .select-image-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+        .select-image-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
+        }
+
+        /* Template Library Modal */
+        .template-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+        .template-modal.active {
+            display: flex;
+        }
+        .template-gallery {
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 1200px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-top: 30px;
+        }
+        .template-card {
+            background: linear-gradient(135deg, #0a0e1a 0%, #151922 100%);
+            border: 2px solid #2a3142;
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .template-card:hover {
+            transform: translateY(-4px);
+            border-color: #4a9eff;
+            box-shadow: 0 8px 32px rgba(74, 158, 255, 0.3);
+        }
+        .template-card-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .template-card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #e0e6ed;
+        }
+        .template-card-desc {
+            font-size: 14px;
+            color: #8892a6;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .template-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .badge-beginner { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .badge-intermediate { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
+        .badge-advanced { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+        .template-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #2a3142;
+            font-size: 13px;
+            color: #8892a6;
+        }
+        .template-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .template-preview {
+            margin: 16px 0;
+            padding: 16px;
+            background: #0a0e1a;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.8;
+            color: #4a9eff;
+        }
+        .load-template-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+        .load-template-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
+        }
+
+        /* Tutorial Overlay System */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 26, 0.95);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .tutorial-overlay.active {
+            display: flex;
+        }
+        .tutorial-box {
+            max-width: 600px;
+            background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%);
+            border: 2px solid #4a9eff;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(74, 158, 255, 0.4);
+        }
+        .tutorial-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tutorial-text {
+            font-size: 18px;
+            line-height: 1.8;
+            color: #b0b8c4;
+            margin-bottom: 30px;
+        }
+        .tutorial-step {
+            font-size: 14px;
+            color: #8892a6;
+            margin-bottom: 20px;
+        }
+        .tutorial-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+        .tutorial-btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tutorial-btn.primary {
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+        }
+        .tutorial-btn.secondary {
+            background: #2a3142;
+            color: #b0b8c4;
+            border: 1px solid #4a9eff;
+        }
+        .tutorial-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.4);
+        }
+        .tutorial-highlight {
+            position: absolute;
+            border: 3px solid #4a9eff;
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 9999;
+            box-shadow: 0 0 0 4px rgba(74, 158, 255, 0.3),
+                        0 0 20px rgba(74, 158, 255, 0.6);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(74, 158, 255, 0.3), 0 0 20px rgba(74, 158, 255, 0.6); }
+            50% { box-shadow: 0 0 0 8px rgba(74, 158, 255, 0.2), 0 0 30px rgba(74, 158, 255, 0.8); }
+        }
+        .tutorial-pointer {
+            position: absolute;
+            font-size: 48px;
+            z-index: 9998;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div style="flex: 1; display: flex; flex-direction: column;">
+            <!-- Navigation -->
+            <div class="nav-tabs">
+                <button class="tab active" onclick="showPage('dashboard')">🏠 Dashboard</button>
+                <button class="tab" onclick="showPage('topology')">🌐 Topology View</button>
+                <button class="tab" onclick="showPage('stack')">📚 Stack View</button>
+                <button class="tab" onclick="showPage('designer')">🎨 Image Designer</button>
+                <button class="tab" onclick="showPage('scripts')">📜 Scripts & Schemata</button>
+                <button class="tab" onclick="showPage('contractiles')">📋 Contractiles</button>
+                <button class="tab" onclick="showPage('settings')">⚙️ Settings</button>
+            </div>
+
+            <!-- Quick Actions Bar -->
+            <div class="quick-actions-bar">
+                <button class="quick-btn primary" onclick="deployStack()">🚀 Deploy Stack</button>
+                <button class="quick-btn secondary" onclick="toggleValidation()">✓ Validate Design</button>
+                <button class="quick-btn secondary">🔍 Simulate</button>
+                <button class="quick-btn secondary">🔧 Auto-Fix Issues</button>
+                <button class="quick-btn secondary">📊 Export Report</button>
+                <div style="flex: 1"></div>
+                <button class="quick-btn secondary">⚡ Quick Tour</button>
+            </div>
+
+            <!-- Pages -->
+            <div class="content">
+                <!-- Dashboard (First Page - Default) -->
+                <div id="dashboard" class="page active">
+                    <div class="canvas">
+                        <div class="welcome-section">
+                            <h1>🏔️ Welcome to stapeln</h1>
+                            <p>
+                                stapeln is a visual container stack designer that makes containerization accessible,
+                                secure, and verifiable. Build production-ready stacks with real-time security analysis,
+                                supply chain verification, and formal guarantees.
+                            </p>
+                            <p>
+                                <strong>For people who hate containers.</strong> No YAML. No CLI commands. Just drag, drop, and deploy.
+                            </p>
+                            <button class="tour-button" onclick="startTour()">🎓 Start Beginner Tour</button>
+                        </div>
+
+                        <div class="dashboard-grid">
+                            <!-- Topology View Card -->
+                            <div class="dashboard-card" onclick="showPage('topology')">
+                                <div class="card-header">
+                                    <div class="card-icon">🌐</div>
+                                    <div class="card-progress">65%</div>
+                                </div>
+                                <div class="card-title">Topology View</div>
+                                <div class="card-desc">
+                                    Drag-and-drop network topology designer. Visualize connections between services,
+                                    configure ports, firewall rules, and simulate packet flow.
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 65%"></div>
+                                </div>
+                                <div class="card-tags">
+                                    <span class="tag wip">🚧 IN PROGRESS</span>
+                                    <span class="tag ready">Drag-Drop Working</span>
+                                    <span class="tag wip">Properties Panel</span>
+                                </div>
+                            </div>
+
+                            <!-- Stack View Card -->
+                            <div class="dashboard-card" onclick="showPage('stack')">
+                                <div class="card-header">
+                                    <div class="card-icon">📚</div>
+                                    <div class="card-progress">85%</div>
+                                </div>
+                                <div class="card-title">Stack View</div>
+                                <div class="card-desc">
+                                    Vertical supply chain visualization. Design individual component stacks,
+                                    configure images, security, and resources. Access from topology double-click.
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 85%"></div>
+                                </div>
+                                <div class="card-tags">
+                                    <span class="tag ready">✓ READY</span>
+                                    <span class="tag ready">UI Complete</span>
+                                    <span class="tag wip">Backend WIP</span>
+                                </div>
+                            </div>
+
+                            <!-- Image Designer Card -->
+                            <div class="dashboard-card" onclick="showPage('designer')">
+                                <div class="card-header">
+                                    <div class="card-icon">🎨</div>
+                                    <div class="card-progress">30%</div>
+                                </div>
+                                <div class="card-title">Lago Grey Image Designer</div>
+                                <div class="card-desc">
+                                    Build minimal base images (2.1 MB vs 7.8 MB Alpine). Choose from 5+ base images,
+                                    assemble ice formations. Import/Export supported.
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 30%"></div>
+                                </div>
+                                <div class="card-tags">
+                                    <span class="tag planned">📋 PLANNED</span>
+                                    <span class="tag planned">Spec Complete</span>
+                                    <span class="tag planned">UI Pending</span>
+                                </div>
+                            </div>
+
+                            <!-- Security Components Card -->
+                            <div class="dashboard-card">
+                                <div class="card-header">
+                                    <div class="card-icon">🔒</div>
+                                    <div class="card-progress">60%</div>
+                                </div>
+                                <div class="card-title">Security Layer</div>
+                                <div class="card-desc">
+                                    Fjord (secrets), Cape (runtime monitor), Strait (network policy).
+                                    Formal verification with Ephapax linear types. Zero-trust architecture.
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 60%"></div>
+                                </div>
+                                <div class="card-tags">
+                                    <span class="tag wip">🚧 IN PROGRESS</span>
+                                    <span class="tag ready">Fjord POC</span>
+                                    <span class="tag planned">Cape/Strait Next</span>
+                                </div>
+                            </div>
+
+                            <!-- Settings Card -->
+                            <div class="dashboard-card" onclick="showPage('settings')">
+                                <div class="card-header">
+                                    <div class="card-icon">⚙️</div>
+                                    <div class="card-progress">20%</div>
+                                </div>
+                                <div class="card-title">Settings & Configuration</div>
+                                <div class="card-desc">
+                                    Configure runtime (Podman/Docker), security defaults, network policies,
+                                    accessibility options, and UI preferences (sidebar left/right).
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 20%"></div>
+                                </div>
+                                <div class="card-tags">
+                                    <span class="tag planned">📋 PLANNED</span>
+                                    <span class="tag planned">Design Phase</span>
+                                </div>
+                            </div>
+
+                            <!-- Help & Documentation Card -->
+                            <div class="dashboard-card" onclick="toggleHelp()">
+                                <div class="card-header">
+                                    <div class="card-icon">📖</div>
+                                    <div class="card-progress">100%</div>
+                                </div>
+                                <div class="card-title">Help & Guides</div>
+                                <div class="card-desc">
+                                    Context-sensitive help, keyboard shortcuts, beginner tour, and comprehensive
+                                    documentation. Press ? anytime for quick help.
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="card-tags">
+                                    <span class="tag ready">✓ AVAILABLE</span>
+                                    <span class="tag ready">Press ? Key</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Topology View (Second Page) -->
+                <div id="topology" class="page">
+                    <div class="topology-container">
+                        <!-- Component Palette -->
+                        <div class="component-palette">
+                            <div class="palette-section">
+                                <div class="palette-title">🏗️ Base Components</div>
+                                <div class="palette-item" draggable="true" data-type="base-image" data-icon="📦">
+                                    <div class="palette-item-icon">📦</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Base Image</div>
+                                        <div class="palette-item-desc">Choose from 5+ images</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="application" data-icon="⚙️">
+                                    <div class="palette-item-icon">⚙️</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Application</div>
+                                        <div class="palette-item-desc">Your service code</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="palette-section">
+                                <div class="palette-title">🌐 Network</div>
+                                <div class="palette-item" draggable="true" data-type="gateway" data-icon="🚪">
+                                    <div class="palette-item-icon">🚪</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Gateway</div>
+                                        <div class="palette-item-desc">Ingress/egress</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="load-balancer" data-icon="⚖️">
+                                    <div class="palette-item-icon">⚖️</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Load Balancer</div>
+                                        <div class="palette-item-desc">Distribute traffic</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="palette-section">
+                                <div class="palette-title">🔒 Security</div>
+                                <div class="palette-item" draggable="true" data-type="firewall" data-icon="🛡️">
+                                    <div class="palette-item-icon">🛡️</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Firewall</div>
+                                        <div class="palette-item-desc">Container firewall</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="secrets" data-icon="🔐">
+                                    <div class="palette-item-icon">🔐</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Secrets (Fjord)</div>
+                                        <div class="palette-item-desc">Secure secrets</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="palette-section">
+                                <div class="palette-title">💾 Data</div>
+                                <div class="palette-item" draggable="true" data-type="database" data-icon="🗄️">
+                                    <div class="palette-item-icon">🗄️</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Database</div>
+                                        <div class="palette-item-desc">Persistent storage</div>
+                                    </div>
+                                </div>
+                                <div class="palette-item" draggable="true" data-type="cache" data-icon="⚡">
+                                    <div class="palette-item-icon">⚡</div>
+                                    <div class="palette-item-info">
+                                        <div class="palette-item-name">Cache</div>
+                                        <div class="palette-item-desc">Redis, Memcached</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Canvas -->
+                        <div class="topology-canvas" id="topologyCanvas">
+                            <!-- Nodes will be dynamically added here -->
+                        </div>
+
+                        <!-- Properties Panel -->
+                        <div class="properties-panel" id="propertiesPanel">
+                            <div class="properties-title" id="propTitle">Select a component</div>
+                            <div id="propContent">
+                                <p style="color: #8892a6; font-size: 13px;">Click on a component or link to view and edit its properties.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stack View (Third Page) -->
+                <div id="stack" class="page">
+                    <div class="canvas">
+                        <div class="simple-content">
+                            <h2>📚 Stack View</h2>
+                            <p>Design your component stack with vertical supply chain visualization.</p>
+                            <p style="margin-top: 16px; font-size: 14px;">
+                                Will show: Build → Base Image → Gateway → Security → Applications → Provenance
+                            </p>
+
+                            <div id="stackContext" class="component-context" style="display: none;">
+                                <h3>🎯 Editing Component</h3>
+                                <div class="info-row">
+                                    <span class="info-label">Component Name:</span>
+                                    <span class="info-value" id="ctxName">-</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Type:</span>
+                                    <span class="info-value" id="ctxType">-</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Base Image:</span>
+                                    <span class="info-value" id="ctxImage">Click to select</span>
+                                </div>
+                                <button class="tour-button" style="margin-top: 20px;" onclick="showImageSelector()">
+                                    📦 Select Base Image
+                                </button>
+                                <button class="tour-button" style="margin-top: 12px; background: #2a3142;" onclick="returnToTopology()">
+                                    ← Back to Topology
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Designer -->
+                <div id="designer" class="page">
+                    <div class="canvas">
+                        <div class="simple-content">
+                            <h2>🎨 Lago Grey Image Designer</h2>
+                            <p>Visual base image builder coming soon...</p>
+                            <p style="margin-top: 16px; font-size: 14px;">
+                                Build minimal images by assembling Floes, Icebergs, and Glaciers
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scripts & Schemata -->
+                <div id="scripts" class="page">
+                    <!-- Sub-tabs -->
+                    <div class="sub-tabs">
+                        <button class="sub-tab active" onclick="showSubTab('scripts-tab')">📜 Scripts (Justfile)</button>
+                        <button class="sub-tab" onclick="showSubTab('schemata-tab')">📐 Schemata (Nickel)</button>
+                        <button class="sub-tab" onclick="showSubTab('a2ml-tab')">🔬 A2ML (Formal)</button>
+                    </div>
+
+                    <!-- Scripts Tab Content -->
+                    <div id="scripts-tab" class="sub-tab-content active">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">📜 Ad-hoc Scripts (Justfile + Deno)</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">▶️ Run</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor"># Justfile - Ad-hoc task automation
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+# Build all containers
+build:
+    @echo '🏗️ Building containers...'
+    podman build -t stapeln/base:latest ./base
+    podman build -t stapeln/app:latest ./app
+
+# Deploy stack to local Podman
+deploy:
+    @echo '🚀 Deploying stack...'
+    podman play kube stack.yaml
+
+# Run security scan
+scan:
+    @echo '🔍 Scanning for vulnerabilities...'
+    trivy image stapeln/app:latest
+
+# Generate SBOM
+sbom:
+    @echo '📋 Generating SBOM...'
+    syft stapeln/app:latest -o spdx-json > sbom.json
+
+# Deno automation example
+automate:
+    deno run --allow-read --allow-write ./scripts/automate.ts</textarea>
+                            <div class="editor-info">
+                                <strong>📌 Ad-hoc Scripts</strong><br>
+                                • <strong>Justfile</strong>: Simple task runner for one-off commands<br>
+                                • <strong>Deno scripts</strong>: TypeScript automation without Node/npm<br>
+                                • Use for: Quick builds, tests, experiments<br>
+                                <br>
+                                <strong>💡 Tip</strong>: For production contracts, use the <strong>Contractiles</strong> page (5 formal files)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schemata Tab Content -->
+                    <div id="schemata-tab" class="sub-tab-content">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">📐 Declarative Configuration (Nickel)</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">✓ Validate</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor" placeholder="# Nickel configuration - Declarative infrastructure
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+{
+  Stack = {
+    name | String
+      | doc &quot;Stack identifier&quot;,
+    version | String
+      | default = &quot;1.0.0&quot;,
+
+    components | Array Component
+      | doc &quot;List of components in the stack&quot;,
+  },
+
+  Component = {
+    name | String,
+    image | String,
+    ports | Array Number
+      | default = [],
+
+    security | {
+      firewall | Bool
+        | default = true,
+      secrets | Array String
+        | default = [],
+    },
+
+    resources | {
+      cpu | String
+        | default = &quot;1&quot;,
+      memory | String
+        | default = &quot;512Mi&quot;,
+    },
+  },
+
+  # Example stack definition
+  myStack | Stack = {
+    name = &quot;stapeln-demo&quot;,
+    components = [
+      {
+        name = &quot;web&quot;,
+        image = &quot;lago-grey-minimal:latest&quot;,
+        ports = [8080, 443],
+        security.firewall = true,
+        resources.memory = &quot;1Gi&quot;,
+      },
+      {
+        name = &quot;api&quot;,
+        image = &quot;lago-grey-minimal:latest&quot;,
+        ports = [3000],
+        security.secrets = [&quot;db-password&quot;, &quot;api-key&quot;],
+      },
+    ],
+  },
+}"></textarea>
+                            <div class="editor-info">
+                                <strong>📌 Declarative Configuration</strong><br>
+                                • <strong>Nickel</strong>: Type-safe, composable alternative to YAML/JSON<br>
+                                • Describe <em>what you want</em>, not <em>how to get there</em><br>
+                                • Better than: Terraform HCL, YAML, TOML<br>
+                                • Features: Contracts (validation), merging, functions<br>
+                                • Use for: Stack definitions, infrastructure state, configuration
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- A2ML Tab Content -->
+                    <div id="a2ml-tab" class="sub-tab-content">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">🔬 Formal Specifications (A2ML)</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">🔬 Verify</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor" placeholder="-- A2ML: Ada-to-Machine-Learning formal specifications
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+
+-- Component specification with formal guarantees
+package Stack_Component is
+
+   type Port_Number is range 1 .. 65535;
+   type Port_Array is array (Natural range <>) of Port_Number;
+
+   type Security_Level is (None, Basic, Enhanced, Maximum);
+
+   type Component_Spec is record
+      Name : String (1 .. 64);
+      Image : String (1 .. 256);
+      Ports : Port_Array (1 .. 16);
+      Security : Security_Level;
+   end record
+   with
+      Dynamic_Predicate =>
+         -- Port numbers must be unique
+         (for all I in Ports'Range =>
+            (for all J in Ports'Range =>
+               (if I /= J then Ports(I) /= Ports(J))));
+
+   -- Invariant: All components must have unique names
+   type Stack_Spec is array (Natural range <>) of Component_Spec
+   with
+      Dynamic_Predicate =>
+         (for all I in Stack_Spec'Range =>
+            (for all J in Stack_Spec'Range =>
+               (if I /= J then Stack_Spec(I).Name /= Stack_Spec(J).Name)));
+
+   -- Security guarantee: Maximum security for components
+   -- handling sensitive data
+   function Requires_Maximum_Security (C : Component_Spec) return Boolean is
+      (C.Name in &quot;secrets&quot; | &quot;database&quot; | &quot;auth&quot;);
+
+   -- Proven at compile-time: All sensitive components
+   -- MUST have Maximum security level
+   pragma Assert
+      (for all C of My_Stack =>
+         (if Requires_Maximum_Security(C) then
+            C.Security = Maximum));
+
+end Stack_Component;
+
+-- Formal verification: This specification is proven correct
+-- at compile-time using Ada's contract-based programming"></textarea>
+                            <div class="editor-info">
+                                <strong>📌 Formal Specifications with A2ML</strong><br>
+                                • <strong>A2ML</strong>: Ada-to-Machine-Learning - Formal specs for ML/systems<br>
+                                • <strong>Ada contracts</strong>: Proven correct at compile-time (not runtime!)<br>
+                                • <strong>Dynamic Predicates</strong>: Invariants that can't be violated<br>
+                                • <strong>Provable correctness</strong>: Math proof that spec is satisfied<br>
+                                • Use for: Safety-critical properties, security guarantees, ML constraints<br>
+                                • Integration: Export to Coq/Isabelle for formal verification
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contractiles (Dedicated Page) -->
+                <div id="contractiles" class="page">
+                    <!-- Sub-tabs for the 5 contractiles -->
+                    <div class="sub-tabs">
+                        <button class="sub-tab active" onclick="showSubTab('intentfile-tab')">🎯 Intentfile</button>
+                        <button class="sub-tab" onclick="showSubTab('trustfile-tab')">🔐 Trustfile</button>
+                        <button class="sub-tab" onclick="showSubTab('mustfile-tab')">✓ Mustfile</button>
+                        <button class="sub-tab" onclick="showSubTab('justfile-tab')">⚙️ Justfile</button>
+                        <button class="sub-tab" onclick="showSubTab('dustfile-tab')">♻️ Dustfile</button>
+                    </div>
+
+                    <!-- Intentfile Tab -->
+                    <div id="intentfile-tab" class="sub-tab-content active">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">⚙️ Justfile - Operational Surface</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">▶️ Run</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor"># Justfile - Operational commands for stapeln stack
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+# Build all containers in the stack
+build:
+    @echo '🏗️ Building containers...'
+    podman build -t stapeln/lago-grey:latest ./images/lago-grey
+    podman build -t stapeln/app:latest ./app
+
+# Deploy stack to local Podman
+deploy:
+    @echo '🚀 Deploying stack...'
+    podman play kube stack.yaml
+    @echo '✓ Stack deployed on localhost:8080'
+
+# Run all contract validations
+validate:
+    @echo '📋 Running contractile validation...'
+    just check-must
+    just check-trust
+    just check-dust
+    just check-intent
+
+# Check Mustfile invariants
+check-must:
+    @echo '✓ Checking Mustfile invariants...'
+    mustfile-runner contractiles/must/Mustfile
+
+# Verify Trustfile signatures
+check-trust:
+    @echo '🔐 Verifying Trustfile...'
+    runhaskell contractiles/trust/Trustfile.hs
+
+# Verify Dustfile recovery paths
+check-dust:
+    @echo '♻️ Checking Dustfile...'
+    dustfile-validator contractiles/dust/Dustfile
+
+# Check Intentfile alignment
+check-intent:
+    @echo '🎯 Checking Intentfile...'
+    intentfile-check contractiles/lust/Intentfile
+
+# Security scan with Trivy
+scan:
+    @echo '🔍 Scanning for vulnerabilities...'
+    trivy image stapeln/app:latest
+
+# Generate SBOM
+sbom:
+    @echo '📋 Generating SBOM...'
+    syft stapeln/app:latest -o spdx-json > sbom.json
+
+# Rollback to previous deployment (uses Dustfile)
+rollback:
+    @echo '⏪ Rolling back deployment...'
+    just check-dust
+    podman play kube --down stack.yaml
+    git checkout HEAD~1 -- stack.yaml
+    podman play kube stack.yaml</textarea>
+                            <div class="editor-info">
+                                <strong>📌 Justfile: Operational Surface</strong><br>
+                                • Commands you run day-to-day<br>
+                                • Orchestrates the other 4 contractiles<br>
+                                • Simple task runner (better than Makefiles)<br>
+                                • Use: <code>just build</code>, <code>just deploy</code>, <code>just validate</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mustfile Tab -->
+                    <div id="mustfile-tab" class="sub-tab-content">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">✓ Mustfile - State Contract (Invariants)</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">✓ Validate</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor"># SPDX-License-Identifier: PMPL-1.0-or-later
+# Mustfile - Invariants that MUST be true
+# See: https://github.com/hyperpolymath/contractiles
+
+version: 1
+
+metadata:
+  name: stapeln-state-contract
+  spec: v1.0.0
+  description: "Invariant checks for stapeln container stack"
+
+parameters:
+  min_security_level: "enhanced"
+  max_port_count: 16
+  require_firewall: true
+
+checks:
+  - name: all-images-signed
+    description: "All base images must be cryptographically signed"
+    run: just verify-image-signatures
+    critical: true
+
+  - name: firewall-enabled
+    description: "All containers must have firewall enabled"
+    run: bash -c 'grep -q "firewall: true" stack.yaml'
+    critical: true
+
+  - name: ports-unique
+    description: "Port numbers must be unique across all components"
+    run: bash -c './scripts/validate-unique-ports.sh'
+    critical: true
+
+  - name: secrets-encrypted
+    description: "All secrets must be encrypted with Fjord"
+    run: bash -c 'fjord-cli verify-secrets'
+    critical: true
+
+  - name: base-image-minimal
+    description: "Base images must be under 50MB (prefer Lago Grey 2.1MB)"
+    run: bash -c './scripts/check-image-size.sh'
+    critical: false
+
+  - name: no-root-containers
+    description: "Containers must not run as root"
+    run: bash -c 'grep -q "runAsUser:" stack.yaml'
+    critical: true
+
+  - name: resource-limits-set
+    description: "All containers must have CPU and memory limits"
+    run: bash -c 'yq ".spec.containers[].resources.limits" stack.yaml'
+    critical: true
+
+  - name: post-quantum-crypto
+    description: "Security layer must use post-quantum cryptography"
+    run: bash -c 'grep -q "kyber-1024\|dilithium5" config/security.yaml'
+    critical: false</textarea>
+                            <div class="editor-info">
+                                <strong>📌 Mustfile: What MUST Be True</strong><br>
+                                • Declarative invariants for your stack<br>
+                                • Enforces security, correctness, compliance<br>
+                                • Run in CI/CD, pre-commit, pre-deploy<br>
+                                • <code>critical: true</code> = deployment fails if check fails<br>
+                                • Use: <code>just check-must</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trustfile Tab -->
+                    <div id="trustfile-tab" class="sub-tab-content">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">🔐 Trustfile - Cryptographic Verification</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">🔐 Verify</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor">-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- Trustfile.hs - Cryptographic spine for stapeln
+-- Verifies: hashes, signatures, provenance, post-quantum crypto
+
+module Trustfile where
+
+import Control.Monad (forM)
+import Data.List (isPrefixOf)
+import System.Directory (doesFileExist)
+import System.Environment (lookupEnv)
+import System.Exit (exitFailure, exitSuccess)
+import System.Process (readProcessWithExitCode)
+
+-- File paths
+stackConfigPath :: FilePath
+stackConfigPath = "stack.yaml"
+
+stackHashPath :: FilePath
+stackHashPath = "stack.yaml.sha256"
+
+imageSigPath :: String -> FilePath
+imageSigPath img = "images/" <> img <> ".sig"
+
+imagePubPath :: String -> FilePath
+imagePubPath img = "images/" <> img <> ".pub"
+
+-- Images to verify
+images :: [String]
+images = ["lago-grey", "app", "gateway"]
+
+-- Verify SHA-256 hash of stack.yaml
+verifyStackHash :: IO Bool
+verifyStackHash = do
+  expected <- readFirstWord stackHashPath
+  case expected of
+    Nothing -> pure False
+    Just hash -> do
+      (code, out, _) <- readProcessWithExitCode "sha256sum" [stackConfigPath] ""
+      if code /= mempty
+        then pure False
+        else do
+          let actual = case words out of
+                [] -> ""
+                (w:_) -> w
+          pure (actual == hash)
+
+-- Verify post-quantum Kyber-1024 signatures for all images
+verifyImageSignatures :: IO Bool
+verifyImageSignatures = do
+  cmd <- lookupEnv "KYBER_VERIFY_CMD"
+  let kyberCmd = maybe "kyber-verify" id cmd
+  results <- forM images $ \img -> do
+    let imgPath = "images/" <> img <> "/Containerfile"
+    let sig = imageSigPath img
+    let pub = imagePubPath img
+    filesOk <- and <$> mapM doesFileExist [imgPath, sig, pub]
+    if not filesOk
+      then pure False
+      else runCmd kyberCmd ["--pub", pub, "--sig", sig, "--file", imgPath]
+  pure (and results)
+
+-- Verify SBOM signature
+verifySBOM :: IO Bool
+verifySBOM = do
+  let sbomPath = "sbom.json"
+  let sbomSig = "sbom.json.sig"
+  let sbomPub = "sbom.json.pub"
+  filesOk <- and <$> mapM doesFileExist [sbomPath, sbomSig, sbomPub]
+  if not filesOk
+    then pure False
+    else runCmd "openssl" ["dgst", "-sha256", "-verify", sbomPub, "-signature", sbomSig, sbomPath]
+
+-- Helper: run command
+runCmd :: String -> [String] -> IO Bool
+runCmd cmd args = do
+  (code, _, _) <- readProcessWithExitCode cmd args ""
+  pure (code == mempty)
+
+-- Helper: read first word from file
+readFirstWord :: FilePath -> IO (Maybe String)
+readFirstWord path = do
+  exists <- doesFileExist path
+  if not exists
+    then pure Nothing
+    else do
+      content <- readFile path
+      pure (case words content of
+        [] -> Nothing
+        (w:_) -> Just w)
+
+-- Main verification
+main :: IO ()
+main = do
+  putStrLn "🔐 Running Trustfile verification..."
+  stackOk <- verifyStackHash
+  imagesOk <- verifyImageSignatures
+  sbomOk <- verifySBOM
+
+  putStrLn $ "  Stack hash: " <> if stackOk then "✓" else "✗"
+  putStrLn $ "  Image sigs: " <> if imagesOk then "✓" else "✗"
+  putStrLn $ "  SBOM sig:   " <> if sbomOk then "✓" else "✗"
+
+  if and [stackOk, imagesOk, sbomOk]
+    then do
+      putStrLn "✓ All trust checks passed"
+      exitSuccess
+    else do
+      putStrLn "✗ Trust verification failed"
+      exitFailure</textarea>
+                            <div class="editor-info">
+                                <strong>📌 Trustfile: Cryptographic Verification</strong><br>
+                                • Written in Haskell for type safety<br>
+                                • Verifies SHA-256 hashes, signatures, SBOM<br>
+                                • Post-quantum Kyber-1024 support<br>
+                                • Run in CI/CD before deployment<br>
+                                • Use: <code>just check-trust</code> or <code>runhaskell Trustfile.hs</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dustfile Tab -->
+                    <div id="dustfile-tab" class="sub-tab-content">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">♻️ Dustfile - Recovery & Rollback</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">♻️ Test Recovery</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor"># SPDX-License-Identifier: PMPL-1.0-or-later
+# Dustfile - Recovery and rollback semantics
+# Defines how to undo failed operations and restore known-good states
+
+version: 1
+
+metadata:
+  name: stapeln-recovery-contract
+  description: "Deterministic recovery paths for stapeln"
+
+recovery:
+  deployment:
+    - name: failed-deployment
+      event: "deploy.failure"
+      undo: |
+        podman play kube --down stack.yaml
+        git checkout HEAD~1 -- stack.yaml
+        podman play kube stack.yaml
+      notes: "Roll back to previous deployment, preserve audit logs"
+
+    - name: partial-deployment
+      event: "deploy.partial"
+      undo: |
+        podman pod stop stapeln-stack
+        podman pod rm stapeln-stack
+        just deploy
+      notes: "Clean up partial deployment and retry"
+
+  configuration:
+    - name: bad-stack-config
+      path: stack.yaml
+      rollback: "git checkout HEAD~1 -- stack.yaml"
+      verify: "yq validate stack.yaml"
+      notes: "Restore last known-good stack configuration"
+
+    - name: bad-security-config
+      path: config/security.yaml
+      rollback: "git checkout HEAD~1 -- config/security.yaml"
+      verify: "just check-must"
+      notes: "Restore security configuration"
+
+  images:
+    - name: corrupted-image
+      event: "image.corrupted"
+      undo: |
+        podman rmi stapeln/app:latest
+        podman pull stapeln/app:previous
+        podman tag stapeln/app:previous stapeln/app:latest
+      notes: "Restore previous verified image"
+
+  secrets:
+    - name: leaked-secret
+      event: "secret.leak"
+      undo: |
+        fjord-cli rotate-secret --id $SECRET_ID
+        just restart-affected-containers
+      notes: "Rotate compromised secret and restart services"
+      critical: true
+
+  logs:
+    - name: decision-log-replay
+      path: logs/decisions.json
+      reversible: true
+      handler: "dust-replay --reverse logs/decisions.json"
+      notes: "Replay or reverse decision log events"
+
+  dust-events:
+    - name: deployment-to-dust
+      source: logs/deployment.json
+      transform: "dustify --input logs/deployment.json --output logs/dust-events.json"
+      notes: "Convert deployment logs into reversible dust events"</textarea>
+                            <div class="editor-info">
+                                <strong>📌 Dustfile: Recovery & Rollback</strong><br>
+                                • Defines how to undo failed operations<br>
+                                • Deterministic recovery paths<br>
+                                • Preserves audit logs during rollback<br>
+                                • Critical for production reliability<br>
+                                • Use: <code>just check-dust</code>, <code>just rollback</code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Intentfile Tab -->
+                    <div id="intentfile-tab" class="sub-tab-content">
+                        <div class="code-editor-container">
+                            <div class="editor-header">
+                                <div class="editor-title">🎯 Intentfile - Future Intent & Roadmap</div>
+                                <div class="editor-actions">
+                                    <button class="editor-btn secondary">📁 Load</button>
+                                    <button class="editor-btn secondary">💾 Save</button>
+                                    <button class="editor-btn primary">🎯 Check Alignment</button>
+                                </div>
+                            </div>
+                            <textarea class="code-editor"># SPDX-License-Identifier: PMPL-1.0-or-later
+# Intentfile (LUST) - Declared future intent
+# Tracks where the stack is heading and ensures changes align with goals
+
+version: 1
+
+metadata:
+  name: stapeln-intent
+  description: "Future direction and planned evolution"
+
+future:
+  security:
+    - "Integrate Cape runtime monitor for all containers"
+    - "Add Strait network policy enforcement"
+    - "Implement hardware-backed key storage for Fjord"
+    - "Enable automatic secret rotation"
+    - "Add homomorphic encryption for sensitive data"
+
+  deployment:
+    - "Move to GitOps-based deployment workflow"
+    - "Add canary deployments with automatic rollback"
+    - "Implement blue-green deployment strategy"
+    - "Add staged rollout (dev → staging → prod)"
+
+  observability:
+    - "Add distributed tracing with OpenTelemetry"
+    - "Expose decision latency metrics"
+    - "Implement automatic anomaly detection"
+    - "Add real-time security event correlation"
+
+  images:
+    - "Reduce Lago Grey to sub-2MB"
+    - "Add automated image optimization pipeline"
+    - "Implement multi-arch builds (x86_64, arm64, riscv64)"
+    - "Create image variants for different use cases"
+
+  automation:
+    - "Auto-generate Mustfile from stack configuration"
+    - "Automatic SBOM generation and signing"
+    - "AI-assisted policy validation"
+    - "Predictive failure detection"
+
+  compliance:
+    - "Add SLSA Level 3 provenance"
+    - "Implement NIST 800-190 compliance checks"
+    - "Add FIPS 140-3 validated crypto"
+    - "Generate compliance reports automatically"
+
+current-focus:
+  q1-2026:
+    - "Complete Fjord secrets integration"
+    - "Implement basic Mustfile validation"
+    - "Add Trustfile post-quantum signatures"
+
+  q2-2026:
+    - "Deploy Cape runtime monitoring"
+    - "Add Strait network policies"
+    - "Implement automated rollback"
+
+alignment-checks:
+  - name: security-first
+    rule: "All new features must pass Mustfile security checks"
+
+  - name: minimal-images
+    rule: "New base images must be smaller than Alpine (7.8MB)"
+
+  - name: formal-verification
+    rule: "Critical components require A2ML formal specs"</textarea>
+                            <div class="editor-info">
+                                <strong>📌 Intentfile: Future Intent (LUST)</strong><br>
+                                • Documents where the stack is heading<br>
+                                • Ensures changes align with goals<br>
+                                • Living roadmap that evolves<br>
+                                • Prevents scope creep and drift<br>
+                                • Use: <code>just check-intent</code> to verify alignment
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div id="settings" class="page">
+                    <div class="canvas">
+                        <div class="simple-content">
+                            <h2>⚙️ Settings</h2>
+                            <p>Configuration options coming soon...</p>
+                            <p style="margin-top: 16px; font-size: 14px;">
+                                Runtime selection, security defaults, UI preferences
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Comparison Modal -->
+        <div id="comparisonModal" class="comparison-modal">
+            <div class="comparison-content">
+                <div class="comparison-header">
+                    <div>
+                        <h2 style="font-size: 28px; font-weight: 700; color: #4a9eff; margin-bottom: 8px;">📊 Base Image Comparison</h2>
+                        <p style="color: #8892a6;">Compare features, size, security, and use cases to choose the right image</p>
+                    </div>
+                    <button class="comparison-close-btn" onclick="closeComparison()">×</button>
+                </div>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Image</th>
+                            <th style="width: 100px;">Size</th>
+                            <th>Security Features</th>
+                            <th>Package Manager</th>
+                            <th>Best For</th>
+                            <th style="width: 120px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="image-name">
+                                    <span class="image-icon">🧊</span>
+                                    <div>
+                                        <div>Lago Grey</div>
+                                        <div style="font-size: 11px; color: #8892a6;">Minimal</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="size-badge size-tiny">2.1 MB</div>
+                                <div style="font-size: 11px; color: #4caf50; margin-top: 4px;">Smallest</div>
+                            </td>
+                            <td>
+                                <ul class="feature-list">
+                                    <li><span class="feature-yes">✓</span> Post-quantum (Kyber-1024)</li>
+                                    <li><span class="feature-yes">✓</span> Classical crypto (libsodium)</li>
+                                    <li><span class="feature-yes">✓</span> Distroless base</li>
+                                    <li><span class="feature-yes">✓</span> Minimal attack surface</li>
+                                    <li><span class="feature-no">✗</span> No shell access</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <span class="feature-no">✗ None</span>
+                                <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">Install deps at build time</div>
+                            </td>
+                            <td>
+                                <strong style="color: #4a9eff;">Production security-critical apps</strong>
+                                <ul style="font-size: 12px; color: #8892a6; margin-top: 8px; list-style: disc; padding-left: 20px;">
+                                    <li>Financial services</li>
+                                    <li>Healthcare apps</li>
+                                    <li>Government systems</li>
+                                    <li>Crypto/blockchain</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <button class="select-image-btn" onclick="selectImageFromComparison('lago-grey-minimal')">Select</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="image-name">
+                                    <span class="image-icon">🏔️</span>
+                                    <div>
+                                        <div>Alpine</div>
+                                        <div style="font-size: 11px; color: #8892a6;">Full-featured</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="size-badge size-small">7.8 MB</div>
+                                <div style="font-size: 11px; color: #8bc34a; margin-top: 4px;">Small</div>
+                            </td>
+                            <td>
+                                <ul class="feature-list">
+                                    <li><span class="feature-yes">✓</span> Standard crypto (OpenSSL)</li>
+                                    <li><span class="feature-yes">✓</span> Shell access (ash)</li>
+                                    <li><span class="feature-yes">✓</span> Debug tools available</li>
+                                    <li><span class="feature-partial">~</span> Moderate attack surface</li>
+                                    <li><span class="feature-no">✗</span> No post-quantum crypto</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <span class="feature-yes">✓ apk</span>
+                                <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">Full package ecosystem</div>
+                            </td>
+                            <td>
+                                <strong style="color: #4a9eff;">Development & debugging</strong>
+                                <ul style="font-size: 12px; color: #8892a6; margin-top: 8px; list-style: disc; padding-left: 20px;">
+                                    <li>Development environments</li>
+                                    <li>Testing/staging</li>
+                                    <li>Apps needing shell access</li>
+                                    <li>Troubleshooting containers</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <button class="select-image-btn" onclick="selectImageFromComparison('alpine')">Select</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="image-name">
+                                    <span class="image-icon">🐺</span>
+                                    <div>
+                                        <div>Wolfi</div>
+                                        <div style="font-size: 11px; color: #8892a6;">Supply chain focused</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="size-badge size-medium">12 MB</div>
+                                <div style="font-size: 11px; color: #ff9800; margin-top: 4px;">Medium</div>
+                            </td>
+                            <td>
+                                <ul class="feature-list">
+                                    <li><span class="feature-yes">✓</span> SBOM built-in</li>
+                                    <li><span class="feature-yes">✓</span> Signed packages</li>
+                                    <li><span class="feature-yes">✓</span> Supply chain verification</li>
+                                    <li><span class="feature-yes">✓</span> Regular CVE scanning</li>
+                                    <li><span class="feature-partial">~</span> Standard crypto</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <span class="feature-yes">✓ apk</span>
+                                <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">Chainguard-curated packages</div>
+                            </td>
+                            <td>
+                                <strong style="color: #4a9eff;">Compliance & auditing</strong>
+                                <ul style="font-size: 12px; color: #8892a6; margin-top: 8px; list-style: disc; padding-left: 20px;">
+                                    <li>Regulated industries</li>
+                                    <li>SOC2/ISO compliance</li>
+                                    <li>Supply chain transparency</li>
+                                    <li>Enterprise security</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <button class="select-image-btn" onclick="selectImageFromComparison('wolfi')">Select</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="image-name">
+                                    <span class="image-icon">📦</span>
+                                    <div>
+                                        <div>Distroless</div>
+                                        <div style="font-size: 11px; color: #8892a6;">Google hardened</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="size-badge size-medium">~20 MB</div>
+                                <div style="font-size: 11px; color: #ff9800; margin-top: 4px;">Medium</div>
+                            </td>
+                            <td>
+                                <ul class="feature-list">
+                                    <li><span class="feature-yes">✓</span> No shell/OS tools</li>
+                                    <li><span class="feature-yes">✓</span> Runtime dependencies only</li>
+                                    <li><span class="feature-yes">✓</span> Google security hardening</li>
+                                    <li><span class="feature-yes">✓</span> Minimal attack surface</li>
+                                    <li><span class="feature-no">✗</span> Hard to debug</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <span class="feature-no">✗ None</span>
+                                <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">Can't install packages at runtime</div>
+                            </td>
+                            <td>
+                                <strong style="color: #4a9eff;">Production hardening</strong>
+                                <ul style="font-size: 12px; color: #8892a6; margin-top: 8px; list-style: disc; padding-left: 20px;">
+                                    <li>Language-specific apps</li>
+                                    <li>Production workloads</li>
+                                    <li>Reduced attack surface</li>
+                                    <li>Java/Python/Node apps</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <button class="select-image-btn" onclick="selectImageFromComparison('distroless')">Select</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="image-name">
+                                    <span class="image-icon">⚪</span>
+                                    <div>
+                                        <div>Scratch</div>
+                                        <div style="font-size: 11px; color: #8892a6;">Empty</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="size-badge size-tiny">0 bytes</div>
+                                <div style="font-size: 11px; color: #4caf50; margin-top: 4px;">Zero footprint</div>
+                            </td>
+                            <td>
+                                <ul class="feature-list">
+                                    <li><span class="feature-yes">✓</span> Absolute minimal attack surface</li>
+                                    <li><span class="feature-yes">✓</span> No OS vulnerabilities</li>
+                                    <li><span class="feature-yes">✓</span> Static binary only</li>
+                                    <li><span class="feature-no">✗</span> No libraries</li>
+                                    <li><span class="feature-no">✗</span> No debugging possible</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <span class="feature-no">✗ None</span>
+                                <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">Literally empty</div>
+                            </td>
+                            <td>
+                                <strong style="color: #4a9eff;">Static binaries only</strong>
+                                <ul style="font-size: 12px; color: #8892a6; margin-top: 8px; list-style: disc; padding-left: 20px;">
+                                    <li>Go applications</li>
+                                    <li>Rust static builds</li>
+                                    <li>Zig binaries</li>
+                                    <li>Ultra-minimal deployments</li>
+                                </ul>
+                            </td>
+                            <td>
+                                <button class="select-image-btn" onclick="selectImageFromComparison('scratch')">Select</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 30px; padding: 20px; background: #0a0e1a; border-radius: 12px; border-left: 4px solid #4a9eff;">
+                    <strong style="color: #4a9eff; font-size: 16px;">💡 Quick Recommendation:</strong>
+                    <ul style="margin-top: 12px; padding-left: 20px; color: #b0b8c4; line-height: 1.8;">
+                        <li><strong>Starting out?</strong> Choose <strong>Alpine</strong> (easy debugging)</li>
+                        <li><strong>Production security?</strong> Choose <strong>Lago Grey</strong> (smallest + PQ crypto)</li>
+                        <li><strong>Compliance required?</strong> Choose <strong>Wolfi</strong> (built-in SBOM)</li>
+                        <li><strong>Static Go/Rust?</strong> Choose <strong>Scratch</strong> (zero overhead)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Selection Modal -->
+        <div id="imageModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-title">📦 Select Base Image</div>
+                <div class="image-option" onclick="selectImage('lago-grey-minimal')">
+                    <div class="image-option-header">
+                        <div class="image-option-icon">🧊</div>
+                        <div class="image-option-name">Lago Grey Minimal</div>
+                        <div class="image-option-size">2.1 MB</div>
+                    </div>
+                    <div class="image-option-desc">
+                        Distroless base with musl libc. Post-quantum crypto (liboqs + libsodium). Perfect for security-critical services.
+                    </div>
+                </div>
+                <div class="image-option" onclick="selectImage('alpine')">
+                    <div class="image-option-header">
+                        <div class="image-option-icon">🏔️</div>
+                        <div class="image-option-name">Alpine Linux</div>
+                        <div class="image-option-size">7.8 MB</div>
+                    </div>
+                    <div class="image-option-desc">
+                        Full package manager (apk). Shell access. Good for development and debugging.
+                    </div>
+                </div>
+                <div class="image-option" onclick="selectImage('wolfi')">
+                    <div class="image-option-header">
+                        <div class="image-option-icon">🐺</div>
+                        <div class="image-option-name">Wolfi (Chainguard)</div>
+                        <div class="image-option-size">12 MB</div>
+                    </div>
+                    <div class="image-option-desc">
+                        Supply chain security focused. SBOM by default. APK package manager. Good balance of size and features.
+                    </div>
+                </div>
+                <div class="image-option" onclick="selectImage('distroless')">
+                    <div class="image-option-header">
+                        <div class="image-option-icon">📦</div>
+                        <div class="image-option-name">Google Distroless</div>
+                        <div class="image-option-size">~20 MB</div>
+                    </div>
+                    <div class="image-option-desc">
+                        No shell, no package manager. Application and runtime dependencies only. Good for production hardening.
+                    </div>
+                </div>
+                <div class="image-option" onclick="selectImage('scratch')">
+                    <div class="image-option-header">
+                        <div class="image-option-icon">⚪</div>
+                        <div class="image-option-name">Scratch (Empty)</div>
+                        <div class="image-option-size">0 bytes</div>
+                    </div>
+                    <div class="image-option-desc">
+                        Empty image. For static binaries only (Go, Rust, Zig). Maximum security, minimum attack surface.
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button class="modal-close" onclick="closeImageModal()">Cancel</button>
+                    <button class="modal-close" onclick="showComparison()" style="background: linear-gradient(135deg, #4a9eff, #7b6cff); color: white; border: none;">
+                        📊 Compare All Images
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutorial Overlay -->
+        <div id="tutorialOverlay" class="tutorial-overlay">
+            <div class="tutorial-box" id="tutorialBox">
+                <div class="tutorial-title" id="tutorialTitle">Welcome to stapeln!</div>
+                <div class="tutorial-step" id="tutorialStep">Step 1 of 10</div>
+                <div class="tutorial-text" id="tutorialText">
+                    Let's build your first container stack together. No experience needed!
+                </div>
+                <div class="tutorial-buttons">
+                    <button class="tutorial-btn secondary" onclick="skipTutorial()">Skip Tutorial</button>
+                    <button class="tutorial-btn primary" onclick="nextTutorialStep()">Let's Start! →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutorial Selection Menu -->
+        <div id="tutorialMenu" class="tutorial-overlay" style="display: none;">
+            <div class="tutorial-box" style="max-width: 800px;">
+                <div class="tutorial-title">🎓 Choose Your Learning Path</div>
+                <div class="tutorial-text">Select a tutorial based on your experience level and what you want to build.</div>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 30px 0;">
+                    <!-- Beginner Tutorial -->
+                    <div style="background: #0a0e1a; padding: 24px; border-radius: 12px; border: 2px solid #2a3142; cursor: pointer; transition: all 0.3s;" onclick="startTutorialPath('beginner')" onmouseover="this.style.borderColor='#4a9eff'" onmouseout="this.style.borderColor='#2a3142'">
+                        <div style="font-size: 32px; margin-bottom: 12px;">🌱</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #4caf50;">Beginner</div>
+                        <div style="font-size: 14px; color: #8892a6; line-height: 1.6;">
+                            Simple "Hello World" web app. Learn the basics: drag, configure, deploy.
+                        </div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #4a9eff;">⏱️ 10 minutes</div>
+                    </div>
+
+                    <!-- Three-Tier Web App -->
+                    <div style="background: #0a0e1a; padding: 24px; border-radius: 12px; border: 2px solid #2a3142; cursor: pointer; transition: all 0.3s;" onclick="startTutorialPath('three-tier')" onmouseover="this.style.borderColor='#4a9eff'" onmouseout="this.style.borderColor='#2a3142'">
+                        <div style="font-size: 32px; margin-bottom: 12px;">🏗️</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #ff9800;">Intermediate</div>
+                        <div style="font-size: 14px; color: #8892a6; line-height: 1.6;">
+                            Three-tier architecture: Frontend → Backend → Database
+                        </div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #4a9eff;">⏱️ 20 minutes</div>
+                    </div>
+
+                    <!-- Microservices -->
+                    <div style="background: #0a0e1a; padding: 24px; border-radius: 12px; border: 2px solid #2a3142; cursor: pointer; transition: all 0.3s;" onclick="startTutorialPath('microservices')" onmouseover="this.style.borderColor='#4a9eff'" onmouseout="this.style.borderColor='#2a3142'">
+                        <div style="font-size: 32px; margin-bottom: 12px;">🔷</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #f44336;">Advanced</div>
+                        <div style="font-size: 14px; color: #8892a6; line-height: 1.6;">
+                            Microservices with API gateway, auth service, and multiple backends
+                        </div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #4a9eff;">⏱️ 30 minutes</div>
+                    </div>
+
+                    <!-- Event-Driven -->
+                    <div style="background: #0a0e1a; padding: 24px; border-radius: 12px; border: 2px solid #2a3142; cursor: pointer; transition: all 0.3s;" onclick="startTutorialPath('event-driven')" onmouseover="this.style.borderColor='#4a9eff'" onmouseout="this.style.borderColor='#2a3142'">
+                        <div style="font-size: 32px; margin-bottom: 12px;">⚡</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #7b6cff;">Advanced</div>
+                        <div style="font-size: 14px; color: #8892a6; line-height: 1.6;">
+                            Event-driven with message queue, producers, and consumers
+                        </div>
+                        <div style="margin-top: 12px; font-size: 12px; color: #4a9eff;">⏱️ 35 minutes</div>
+                    </div>
+                </div>
+
+                <button class="tutorial-btn secondary" onclick="closeTutorialMenu()" style="margin-top: 20px;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Validation Panel -->
+        <div id="validationPanel" class="validation-panel">
+            <div class="validation-header">
+                <div class="validation-title">🔍 Contractile Validation</div>
+                <button class="validation-close" onclick="toggleValidation()">×</button>
+            </div>
+
+            <div class="validation-summary">
+                <div class="validation-stat">
+                    <div class="validation-stat-number pass" id="validationPassCount">0</div>
+                    <div class="validation-stat-label">Passed</div>
+                </div>
+                <div class="validation-stat">
+                    <div class="validation-stat-number warn" id="validationWarnCount">0</div>
+                    <div class="validation-stat-label">Warnings</div>
+                </div>
+                <div class="validation-stat">
+                    <div class="validation-stat-number fail" id="validationFailCount">0</div>
+                    <div class="validation-stat-label">Failed</div>
+                </div>
+            </div>
+
+            <div id="validationResults">
+                <!-- Validation results will be inserted here -->
+            </div>
+
+            <button class="tour-button" style="width: 100%; margin-top: 12px;" onclick="runValidation()">
+                🔄 Re-validate Design
+            </button>
+        </div>
+
+        <!-- Help Button -->
+        <button class="help-button" onclick="alert('Help system coming soon!\n\nKeyboard Shortcuts:\n1 - Dashboard\n2 - Topology View\n3 - Stack View\n4 - Image Designer\n5 - Scripts & Schemata\n6 - Contractiles (5 files)\n7 - Settings\n? - This help\n\nTopology View:\n• Drag components from palette to canvas\n• Single-click to select and edit properties\n• Double-click to design component stack\n\nContractiles (5-file system):\n• Justfile - operational commands\n• Mustfile - invariants (MUST be true)\n• Trustfile - crypto verification\n• Dustfile - recovery/rollback\n• Intentfile - future roadmap')" aria-label="Help">
+            ?
+        </button>
+    </div>
+
+    <script>
+        let selectedNode = null;
+        let currentComponent = null;
+        let nodes = [];
+        let nodeIdCounter = 0;
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showSubTab(subTabId) {
+            document.querySelectorAll('.sub-tab-content').forEach(st => st.classList.remove('active'));
+            document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(subTabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // ========================================
+        // TUTORIAL SYSTEM - END-TO-END WALKTHROUGH
+        // ========================================
+
+        let tutorialStep = 0;
+        let tutorialNodes = {}; // Store nodes created during tutorial
+        let currentTutorialPath = 'beginner';
+
+        // Tutorial definitions for different paths
+        const tutorials = {
+            beginner: [
+            {
+                title: "Welcome to stapeln! 🏔️",
+                text: "Let's build your first container stack together. We'll create a simple \"Hello World\" web application. No experience needed - just follow along!",
+                step: "Step 1 of 10",
+                action: () => {
+                    showPage('dashboard');
+                }
+            },
+            {
+                title: "Understanding the Tool",
+                text: "stapeln helps you build container stacks visually. Think of it like building with LEGO blocks - you'll drag components, connect them, and deploy. Let's start by going to the Topology View where we design.",
+                step: "Step 2 of 10",
+                action: () => {
+                    showPage('topology');
+                    setTimeout(() => highlightElement('.nav-tabs button:nth-child(2)'), 500);
+                }
+            },
+            {
+                title: "Add Your First Component",
+                text: "See the palette on the left? Drag the \"Base Image\" (📦) onto the canvas. This is like the foundation of a house - everything builds on top of it.",
+                step: "Step 3 of 10",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"base-image\"]');
+                    tutorialWaitForNode('base-image');
+                }
+            },
+            {
+                title: "Add Your Application",
+                text: "Great! Now drag the \"Application\" (⚙️) onto the canvas. This is your actual web app that will serve content.",
+                step: "Step 4 of 10",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                    tutorialWaitForNode('application');
+                }
+            },
+            {
+                title: "Add a Gateway",
+                text: "Perfect! Last component: drag the \"Gateway\" (🚪) to the canvas. This lets the outside world access your app.",
+                step: "Step 5 of 10",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"gateway\"]');
+                    tutorialWaitForNode('gateway');
+                }
+            },
+            {
+                title: "Configure the Base Image",
+                text: "Now let's configure each component. Click on your Base Image (📦) to select it, then we'll choose which image to use.",
+                step: "Step 6 of 10",
+                action: () => {
+                    if (tutorialNodes.baseImage) {
+                        highlightElement('#' + tutorialNodes.baseImage);
+                        tutorialWaitForClick(tutorialNodes.baseImage);
+                    }
+                }
+            },
+            {
+                title: "Choose Lago Grey",
+                text: "Excellent! Now in the properties panel on the right, click \"Design Stack →\" button, then select \"Lago Grey Minimal\" (🧊 2.1 MB) - it's the smallest and most secure base image.",
+                step: "Step 7 of 10",
+                action: () => {
+                    highlightElement('#propertiesPanel');
+                }
+            },
+            {
+                title: "Configure Security",
+                text: "Let's secure your app! Click on the Application component (⚙️), then in the properties panel, toggle the \"Container Firewall\" to ON. Also set CPU to \"1\" and Memory to \"512Mi\".",
+                step: "Step 8 of 10",
+                action: () => {
+                    if (tutorialNodes.application) {
+                        highlightElement('#' + tutorialNodes.application);
+                    }
+                }
+            },
+            {
+                title: "Validate Your Design",
+                text: "Almost done! Let's check if everything is configured correctly. Click the \"✓ Validate Design\" button at the top to run all safety checks.",
+                step: "Step 9 of 10",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(2)');
+                }
+            },
+            {
+                title: "Deploy Your Stack! 🚀",
+                text: "Congratulations! Your stack is ready. Click the \"🚀 Deploy Stack\" button to deploy your Hello World app. In a real setup, this would start your containers and make your app live!",
+                step: "Step 10 of 10",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(1)');
+                }
+            },
+            {
+                title: "You Did It! 🎉",
+                text: "Amazing work! You just built and deployed your first container stack. You learned: dragging components, configuring security, validating design, and deploying. Ready to build something real?",
+                step: "Complete!",
+                action: () => {
+                    clearHighlights();
+                }
+            }
+        ],
+
+        'three-tier': [
+            {
+                title: "Three-Tier Web Application 🏗️",
+                text: "You'll build a production-ready three-tier architecture: Nginx frontend → API backend → PostgreSQL database. This pattern powers millions of web apps.",
+                step: "Step 1 of 12"
+            },
+            {
+                title: "Add Database Layer",
+                text: "Start from the bottom. Drag the \"Database\" (🗄️) component - this will be PostgreSQL storing your data.",
+                step: "Step 2 of 12",
+                action: () => {
+                    showPage('topology');
+                    highlightElement('.palette-item[data-type=\"database\"]');
+                    tutorialWaitForNode('database');
+                }
+            },
+            {
+                title: "Add API Backend",
+                text: "Now add the \"Application\" (⚙️) - your API server that talks to the database.",
+                step: "Step 3 of 12",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                    tutorialWaitForNode('application');
+                }
+            },
+            {
+                title: "Add Frontend",
+                text: "Add another \"Application\" (⚙️) for the Nginx frontend that serves your UI.",
+                step: "Step 4 of 12",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                }
+            },
+            {
+                title: "Add Load Balancer",
+                text: "Add \"Load Balancer\" (⚖️) to distribute traffic across multiple backend instances.",
+                step: "Step 5 of 12",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"load-balancer\"]');
+                    tutorialWaitForNode('load-balancer');
+                }
+            },
+            {
+                title: "Add Gateway",
+                text: "Finally, add the \"Gateway\" (🚪) for external access.",
+                step: "Step 6 of 12",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"gateway\"]');
+                    tutorialWaitForNode('gateway');
+                }
+            },
+            {
+                title: "Configure Database",
+                text: "Click the database, set: Ports=5432, Firewall=ON, CPU=2, Memory=2Gi. Select Lago Grey base image.",
+                step: "Step 7 of 12"
+            },
+            {
+                title: "Configure API Backend",
+                text: "Click the API backend, set: Ports=3000, Firewall=ON (allow from frontend only), CPU=2, Memory=1Gi.",
+                step: "Step 8 of 12"
+            },
+            {
+                title: "Configure Frontend",
+                text: "Click frontend, set: Ports=80, Firewall=ON, CPU=1, Memory=512Mi. This serves static files.",
+                step: "Step 9 of 12"
+            },
+            {
+                title: "Network Policies",
+                text: "Notice the firewall settings? Frontend can only talk to API. API can only talk to DB. This is zero-trust architecture!",
+                step: "Step 10 of 12"
+            },
+            {
+                title: "Validate & Review",
+                text: "Run validation. You should see: ✓ All firewalls enabled, ✓ Unique ports, ✓ Resource limits set.",
+                step: "Step 11 of 12",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(2)');
+                }
+            },
+            {
+                title: "Deploy Three-Tier Stack! 🚀",
+                text: "Perfect! Deploy your production-ready three-tier app. This architecture scales to millions of users.",
+                step: "Step 12 of 12",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(1)');
+                }
+            }
+        ],
+
+        microservices: [
+            {
+                title: "Microservices Architecture 🔷",
+                text: "Build a modern microservices system with API gateway, auth service, user service, order service, and shared database. This is how Netflix, Uber, and Spotify are built.",
+                step: "Step 1 of 15"
+            },
+            {
+                title: "Start with API Gateway",
+                text: "The API Gateway is the single entry point. Drag \"Gateway\" (🚪) to the canvas.",
+                step: "Step 2 of 15",
+                action: () => {
+                    showPage('topology');
+                    highlightElement('.palette-item[data-type=\"gateway\"]');
+                    tutorialWaitForNode('gateway');
+                }
+            },
+            {
+                title: "Add Auth Service",
+                text: "Security first! Add \"Application\" (⚙️) for authentication/authorization.",
+                step: "Step 3 of 15",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                    tutorialWaitForNode('application');
+                }
+            },
+            {
+                title: "Add User Service",
+                text: "Add another \"Application\" for user management (profiles, preferences).",
+                step: "Step 4 of 15",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                }
+            },
+            {
+                title: "Add Order Service",
+                text: "Add \"Application\" for order processing (if building e-commerce).",
+                step: "Step 5 of 15",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                }
+            },
+            {
+                title: "Add Message Queue",
+                text: "Services need async communication. Add \"Cache\" (⚡) - we'll use it as Redis message queue.",
+                step: "Step 6 of 15",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"cache\"]');
+                    tutorialWaitForNode('cache');
+                }
+            },
+            {
+                title: "Add Shared Database",
+                text: "Add \"Database\" (🗄️) for shared data. In production, each service might have its own DB.",
+                step: "Step 7 of 15",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"database\"]');
+                    tutorialWaitForNode('database');
+                }
+            },
+            {
+                title: "Service Mesh Concept",
+                text: "In microservices, services talk to each other. Gateway routes to auth/user/order services. Services publish events to Redis queue.",
+                step: "Step 8 of 15"
+            },
+            {
+                title: "Configure Gateway",
+                text: "Click gateway, set external port 443 (HTTPS). This routes to internal services based on paths: /auth → auth service, /users → user service.",
+                step: "Step 9 of 15"
+            },
+            {
+                title: "Configure Auth Service",
+                text: "Port 8080, CPU=1, Memory=512Mi. Handles JWT tokens, validates requests.",
+                step: "Step 10 of 15"
+            },
+            {
+                title: "Configure Other Services",
+                text: "User service: Port 8081. Order service: Port 8082. Each isolated, independently scalable.",
+                step: "Step 11 of 15"
+            },
+            {
+                title: "Configure Redis Queue",
+                text: "Port 6379. Services publish events here: 'OrderCreated', 'UserRegistered', etc.",
+                step: "Step 12 of 15"
+            },
+            {
+                title: "Zero-Trust Networking",
+                text: "Enable firewalls on all services. Each service only talks to what it needs. Auth service can't access order database, for example.",
+                step: "Step 13 of 15"
+            },
+            {
+                title: "Validate Microservices",
+                text: "Run validation. Check: all firewalls, unique ports, inter-service policies correct.",
+                step: "Step 14 of 15",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(2)');
+                }
+            },
+            {
+                title: "Deploy Microservices! 🚀",
+                text: "Launch your microservices architecture! Each service deploys independently, scales independently, fails independently. This is how you build for scale.",
+                step: "Step 15 of 15",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(1)');
+                }
+            }
+        ],
+
+        'event-driven': [
+            {
+                title: "Event-Driven Architecture ⚡",
+                text: "Build an event-driven system with producers, message queue, consumers, and storage. Perfect for real-time data processing, streaming, and async workflows.",
+                step: "Step 1 of 13"
+            },
+            {
+                title: "Add Message Queue",
+                text: "The heart of event-driven systems. Drag \"Cache\" (⚡) - we'll use Redis Streams as our queue.",
+                step: "Step 2 of 13",
+                action: () => {
+                    showPage('topology');
+                    highlightElement('.palette-item[data-type=\"cache\"]');
+                    tutorialWaitForNode('cache');
+                }
+            },
+            {
+                title: "Add Producer",
+                text: "Producers generate events. Add \"Application\" (⚙️) - this will publish events to the queue.",
+                step: "Step 3 of 13",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                    tutorialWaitForNode('application');
+                }
+            },
+            {
+                title: "Add Consumer #1",
+                text: "Consumers process events. Add \"Application\" (⚙️) - this will handle 'OrderCreated' events.",
+                step: "Step 4 of 13",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                }
+            },
+            {
+                title: "Add Consumer #2",
+                text: "Add another \"Application\" for different event type - handles 'PaymentProcessed' events.",
+                step: "Step 5 of 13",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"application\"]');
+                }
+            },
+            {
+                title: "Add Storage",
+                text: "Events need persistence. Add \"Database\" (🗄️) for event sourcing and audit log.",
+                step: "Step 6 of 13",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"database\"]');
+                    tutorialWaitForNode('database');
+                }
+            },
+            {
+                title: "Add Gateway",
+                text: "External APIs trigger events. Add \"Gateway\" (🚪) to receive webhooks/API calls.",
+                step: "Step 7 of 13",
+                action: () => {
+                    highlightElement('.palette-item[data-type=\"gateway\"]');
+                    tutorialWaitForNode('gateway');
+                }
+            },
+            {
+                title: "Event Flow",
+                text: "Flow: Gateway receives webhook → Producer publishes to Redis → Consumers subscribe → Process events → Store results in DB. All async, non-blocking!",
+                step: "Step 8 of 13"
+            },
+            {
+                title: "Configure Redis",
+                text: "Port 6379. Redis Streams handles: ordering, persistence, consumer groups, backpressure.",
+                step: "Step 9 of 13"
+            },
+            {
+                title: "Configure Producer",
+                text: "Port 8080. Validates events, publishes to Redis. CPU=1, Memory=512Mi.",
+                step: "Step 10 of 13"
+            },
+            {
+                title: "Configure Consumers",
+                text: "Consumer #1: Port 8081. Consumer #2: Port 8082. Each subscribes to different event types. Scale independently based on load.",
+                step: "Step 11 of 13"
+            },
+            {
+                title: "Validate Event System",
+                text: "Check: Redis accessible from producer + consumers, DB isolated, firewalls configured.",
+                step: "Step 12 of 13",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(2)');
+                }
+            },
+            {
+                title: "Deploy Event-Driven System! 🚀",
+                text: "Launch your event-driven architecture! Handles millions of events/sec, scales horizontally, survives failures. Used by: Stripe, Shopify, Twitch.",
+                step: "Step 13 of 13",
+                action: () => {
+                    highlightElement('.quick-actions-bar button:nth-child(1)');
+                }
+            }
+        ]
+    };
+
+    const tutorialSteps = tutorials.beginner; // Default to beginner
+
+        function startTour() {
+            // Show tutorial selection menu
+            document.getElementById('tutorialMenu').style.display = 'flex';
+        }
+
+        function startTutorialPath(path) {
+            currentTutorialPath = path;
+            tutorialStep = 0;
+            tutorialNodes = {};
+
+            // Hide menu, show tutorial
+            document.getElementById('tutorialMenu').style.display = 'none';
+            document.getElementById('tutorialOverlay').classList.add('active');
+
+            // Load the selected tutorial
+            Object.assign(tutorialSteps, tutorials[path]);
+            tutorialSteps.length = tutorials[path].length;
+
+            showTutorialStep();
+        }
+
+        function closeTutorialMenu() {
+            document.getElementById('tutorialMenu').style.display = 'none';
+        }
+
+        function showTutorialStep() {
+            const steps = tutorials[currentTutorialPath];
+            const step = steps[tutorialStep];
+            document.getElementById('tutorialTitle').textContent = step.title;
+            document.getElementById('tutorialText').textContent = step.text;
+            document.getElementById('tutorialStep').textContent = step.step;
+
+            // Update button text
+            const btnContainer = document.querySelector('.tutorial-buttons');
+            if (tutorialStep === steps.length - 1) {
+                btnContainer.innerHTML = `
+                    <button class="tutorial-btn primary" onclick="closeTutorial()">Finish Tutorial 🎉</button>
+                `;
+            } else {
+                btnContainer.innerHTML = `
+                    <button class="tutorial-btn secondary" onclick="skipTutorial()">Skip Tutorial</button>
+                    <button class="tutorial-btn primary" onclick="nextTutorialStep()">
+                        ${tutorialStep === 0 ? "Let's Start! →" : "Next Step →"}
+                    </button>
+                `;
+            }
+
+            // Run step action
+            if (step.action) {
+                setTimeout(() => step.action(), 300);
+            }
+        }
+
+        function nextTutorialStep() {
+            clearHighlights();
+            tutorialStep++;
+            const steps = tutorials[currentTutorialPath];
+            if (tutorialStep < steps.length) {
+                showTutorialStep();
+            } else {
+                closeTutorial();
+            }
+        }
+
+        function skipTutorial() {
+            if (confirm('Are you sure you want to skip the tutorial? You can restart it anytime from the dashboard.')) {
+                closeTutorial();
+            }
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorialOverlay').classList.remove('active');
+            clearHighlights();
+            alert('🎓 Tutorial Complete!\n\nYou can now:\n• Build more complex stacks\n• Explore the Contractiles page\n• Check out the Image Designer\n• Read the help documentation (press ?)\n\nRestart tutorial anytime from the dashboard!');
+        }
+
+        function highlightElement(selector) {
+            clearHighlights();
+            const el = document.querySelector(selector);
+            if (!el) return;
+
+            const rect = el.getBoundingClientRect();
+            const highlight = document.createElement('div');
+            highlight.className = 'tutorial-highlight';
+            highlight.style.left = (rect.left - 8) + 'px';
+            highlight.style.top = (rect.top - 8) + 'px';
+            highlight.style.width = (rect.width + 16) + 'px';
+            highlight.style.height = (rect.height + 16) + 'px';
+            document.body.appendChild(highlight);
+
+            // Add pointer
+            const pointer = document.createElement('div');
+            pointer.className = 'tutorial-pointer';
+            pointer.textContent = '👆';
+            pointer.style.left = (rect.left + rect.width / 2 - 24) + 'px';
+            pointer.style.top = (rect.top - 60) + 'px';
+            document.body.appendChild(pointer);
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.tutorial-highlight').forEach(el => el.remove());
+            document.querySelectorAll('.tutorial-pointer').forEach(el => el.remove());
+        }
+
+        function tutorialWaitForNode(nodeType) {
+            // This monitors when a node of the specified type is added
+            const checkInterval = setInterval(() => {
+                const node = nodes.find(n => n.type === nodeType);
+                if (node) {
+                    tutorialNodes[nodeType.replace('-', '')] = node.id;
+                    clearInterval(checkInterval);
+                    clearHighlights();
+                    // Auto-advance after short delay
+                    setTimeout(() => {
+                        if (document.getElementById('tutorialOverlay').classList.contains('active')) {
+                            nextTutorialStep();
+                        }
+                    }, 1500);
+                }
+            }, 500);
+        }
+
+        function tutorialWaitForClick(nodeId) {
+            // Wait for user to click the specified node
+            const checkInterval = setInterval(() => {
+                if (selectedNode === nodeId) {
+                    clearInterval(checkInterval);
+                    clearHighlights();
+                    setTimeout(() => {
+                        if (document.getElementById('tutorialOverlay').classList.contains('active')) {
+                            nextTutorialStep();
+                        }
+                    }, 1500);
+                }
+            }, 500);
+        }
+
+        function toggleHelp() {
+            alert('📖 Quick Help\n\nstapeln workflow:\n1. Drag components to topology canvas\n2. Single-click to configure (firewall, ports)\n3. Double-click to design stack details\n4. Choose from 5+ base images\n5. Write contracts (Contractiles: 5 files)\n6. Deploy with formal guarantees\n\nKeyboard: 1-7 for pages, ? for help');
+        }
+
+        // Drag and Drop functionality
+        document.querySelectorAll('.palette-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', JSON.stringify({
+                    type: item.dataset.type,
+                    icon: item.dataset.icon,
+                    name: item.querySelector('.palette-item-name').textContent
+                }));
+            });
+        });
+
+        const canvas = document.getElementById('topologyCanvas');
+
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            canvas.classList.add('drag-over');
+        });
+
+        canvas.addEventListener('dragleave', () => {
+            canvas.classList.remove('drag-over');
+        });
+
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            canvas.classList.remove('drag-over');
+
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left - 60; // Center the node
+            const y = e.clientY - rect.top - 60;
+
+            createNode(data, x, y);
+        });
+
+        function createNode(data, x, y) {
+            const nodeId = `node-${nodeIdCounter++}`;
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.id = nodeId;
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            node.innerHTML = `
+                <div class="node-icon">${data.icon}</div>
+                <div class="node-name">${data.name}</div>
+                <div class="node-type">${data.type}</div>
+            `;
+
+            // Store node data
+            const nodeData = {
+                id: nodeId,
+                ...data,
+                x,
+                y,
+                firewall: false,
+                ports: '8080',
+                protocol: 'TCP',
+                resources: { cpu: '1', memory: '512Mi' }
+            };
+            nodes.push(nodeData);
+
+            // Single-click: select and show properties
+            node.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectNodeForProperties(nodeId);
+            });
+
+            // Double-click: navigate to Stack View
+            node.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                navigateToStack(nodeData);
+            });
+
+            // Make draggable on canvas
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            node.addEventListener('mousedown', (e) => {
+                if (e.target === node || e.target.parentElement === node) {
+                    isDragging = true;
+                    offsetX = e.clientX - node.offsetLeft;
+                    offsetY = e.clientY - node.offsetTop;
+                    node.style.cursor = 'grabbing';
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    node.style.left = (e.clientX - rect.left - offsetX) + 'px';
+                    node.style.top = (e.clientY - rect.top - offsetY) + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    node.style.cursor = 'move';
+                }
+            });
+
+            canvas.appendChild(node);
+        }
+
+        function selectNodeForProperties(nodeId) {
+            // Deselect previous
+            if (selectedNode) {
+                document.getElementById(selectedNode).classList.remove('selected');
+            }
+
+            // Select new
+            selectedNode = nodeId;
+            document.getElementById(nodeId).classList.add('selected');
+
+            // Find node data
+            const nodeData = nodes.find(n => n.id === nodeId);
+
+            // Show properties panel
+            const panel = document.getElementById('propertiesPanel');
+            const title = document.getElementById('propTitle');
+            const content = document.getElementById('propContent');
+
+            panel.classList.add('active');
+            title.textContent = `🎯 ${nodeData.name}`;
+
+            content.innerHTML = `
+                <div class="property-group">
+                    <div class="property-label">Component Name</div>
+                    <input type="text" class="property-input" value="${nodeData.name}" onchange="updateNodeProperty('${nodeId}', 'name', this.value)">
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Container Firewall</div>
+                    <div class="property-toggle" onclick="toggleProperty('${nodeId}', 'firewall')">
+                        <span>Enable Firewall</span>
+                        <div class="toggle-switch ${nodeData.firewall ? 'active' : ''}" id="firewall-${nodeId}"></div>
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Ports</div>
+                    <input type="text" class="property-input" value="${nodeData.ports}" placeholder="8080, 443" onchange="updateNodeProperty('${nodeId}', 'ports', this.value)">
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Protocol</div>
+                    <select class="property-select" onchange="updateNodeProperty('${nodeId}', 'protocol', this.value)">
+                        <option value="TCP" ${nodeData.protocol === 'TCP' ? 'selected' : ''}>TCP</option>
+                        <option value="UDP" ${nodeData.protocol === 'UDP' ? 'selected' : ''}>UDP</option>
+                        <option value="HTTP" ${nodeData.protocol === 'HTTP' ? 'selected' : ''}>HTTP</option>
+                        <option value="HTTPS" ${nodeData.protocol === 'HTTPS' ? 'selected' : ''}>HTTPS</option>
+                    </select>
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">CPU Limit</div>
+                    <input type="text" class="property-input" value="${nodeData.resources.cpu}" placeholder="1" onchange="updateNodeResource('${nodeId}', 'cpu', this.value)">
+                </div>
+
+                <div class="property-group">
+                    <div class="property-label">Memory Limit</div>
+                    <input type="text" class="property-input" value="${nodeData.resources.memory}" placeholder="512Mi" onchange="updateNodeResource('${nodeId}', 'memory', this.value)">
+                </div>
+
+                <button class="tour-button" style="width: 100%; margin-top: 20px;" onclick="navigateToStackFromPanel('${nodeId}')">
+                    📚 Design Stack →
+                </button>
+            `;
+        }
+
+        function toggleProperty(nodeId, property) {
+            const nodeData = nodes.find(n => n.id === nodeId);
+            nodeData[property] = !nodeData[property];
+            document.getElementById(`${property}-${nodeId}`).classList.toggle('active');
+        }
+
+        function updateNodeProperty(nodeId, property, value) {
+            const nodeData = nodes.find(n => n.id === nodeId);
+            nodeData[property] = value;
+
+            // Update node display if it's the name
+            if (property === 'name') {
+                document.querySelector(`#${nodeId} .node-name`).textContent = value;
+            }
+        }
+
+        function updateNodeResource(nodeId, resource, value) {
+            const nodeData = nodes.find(n => n.id === nodeId);
+            nodeData.resources[resource] = value;
+        }
+
+        function navigateToStackFromPanel(nodeId) {
+            const nodeData = nodes.find(n => n.id === nodeId);
+            navigateToStack(nodeData);
+        }
+
+        function navigateToStack(nodeData) {
+            currentComponent = nodeData;
+            showPage('stack');
+
+            // Update context
+            document.getElementById('stackContext').style.display = 'block';
+            document.getElementById('ctxName').textContent = nodeData.name;
+            document.getElementById('ctxType').textContent = nodeData.type;
+            document.getElementById('ctxImage').textContent = nodeData.baseImage || 'Not selected';
+        }
+
+        function returnToTopology() {
+            showPage('topology');
+        }
+
+        function showImageSelector() {
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        function selectImage(imageName) {
+            if (currentComponent) {
+                currentComponent.baseImage = imageName;
+                document.getElementById('ctxImage').textContent = imageName;
+            }
+            closeImageModal();
+            alert(`✓ Selected: ${imageName}\n\nBase image configured for ${currentComponent.name}`);
+        }
+
+        function showComparison() {
+            closeImageModal(); // Close the selection modal
+            document.getElementById('comparisonModal').classList.add('active');
+        }
+
+        function closeComparison() {
+            document.getElementById('comparisonModal').classList.remove('active');
+        }
+
+        function selectImageFromComparison(imageName) {
+            if (currentComponent) {
+                currentComponent.baseImage = imageName;
+                document.getElementById('ctxImage').textContent = imageName;
+            }
+            closeComparison();
+            alert(`✓ Selected: ${imageName}\n\nBase image configured for ${currentComponent.name}`);
+        }
+
+        // Click outside canvas to deselect
+        canvas.addEventListener('click', (e) => {
+            if (e.target === canvas) {
+                if (selectedNode) {
+                    document.getElementById(selectedNode).classList.remove('selected');
+                    selectedNode = null;
+                }
+                document.getElementById('propertiesPanel').classList.remove('active');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '1') showPage('dashboard');
+            else if (e.key === '2') showPage('topology');
+            else if (e.key === '3') showPage('stack');
+            else if (e.key === '4') showPage('designer');
+            else if (e.key === '5') showPage('scripts');
+            else if (e.key === '6') showPage('contractiles');
+            else if (e.key === '7') showPage('settings');
+            else if (e.key === '?') toggleHelp();
+            else if (e.key === 'v' && e.ctrlKey) runValidation(); // Ctrl+V to validate
+        });
+
+        // ========================================
+        // CONTRACTILE VALIDATION ENGINE
+        // ========================================
+
+        // Mustfile rules (from contractiles page)
+        const mustfileRules = [
+            {
+                name: 'all-images-signed',
+                description: 'All base images must be cryptographically signed',
+                critical: true,
+                check: () => {
+                    // Check if all nodes with images have baseImage set
+                    const nodesWithoutImage = nodes.filter(n => !n.baseImage);
+                    return {
+                        pass: nodesWithoutImage.length === 0,
+                        message: nodesWithoutImage.length > 0
+                            ? `${nodesWithoutImage.length} components missing base image selection`
+                            : 'All components have base images'
+                    };
+                }
+            },
+            {
+                name: 'firewall-enabled',
+                description: 'All containers must have firewall enabled',
+                critical: true,
+                check: () => {
+                    const nodesWithoutFirewall = nodes.filter(n => !n.firewall);
+                    return {
+                        pass: nodesWithoutFirewall.length === 0,
+                        message: nodesWithoutFirewall.length > 0
+                            ? `${nodesWithoutFirewall.length} components without firewall`
+                            : 'All components have firewall enabled'
+                    };
+                }
+            },
+            {
+                name: 'ports-unique',
+                description: 'Port numbers must be unique across all components',
+                critical: true,
+                check: () => {
+                    const portMap = {};
+                    let duplicates = [];
+                    nodes.forEach(n => {
+                        if (n.ports) {
+                            const ports = n.ports.split(',').map(p => p.trim());
+                            ports.forEach(port => {
+                                if (portMap[port]) {
+                                    duplicates.push(port);
+                                } else {
+                                    portMap[port] = n.name;
+                                }
+                            });
+                        }
+                    });
+                    return {
+                        pass: duplicates.length === 0,
+                        message: duplicates.length > 0
+                            ? `Duplicate ports found: ${duplicates.join(', ')}`
+                            : 'All ports are unique'
+                    };
+                }
+            },
+            {
+                name: 'resource-limits-set',
+                description: 'All containers must have CPU and memory limits',
+                critical: true,
+                check: () => {
+                    const nodesWithoutLimits = nodes.filter(n => !n.resources || !n.resources.cpu || !n.resources.memory);
+                    return {
+                        pass: nodesWithoutLimits.length === 0,
+                        message: nodesWithoutLimits.length > 0
+                            ? `${nodesWithoutLimits.length} components missing resource limits`
+                            : 'All components have resource limits'
+                    };
+                }
+            },
+            {
+                name: 'minimal-stack',
+                description: 'Stack should have at least 3 components',
+                critical: false,
+                check: () => {
+                    return {
+                        pass: nodes.length >= 3,
+                        message: nodes.length < 3
+                            ? `Only ${nodes.length} components (recommended: 3+)`
+                            : `Stack has ${nodes.length} components`
+                    };
+                }
+            }
+        ];
+
+        function toggleValidation() {
+            const panel = document.getElementById('validationPanel');
+            if (panel.classList.contains('active')) {
+                panel.classList.remove('active');
+            } else {
+                panel.classList.add('active');
+                runValidation();
+            }
+        }
+
+        function runValidation() {
+            const resultsContainer = document.getElementById('validationResults');
+            const passCountEl = document.getElementById('validationPassCount');
+            const warnCountEl = document.getElementById('validationWarnCount');
+            const failCountEl = document.getElementById('validationFailCount');
+
+            let passCount = 0;
+            let warnCount = 0;
+            let failCount = 0;
+
+            resultsContainer.innerHTML = '';
+
+            // Run all checks
+            mustfileRules.forEach(rule => {
+                const result = rule.check();
+                const item = document.createElement('div');
+
+                if (result.pass) {
+                    passCount++;
+                    item.className = 'validation-item pass';
+                    item.innerHTML = `
+                        <div class="validation-item-header">
+                            <div class="validation-item-name">${rule.name}</div>
+                            <div class="validation-item-status pass">✓ PASS</div>
+                        </div>
+                        <div class="validation-item-desc">${result.message}</div>
+                    `;
+                } else {
+                    if (rule.critical) {
+                        failCount++;
+                        item.className = 'validation-item fail';
+                        item.innerHTML = `
+                            <div class="validation-item-header">
+                                <div class="validation-item-name">${rule.name}</div>
+                                <div class="validation-item-status fail">✗ FAIL</div>
+                            </div>
+                            <div class="validation-item-desc">${result.message} (CRITICAL)</div>
+                        `;
+                    } else {
+                        warnCount++;
+                        item.className = 'validation-item warn';
+                        item.innerHTML = `
+                            <div class="validation-item-header">
+                                <div class="validation-item-name">${rule.name}</div>
+                                <div class="validation-item-status warn">⚠ WARN</div>
+                            </div>
+                            <div class="validation-item-desc">${result.message}</div>
+                        `;
+                    }
+                }
+
+                resultsContainer.appendChild(item);
+            });
+
+            // Update summary
+            passCountEl.textContent = passCount;
+            warnCountEl.textContent = warnCount;
+            failCountEl.textContent = failCount;
+
+            // Visual feedback on nodes
+            updateNodeValidationStatus();
+
+            // Show validation panel
+            document.getElementById('validationPanel').classList.add('active');
+        }
+
+        function updateNodeValidationStatus() {
+            nodes.forEach(node => {
+                const el = document.getElementById(node.id);
+                if (!el) return;
+
+                // Remove existing validation classes
+                el.classList.remove('validation-pass', 'validation-warn', 'validation-fail');
+
+                // Check node against rules
+                let hasFail = false;
+                let hasWarn = false;
+
+                if (!node.baseImage) hasFail = true;
+                if (!node.firewall) hasFail = true;
+                if (!node.resources || !node.resources.cpu || !node.resources.memory) hasFail = true;
+
+                // Apply visual indicator
+                if (hasFail) {
+                    el.classList.add('validation-fail');
+                } else if (hasWarn) {
+                    el.classList.add('validation-warn');
+                } else {
+                    el.classList.add('validation-pass');
+                }
+            });
+        }
+
+        function deployStack() {
+            // Run validation first
+            runValidation();
+
+            setTimeout(() => {
+                const failCount = parseInt(document.getElementById('validationFailCount').textContent || '0');
+
+                if (failCount > 0) {
+                    alert('⚠️ Deployment Blocked\n\n' + failCount + ' critical validation checks failed!\n\nPlease fix the issues before deploying:\n\n' +
+                          '1. Go to Topology View\n' +
+                          '2. Click "Validate Design"\n' +
+                          '3. Fix failed checks (red)\n' +
+                          '4. Re-validate\n' +
+                          '5. Deploy when all critical checks pass\n\n' +
+                          'This protection comes from your Mustfile contractile.');
+                    toggleValidation(); // Show validation panel
+                } else {
+                    // Success - show deployment simulation
+                    showDeploymentProgress();
+                }
+            }, 500);
+        }
+
+        function showDeploymentProgress() {
+            const steps = [
+                '🔍 Validating design...',
+                '📋 Generating Mustfile...',
+                '🔐 Running Trustfile verification...',
+                '📦 Building Lago Grey base image...',
+                '⚙️ Building application image...',
+                '🚪 Configuring gateway...',
+                '🌐 Setting up network...',
+                '🔥 Configuring firewall...',
+                '🚀 Starting containers...',
+                '✅ Deployment complete!'
+            ];
+
+            let current = 0;
+            const progressAlert = setInterval(() => {
+                if (current < steps.length) {
+                    console.log(steps[current]);
+                    current++;
+                } else {
+                    clearInterval(progressAlert);
+                    alert('🎉 Stack Deployed Successfully!\n\n' +
+                          '✓ All Mustfile checks passed\n' +
+                          '✓ Trustfile verification complete\n' +
+                          '✓ Dustfile recovery ready\n' +
+                          '✓ Containers running\n\n' +
+                          '📍 Your app is live at: http://localhost:8080\n\n' +
+                          'Generated files:\n' +
+                          '  • Justfile (operational commands)\n' +
+                          '  • Mustfile (validation rules)\n' +
+                          '  • Trustfile.hs (crypto verification)\n' +
+                          '  • Dustfile (recovery paths)\n' +
+                          '  • stack.yaml (Podman config)\n\n' +
+                          'Run: just status\n' +
+                          'Stop: just stop\n' +
+                          'Rollback: just rollback');
+                }
+            }, 500);
+        }
+
+        // Auto-validate when nodes change
+        function createNode(data, x, y) {
+            const nodeId = `node-${nodeIdCounter++}`;
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.id = nodeId;
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            node.innerHTML = `
+                <div class="node-icon">${data.icon}</div>
+                <div class="node-name">${data.name}</div>
+                <div class="node-type">${data.type}</div>
+            `;
+
+            // Store node data
+            const nodeData = {
+                id: nodeId,
+                ...data,
+                x,
+                y,
+                firewall: false,
+                ports: '8080',
+                protocol: 'TCP',
+                resources: { cpu: '', memory: '' }, // Empty by default to trigger validation
+                baseImage: null // Not selected yet
+            };
+            nodes.push(nodeData);
+
+            // Single-click: select and show properties
+            node.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectNodeForProperties(nodeId);
+            });
+
+            // Double-click: navigate to Stack View
+            node.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                navigateToStack(nodeData);
+            });
+
+            // Make draggable on canvas
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            node.addEventListener('mousedown', (e) => {
+                if (e.target === node || e.target.parentElement === node) {
+                    isDragging = true;
+                    offsetX = e.clientX - node.offsetLeft;
+                    offsetY = e.clientY - node.offsetTop;
+                    node.style.cursor = 'grabbing';
+                }
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    node.style.left = (e.clientX - rect.left - offsetX) + 'px';
+                    node.style.top = (e.clientY - rect.top - offsetY) + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    node.style.cursor = 'move';
+                }
+            });
+
+            canvas.appendChild(node);
+
+            // Auto-run validation when nodes change
+            if (document.getElementById('validationPanel').classList.contains('active')) {
+                runValidation();
+            }
+        }
+    </script>
+</body>
+</html>

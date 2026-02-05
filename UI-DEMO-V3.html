@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stapeln - Container Stack Designer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0e1a;
+            color: #e0e6ed;
+            overflow: hidden;
+        }
+
+        #app {
+            display: flex;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 2px;
+            background: #151922;
+            padding: 8px 16px;
+            border-bottom: 1px solid #2a3142;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #8892a6;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: #1e2431;
+            color: #b0b8c4;
+        }
+
+        .tab.active {
+            background: #0a0e1a;
+            color: #4a9eff;
+            border-bottom: 2px solid #4a9eff;
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .page {
+            display: none;
+            width: 100%;
+            flex: 1;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        /* Canvas Area */
+        .canvas {
+            flex: 1;
+            padding: 32px;
+            overflow: auto;
+            position: relative;
+        }
+
+        /* Accordion Sidebar (Visual Paradigm style) */
+        .sidebar {
+            width: 320px;
+            background: #151922;
+            border-left: 1px solid #2a3142;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar.left {
+            border-left: none;
+            border-right: 1px solid #2a3142;
+        }
+
+        .accordion-section {
+            border-bottom: 1px solid #2a3142;
+        }
+
+        .accordion-header {
+            padding: 16px 20px;
+            background: #1e2431;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .accordion-header:hover {
+            background: #252d3d;
+        }
+
+        .accordion-header.active {
+            background: #252d3d;
+            color: #4a9eff;
+        }
+
+        .accordion-icon {
+            transition: transform 0.2s;
+        }
+
+        .accordion-header.active .accordion-icon {
+            transform: rotate(90deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #151922;
+        }
+
+        .accordion-content.open {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .accordion-body {
+            padding: 16px 20px;
+        }
+
+        /* Category Color Coding */
+        .category-build { color: #ffc107; }
+        .category-base { color: #4caf50; }
+        .category-gateway { color: #ff5722; }
+        .category-bridge { color: #2196f3; }
+        .category-runtime { color: #9c27b0; }
+        .category-security { color: #f44336; }
+        .category-network { color: #00bcd4; }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .category-badge.build { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .category-badge.base { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .category-badge.gateway { background: rgba(255, 87, 34, 0.2); color: #ff5722; }
+        .category-badge.bridge { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
+        .category-badge.runtime { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+        .category-badge.security { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+        .category-badge.network { background: rgba(0, 188, 212, 0.2); color: #00bcd4; }
+
+        /* Component Cards */
+        .component-item {
+            background: #1e2431;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .component-item:hover {
+            background: #252d3d;
+            transform: translateX(4px);
+        }
+
+        .component-item.build { border-left-color: #ffc107; }
+        .component-item.base { border-left-color: #4caf50; }
+        .component-item.gateway { border-left-color: #ff5722; }
+        .component-item.bridge { border-left-color: #2196f3; }
+        .component-item.runtime { border-left-color: #9c27b0; }
+        .component-item.security { border-left-color: #f44336; }
+        .component-item.network { border-left-color: #00bcd4; }
+
+        .component-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .component-icon {
+            font-size: 20px;
+        }
+
+        .component-name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .component-desc {
+            font-size: 11px;
+            color: #8892a6;
+            margin-bottom: 8px;
+        }
+
+        /* Port List with Expandable Details */
+        .port-list {
+            font-size: 11px;
+        }
+
+        .port-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+        }
+
+        .port-label {
+            color: #b0b8c4;
+            flex: 1;
+        }
+
+        .port-number {
+            font-family: 'Courier New', monospace;
+            color: #4a9eff;
+            margin: 0 8px;
+        }
+
+        .port-status {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .port-status.open {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .port-status.closed {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .port-status.internal {
+            background: rgba(156, 39, 176, 0.2);
+            color: #9c27b0;
+        }
+
+        .expand-ports {
+            font-size: 10px;
+            color: #4a9eff;
+            cursor: pointer;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        .expand-ports:hover {
+            text-decoration: underline;
+        }
+
+        /* Stack View - Vertical */
+        .stack-view {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .stack-layer {
+            background: #1e2431;
+            border: 2px solid #2a3142;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .stack-layer:hover {
+            border-color: #4a9eff;
+            background: #252d3d;
+        }
+
+        .stack-layer.verified {
+            border-color: #4caf50;
+        }
+
+        .stack-layer.warning {
+            border-color: #ff9800;
+        }
+
+        .layer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .layer-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.active {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .status-badge.warning {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+
+        .layer-details {
+            color: #8892a6;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Arrow connecting layers */
+        .stack-arrow {
+            text-align: center;
+            color: #4a9eff;
+            font-size: 24px;
+            margin: -8px 0;
+        }
+
+        /* Gap Analysis Items */
+        .gap-item {
+            background: #1e2431;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid #f44336;
+        }
+
+        .gap-item.warning {
+            border-left-color: #ff9800;
+        }
+
+        .gap-item.info {
+            border-left-color: #2196f3;
+        }
+
+        .gap-label {
+            font-size: 12px;
+            color: #8892a6;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .gap-text {
+            color: #e0e6ed;
+            font-size: 14px;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            background: rgba(30, 36, 49, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2a3142;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            color: #8892a6;
+            font-size: 13px;
+        }
+
+        .stat-bar {
+            flex: 1;
+            height: 20px;
+            background: #0f1319;
+            border-radius: 10px;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s;
+        }
+
+        .stat-fill.warning {
+            background: linear-gradient(90deg, #ff9800, #ffc107);
+        }
+
+        .stat-fill.critical {
+            background: linear-gradient(90deg, #f44336, #e91e63);
+        }
+
+        .stat-value {
+            color: #e0e6ed;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        /* Action Buttons */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: #1e2431;
+            color: #b0b8c4;
+            border: 1px solid #2a3142;
+        }
+
+        .btn-secondary:hover {
+            background: #252d3d;
+            border-color: #4a9eff;
+        }
+
+        /* Help Button */
+        .help-button {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a9eff, #7b6cff);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
+            transition: all 0.2s;
+        }
+
+        .help-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.6);
+        }
+
+        /* Help Panel */
+        .help-panel {
+            position: fixed;
+            bottom: 96px;
+            right: 24px;
+            width: 360px;
+            max-height: 500px;
+            background: #1e2431;
+            border: 1px solid #2a3142;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: none;
+            overflow-y: auto;
+        }
+
+        .help-panel.visible {
+            display: block;
+        }
+
+        .help-panel h3 {
+            margin-bottom: 16px;
+            color: #4a9eff;
+        }
+
+        .help-panel p {
+            color: #b0b8c4;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .help-shortcut {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a3142;
+        }
+
+        .help-shortcut:last-child {
+            border-bottom: none;
+        }
+
+        .shortcut-key {
+            font-family: 'Courier New', monospace;
+            background: #0f1319;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div style="flex: 1; display: flex; flex-direction: column;">
+            <!-- Navigation -->
+            <div class="nav-tabs">
+                <button class="tab active" onclick="showPage('stack')">📚 Stack View</button>
+                <button class="tab" onclick="showPage('topology')">🌐 Topology View</button>
+                <button class="tab" onclick="showPage('designer')">🎨 Image Designer</button>
+                <button class="tab" onclick="showPage('settings')">⚙️ Settings</button>
+            </div>
+
+            <!-- Pages -->
+            <div class="content">
+                <!-- Stack View (First Page - Default) -->
+                <div id="stack" class="page active">
+                    <div class="canvas">
+                        <div class="stack-view">
+                            <h2 style="margin-bottom: 32px; color: #e0e6ed;">Supply Chain Stack</h2>
+
+                            <!-- Build Layer -->
+                            <div class="stack-layer verified">
+                                <div class="layer-header">
+                                    <div class="layer-title">
+                                        <span style="font-size: 24px;">🏔️</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span>Cerro Torre</span>
+                                                <span class="category-badge build">BUILD</span>
+                                            </div>
+                                            <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">
+                                                Container Builder (.ctp bundles)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge active">✓ VERIFIED</span>
+                                </div>
+                                <div class="layer-details">
+                                    • Signature: Dilithium5 verified<br>
+                                    • SBOM: 23 dependencies scanned<br>
+                                    • Rekor: Logged to transparency chain
+                                </div>
+                            </div>
+
+                            <div class="stack-arrow">▼</div>
+
+                            <!-- Base Image Layer -->
+                            <div class="stack-layer verified">
+                                <div class="layer-header">
+                                    <div class="layer-title">
+                                        <span style="font-size: 24px;">🏞️</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span>Lago Grey</span>
+                                                <span class="category-badge base">BASE IMAGE</span>
+                                            </div>
+                                            <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">
+                                                Minimal Alpine Alternative (2.1 MB)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge active">✓ MINIMAL</span>
+                                </div>
+                                <div class="layer-details">
+                                    • Size: 2.1 MB (vs 7.8 MB Alpine)<br>
+                                    • CVEs: 0 known vulnerabilities<br>
+                                    • Attack surface: Minimal
+                                </div>
+                            </div>
+
+                            <div class="stack-arrow">▼</div>
+
+                            <!-- Gateway Layer -->
+                            <div class="stack-layer warning">
+                                <div class="layer-header">
+                                    <div class="layer-title">
+                                        <span style="font-size: 24px;">🛡️</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span>Svalinn</span>
+                                                <span class="category-badge gateway">GATEWAY</span>
+                                            </div>
+                                            <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">
+                                                Edge Gateway + WAF
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge warning">⚠ ISSUES</span>
+                                </div>
+                                <div class="layer-details">
+                                    <div class="port-list">
+                                        <div class="port-item">
+                                            <span class="port-label">HTTP (Web Traffic)</span>
+                                            <span class="port-number">:80</span>
+                                            <span class="port-status open">OPEN</span>
+                                        </div>
+                                        <div class="port-item">
+                                            <span class="port-label">HTTPS (Secure Web)</span>
+                                            <span class="port-number">:443</span>
+                                            <span class="port-status open">OPEN</span>
+                                        </div>
+                                        <div class="port-item" style="color: #f44336;">
+                                            <span class="port-label">SSH (Remote Admin)</span>
+                                            <span class="port-number">:22</span>
+                                            <span class="port-status open">OPEN</span>
+                                        </div>
+                                    </div>
+                                    <br>
+                                    • ⚠️ Port 22 (SSH) should be closed
+                                </div>
+                            </div>
+
+                            <div class="stack-arrow">▼</div>
+
+                            <!-- Security Components -->
+                            <div class="stack-layer verified">
+                                <div class="layer-header">
+                                    <div class="layer-title">
+                                        <span style="font-size: 24px;">🔒</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span>Security Layer</span>
+                                                <span class="category-badge security">SECURITY</span>
+                                            </div>
+                                            <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">
+                                                Fjord, Cape, Strait
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge active">✓ ACTIVE</span>
+                                </div>
+                                <div class="layer-details">
+                                    • 🌊 Fjord (Secrets): Linear types, encrypted<br>
+                                    • 🏔️ Cape (Monitor): Runtime eBPF monitoring<br>
+                                    • 🌉 Strait (Network): Zero-trust policy
+                                </div>
+                            </div>
+
+                            <div class="stack-arrow">▼</div>
+
+                            <!-- Application Layer -->
+                            <div class="stack-layer verified">
+                                <div class="layer-header">
+                                    <div class="layer-title">
+                                        <span style="font-size: 24px;">🌐</span>
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span>nginx</span>
+                                                <span class="category-badge runtime">APP</span>
+                                            </div>
+                                            <div style="font-size: 11px; color: #8892a6; margin-top: 4px;">
+                                                Web Server Container
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge active">✓ HEALTHY</span>
+                                </div>
+                                <div class="layer-details">
+                                    <div class="port-list">
+                                        <div class="port-item">
+                                            <span class="port-label">App HTTP</span>
+                                            <span class="port-number">:8080</span>
+                                            <span class="port-status internal">INTERNAL</span>
+                                        </div>
+                                    </div>
+                                    <br>
+                                    • CPU: 0.2 cores / 1.0 limit<br>
+                                    • Memory: 128 MB / 512 MB limit
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar with Accordion -->
+                    <div class="sidebar">
+                        <div class="accordion-section">
+                            <div class="accordion-header active" onclick="toggleAccordion(this)">
+                                <span>⚠️ Gap Analysis</span>
+                                <span class="accordion-icon">▶</span>
+                            </div>
+                            <div class="accordion-content open">
+                                <div class="accordion-body">
+                                    <div class="gap-item">
+                                        <div class="gap-label">🔴 CRITICAL</div>
+                                        <div class="gap-text">SSH port 22 exposed to internet</div>
+                                    </div>
+                                    <div class="gap-item warning">
+                                        <div class="gap-label">🟠 HIGH</div>
+                                        <div class="gap-text">No backup volume for postgres</div>
+                                    </div>
+                                    <div class="gap-item info">
+                                        <div class="gap-label">💡 RECOMMEND</div>
+                                        <div class="gap-text">Enable Fjord secrets manager</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-section">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                                <span>🎯 Quick Actions</span>
+                                <span class="accordion-icon">▶</span>
+                            </div>
+                            <div class="accordion-content">
+                                <div class="accordion-body">
+                                    <button class="btn btn-primary">🔧 Auto-Fix Issues</button>
+                                    <button class="btn btn-secondary">🔍 Simulate</button>
+                                    <button class="btn btn-secondary">📊 Export Report</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-section">
+                            <div class="accordion-header" onclick="toggleAccordion(this)">
+                                <span>📈 Security Score</span>
+                                <span class="accordion-icon">▶</span>
+                            </div>
+                            <div class="accordion-content">
+                                <div class="accordion-body">
+                                    <div class="stats-panel">
+                                        <div class="stat-row">
+                                            <span class="stat-label">Security</span>
+                                            <div class="stat-bar">
+                                                <div class="stat-fill warning" style="width: 67%"></div>
+                                            </div>
+                                            <span class="stat-value">67/100</span>
+                                        </div>
+                                        <div class="stat-row">
+                                            <span class="stat-label">Performance</span>
+                                            <div class="stat-bar">
+                                                <div class="stat-fill" style="width: 85%"></div>
+                                            </div>
+                                            <span class="stat-value">85/100</span>
+                                        </div>
+                                        <div class="stat-row">
+                                            <span class="stat-label">Reliability</span>
+                                            <div class="stat-bar">
+                                                <div class="stat-fill" style="width: 92%"></div>
+                                            </div>
+                                            <span class="stat-value">92/100</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Topology View (Second Page) -->
+                <div id="topology" class="page">
+                    <div class="canvas">
+                        <h2 style="margin-bottom: 24px; color: #e0e6ed;">Network Topology</h2>
+                        <p style="color: #8892a6;">Visual drag-and-drop network designer coming soon...</p>
+                    </div>
+
+                    <div class="sidebar left">
+                        <div class="accordion-section">
+                            <div class="accordion-header active" onclick="toggleAccordion(this)">
+                                <span>📦 Components</span>
+                                <span class="accordion-icon">▶</span>
+                            </div>
+                            <div class="accordion-content open">
+                                <div class="accordion-body">
+                                    <div class="component-item build">
+                                        <div class="component-header">
+                                            <span class="component-icon">🏔️</span>
+                                            <span class="component-name">Cerro Torre</span>
+                                        </div>
+                                        <div class="component-desc">Container builder with .ctp bundles</div>
+                                        <span class="category-badge build">BUILD</span>
+                                    </div>
+
+                                    <div class="component-item base">
+                                        <div class="component-header">
+                                            <span class="component-icon">🏞️</span>
+                                            <span class="component-name">Lago Grey</span>
+                                        </div>
+                                        <div class="component-desc">Minimal base image (2.1 MB)</div>
+                                        <span class="category-badge base">BASE IMAGE</span>
+                                    </div>
+
+                                    <div class="component-item gateway">
+                                        <div class="component-header">
+                                            <span class="component-icon">🛡️</span>
+                                            <span class="component-name">Svalinn</span>
+                                        </div>
+                                        <div class="component-desc">Edge gateway with WAF</div>
+                                        <div class="port-list">
+                                            <div class="port-item">
+                                                <span class="port-label">HTTP</span>
+                                                <span class="port-number">:80</span>
+                                            </div>
+                                            <div class="port-item">
+                                                <span class="port-label">HTTPS</span>
+                                                <span class="port-number">:443</span>
+                                            </div>
+                                        </div>
+                                        <span class="category-badge gateway">GATEWAY</span>
+                                    </div>
+
+                                    <div class="component-item security">
+                                        <div class="component-header">
+                                            <span class="component-icon">🌊</span>
+                                            <span class="component-name">Fjord</span>
+                                        </div>
+                                        <div class="component-desc">Secrets manager (linear types)</div>
+                                        <span class="category-badge security">SECURITY</span>
+                                    </div>
+
+                                    <div class="component-item security">
+                                        <div class="component-header">
+                                            <span class="component-icon">🏔️</span>
+                                            <span class="component-name">Cape</span>
+                                        </div>
+                                        <div class="component-desc">Runtime monitor (eBPF)</div>
+                                        <span class="category-badge security">SECURITY</span>
+                                    </div>
+
+                                    <div class="component-item security">
+                                        <div class="component-header">
+                                            <span class="component-icon">🌉</span>
+                                            <span class="component-name">Strait</span>
+                                        </div>
+                                        <div class="component-desc">Network policy (zero-trust)</div>
+                                        <span class="category-badge security">SECURITY</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Designer (Third Page) -->
+                <div id="designer" class="page">
+                    <div class="canvas">
+                        <h2 style="margin-bottom: 24px; color: #e0e6ed;">Lago Grey Image Designer</h2>
+                        <p style="color: #8892a6;">Visual image builder coming soon...</p>
+                        <p style="color: #8892a6; margin-top: 12px;">Features: Import/Export, Save, Simple Controls</p>
+                    </div>
+                </div>
+
+                <!-- Settings (Fourth Page) -->
+                <div id="settings" class="page">
+                    <div class="canvas">
+                        <h2 style="margin-bottom: 24px; color: #e0e6ed;">Settings</h2>
+                        <p style="color: #8892a6;">Configuration options coming soon...</p>
+                        <p style="color: #8892a6; margin-top: 12px;">Will include sidebar positioning (left/right)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Button -->
+        <button class="help-button" onclick="toggleHelp()" aria-label="Toggle help panel">
+            ?
+        </button>
+
+        <!-- Help Panel -->
+        <div class="help-panel" id="helpPanel">
+            <h3>📖 Quick Guide</h3>
+            <p><strong>Stack View:</strong> Shows your supply chain from build to deployment with security analysis.</p>
+            <p><strong>Topology View:</strong> Drag-and-drop network designer with visual connections.</p>
+            <p><strong>Image Designer:</strong> Build minimal Lago Grey base images.</p>
+
+            <h3 style="margin-top: 20px;">⌨️ Shortcuts</h3>
+            <div class="help-shortcut">
+                <span>Toggle Help</span>
+                <span class="shortcut-key">?</span>
+            </div>
+            <div class="help-shortcut">
+                <span>Stack View</span>
+                <span class="shortcut-key">1</span>
+            </div>
+            <div class="help-shortcut">
+                <span>Topology View</span>
+                <span class="shortcut-key">2</span>
+            </div>
+            <div class="help-shortcut">
+                <span>Image Designer</span>
+                <span class="shortcut-key">3</span>
+            </div>
+            <div class="help-shortcut">
+                <span>Settings</span>
+                <span class="shortcut-key">4</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+            document.getElementById(pageId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function toggleAccordion(header) {
+            const content = header.nextElementSibling;
+            const isOpen = content.classList.contains('open');
+
+            // Toggle this accordion
+            header.classList.toggle('active');
+            content.classList.toggle('open');
+        }
+
+        function toggleHelp() {
+            const panel = document.getElementById('helpPanel');
+            panel.classList.toggle('visible');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '?') {
+                toggleHelp();
+            } else if (e.key === '1') {
+                showPage('stack');
+            } else if (e.key === '2') {
+                showPage('topology');
+            } else if (e.key === '3') {
+                showPage('designer');
+            } else if (e.key === '4') {
+                showPage('settings');
+            }
+        });
+    </script>
+</body>
+</html>

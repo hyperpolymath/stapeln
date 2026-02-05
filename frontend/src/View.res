@@ -101,7 +101,7 @@ let renderStackBlock = (component: component, isDark: bool) => {
       role="note"
       ariaHidden="false">
       <div data-component-id={component.id} />
-      <div data-component-type={componentName} />
+      <div data-component-name={componentName} />
       <div data-component-layer={
         switch component.componentType {
         | CerroTorre => "build"
@@ -210,43 +210,44 @@ let renderParagonStack = (model: model, isDark: bool) => {
           <ul
             role="list"
             style="list-style: none; padding: 0; margin: 0;">
-            {[
-              (CerroTorre, "Cerro Torre", "Build verified container bundles"),
-              (Svalinn, "Svalinn", "Edge gateway with authentication"),
-              (Selur, "selur", "Zero-copy IPC bridge"),
-              (Vordr, "Vörðr", "Container orchestrator"),
-              (Podman, "Podman", "OCI runtime"),
-              (Docker, "Docker", "Docker Engine runtime"),
-              (Nerdctl, "nerdctl", "containerd CLI"),
-            ]
-            |> Array.map(((ct, name, desc)) => {
-              <li
-                role="listitem"
-                style="margin-bottom: 0.75rem;">
-                <button
-                  ariaLabel={"Add " ++ name ++ " to stack. " ++ desc}
-                  ariaBraille={name}
-                  style={`
-                    width: 100%;
-                    padding: 1rem;
-                    background-color: ${isDark ? "#1A1A1A" : "#F5F5F5"};
-                    color: ${isDark ? Colors.darkText : Colors.lightText};
-                    border: 2px solid ${isDark ? Colors.darkBorder : Colors.lightBorder};
-                    border-radius: 6px;
-                    text-align: left;
-                    cursor: pointer;
-                    font-size: 0.95rem;
-                    font-weight: 500;
-                    transition: all 0.2s ease;
-                  `}>
-                  <div style="font-weight: 600;">{name ->React.string}</div>
-                  <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 0.25rem;">
-                    {desc ->React.string}
-                  </div>
-                </button>
-              </li>
-            })
-            |> React.array}
+            {
+              let components = [
+                (CerroTorre, "Cerro Torre", "Build verified container bundles"),
+                (Svalinn, "Svalinn", "Edge gateway with authentication"),
+                (Selur, "selur", "Zero-copy IPC bridge"),
+                (Vordr, "Vörðr", "Container orchestrator"),
+                (Podman, "Podman", "OCI runtime"),
+                (Docker, "Docker", "Docker Engine runtime"),
+                (Nerdctl, "nerdctl", "containerd CLI"),
+              ]
+              components->Array.map(((ct, name, desc)) => {
+                <li
+                  role="listitem"
+                  style="margin-bottom: 0.75rem;">
+                  <button
+                    ariaLabel={"Add " ++ name ++ " to stack. " ++ desc}
+                    ariaBraille={name}
+                    style={`
+                      width: 100%;
+                      padding: 1rem;
+                      background-color: ${isDark ? "#1A1A1A" : "#F5F5F5"};
+                      color: ${isDark ? Colors.darkText : Colors.lightText};
+                      border: 2px solid ${isDark ? Colors.darkBorder : Colors.lightBorder};
+                      border-radius: 6px;
+                      text-align: left;
+                      cursor: pointer;
+                      font-size: 0.95rem;
+                      font-weight: 500;
+                      transition: all 0.2s ease;
+                    `}>
+                    <div style="font-weight: 600;">{name->React.string}</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 0.25rem;">
+                      {desc->React.string}
+                    </div>
+                  </button>
+                </li>
+              })->React.array
+            }
           </ul>
         </nav>
       </aside>
@@ -282,8 +283,8 @@ let renderParagonStack = (model: model, isDark: bool) => {
               ariaLabel="Stack components"
               ariaDescribedBy="stack-title">
               {model.components
-              |> Array.map(comp => renderStackBlock(comp, isDark))
-              |> React.array}
+              -> Array.map(comp => renderStackBlock(comp, isDark))
+              -> React.array}
             </div>
         }
       </article>

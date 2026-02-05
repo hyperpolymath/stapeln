@@ -73,7 +73,7 @@ let renderNav = (currentRoute: route, isDark: bool, dispatch) => {
     <h1
       style="margin: 0; font-size: 1.5rem; font-weight: 700; flex: 1;"
       id="app-title">
-      {"🏔️ stapeln" |> React.string}
+      {"🏔️ stapeln" -> React.string}
     </h1>
 
     <button
@@ -81,7 +81,7 @@ let renderNav = (currentRoute: route, isDark: bool, dispatch) => {
       ariaLabel="Go to Paragon view"
       ariaCurrent={currentRoute === ParagonView ? "page" : "false"}
       style={navButtonStyle(currentRoute === ParagonView)}>
-      {"Paragon View" |> React.string}
+      {"Paragon View" -> React.string}
     </button>
 
     <button
@@ -89,7 +89,7 @@ let renderNav = (currentRoute: route, isDark: bool, dispatch) => {
       ariaLabel="Go to Cisco view"
       ariaCurrent={currentRoute === CiscoView ? "page" : "false"}
       style={navButtonStyle(currentRoute === CiscoView)}>
-      {"Cisco View" |> React.string}
+      {"Cisco View" -> React.string}
     </button>
 
     <button
@@ -97,7 +97,7 @@ let renderNav = (currentRoute: route, isDark: bool, dispatch) => {
       ariaLabel="Go to Settings"
       ariaCurrent={currentRoute === SettingsView ? "page" : "false"}
       style={navButtonStyle(currentRoute === SettingsView)}>
-      {"Settings" |> React.string}
+      {"Settings" -> React.string}
     </button>
 
     <button
@@ -115,7 +115,7 @@ let renderNav = (currentRoute: route, isDark: bool, dispatch) => {
         cursor: pointer;
         font-weight: 600;
       `}>
-      {(isDark ? "🌙 Dark" : "☀️ Light") |> React.string}
+      {(isDark ? "🌙 Dark" : "☀️ Light") -> React.string}
     </button>
   </nav>
 }

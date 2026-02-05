@@ -366,7 +366,7 @@ let view = (model: model, isDark: bool, dispatch) => {
       // Render connections first (below components)
       {Array.map(model.connections, conn =>
         renderConnection(conn, model.components, isDark)
-      ) |> React.array}
+      ) -> React.array}
 
       // Render components
       {Array.map(ciscoComponents, comp => {
@@ -390,7 +390,7 @@ let view = (model: model, isDark: bool, dispatch) => {
             {comp.label ->React.string}
           </text>
         </g>
-      }) |> React.array}
+      }) -> React.array}
     </svg>
 
     // Configuration panel

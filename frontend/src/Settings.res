@@ -104,7 +104,7 @@ let view = (settings: settings, isDark: bool) => {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     `}>
     <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 2rem;">
-      {"Settings" |> React.string}
+      {"Settings" -> React.string}
     </h1>
 
     // Section 1: Default Component Settings
@@ -120,12 +120,12 @@ let view = (settings: settings, isDark: bool) => {
       <h2
         id="defaults-title"
         style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
-        {"Default Component Settings" |> React.string}
+        {"Default Component Settings" -> React.string}
       </h2>
 
       <fieldset style="border: none; padding: 0; margin-bottom: 1rem;">
         <legend style="font-weight: 600; margin-bottom: 0.5rem;">
-          {"Default Container Runtime" |> React.string}
+          {"Default Container Runtime" -> React.string}
         </legend>
         <label style="display: inline-block; margin-right: 1rem;">
           <input
@@ -134,7 +134,7 @@ let view = (settings: settings, isDark: bool) => {
             value="podman"
             defaultChecked={settings.defaultRuntime === Podman}
           />
-          {" Podman" |> React.string}
+          {" Podman" -> React.string}
         </label>
         <label style="display: inline-block; margin-right: 1rem;">
           <input
@@ -143,7 +143,7 @@ let view = (settings: settings, isDark: bool) => {
             value="docker"
             defaultChecked={settings.defaultRuntime === Docker}
           />
-          {" Docker" |> React.string}
+          {" Docker" -> React.string}
         </label>
         <label style="display: inline-block;">
           <input
@@ -152,13 +152,13 @@ let view = (settings: settings, isDark: bool) => {
             value="nerdctl"
             defaultChecked={settings.defaultRuntime === Nerdctl}
           />
-          {" nerdctl" |> React.string}
+          {" nerdctl" -> React.string}
         </label>
       </fieldset>
 
       <label style="display: block; margin-bottom: 1rem;">
         <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-          {"Default Registry" |> React.string}
+          {"Default Registry" -> React.string}
         </span>
         <input
           type_="text"
@@ -182,7 +182,7 @@ let view = (settings: settings, isDark: bool) => {
           defaultChecked=settings.autoVerifySignatures
           ariaLabel="Automatically verify container signatures"
         />
-        {" Auto-verify signatures" |> React.string}
+        {" Auto-verify signatures" -> React.string}
       </label>
 
       <label style="display: block; margin-bottom: 0.5rem;">
@@ -191,7 +191,7 @@ let view = (settings: settings, isDark: bool) => {
           defaultChecked=settings.requireSBOM
           ariaLabel="Require SBOM for all containers"
         />
-        {" Require SBOM" |> React.string}
+        {" Require SBOM" -> React.string}
       </label>
 
       <label style="display: block; margin-bottom: 1rem;">
@@ -200,17 +200,17 @@ let view = (settings: settings, isDark: bool) => {
           defaultChecked=settings.enforceNetworkPolicies
           ariaLabel="Enforce network policies"
         />
-        {" Enforce network policies" |> React.string}
+        {" Enforce network policies" -> React.string}
       </label>
 
       <h3 style="font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 1rem;">
-        {"Default Resource Limits" |> React.string}
+        {"Default Resource Limits" -> React.string}
       </h3>
 
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; max-width: 600px;">
         <label>
           <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-            {"CPU (cores)" |> React.string}
+            {"CPU (cores)" -> React.string}
           </span>
           <input
             type_="number"
@@ -231,7 +231,7 @@ let view = (settings: settings, isDark: bool) => {
 
         <label>
           <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-            {"Memory (MB)" |> React.string}
+            {"Memory (MB)" -> React.string}
           </span>
           <input
             type_="number"
@@ -252,7 +252,7 @@ let view = (settings: settings, isDark: bool) => {
 
         <label>
           <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-            {"Storage (GB)" |> React.string}
+            {"Storage (GB)" -> React.string}
           </span>
           <input
             type_="number"
@@ -286,12 +286,12 @@ let view = (settings: settings, isDark: bool) => {
       <h2
         id="cerro-torre-title"
         style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
-        {"🏔️ Cerro Torre Integration" |> React.string}
+        {"🏔️ Cerro Torre Integration" -> React.string}
       </h2>
 
       <label style="display: block; margin-bottom: 1rem;">
         <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-          {"CLI Path" |> React.string}
+          {"CLI Path" -> React.string}
         </span>
         <input
           type_="text"
@@ -312,7 +312,7 @@ let view = (settings: settings, isDark: bool) => {
 
       <label style="display: block; margin-bottom: 1rem;">
         <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-          {"Default Signing Key" |> React.string}
+          {"Default Signing Key" -> React.string}
         </span>
         <input
           type_="text"
@@ -333,7 +333,7 @@ let view = (settings: settings, isDark: bool) => {
 
       <label style="display: block; margin-bottom: 1rem;">
         <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-          {"Transparency Log" |> React.string}
+          {"Transparency Log" -> React.string}
         </span>
         <input
           type_="url"
@@ -363,12 +363,12 @@ let view = (settings: settings, isDark: bool) => {
         border-radius: 8px;
       `}>
       <h2 id="ui-title" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
-        {"UI Preferences" |> React.string}
+        {"UI Preferences" -> React.string}
       </h2>
 
       <fieldset style="border: none; padding: 0; margin-bottom: 1rem;">
         <legend style="font-weight: 600; margin-bottom: 0.5rem;">
-          {"Theme" |> React.string}
+          {"Theme" -> React.string}
         </legend>
         <label style="display: inline-block; margin-right: 1rem;">
           <input
@@ -377,25 +377,25 @@ let view = (settings: settings, isDark: bool) => {
             value="system"
             defaultChecked={settings.theme === "system"}
           />
-          {" System" |> React.string}
+          {" System" -> React.string}
         </label>
         <label style="display: inline-block; margin-right: 1rem;">
           <input type_="radio" name="theme" value="light" defaultChecked={settings.theme === "light"} />
-          {" Light" |> React.string}
+          {" Light" -> React.string}
         </label>
         <label style="display: inline-block;">
           <input type_="radio" name="theme" value="dark" defaultChecked={settings.theme === "dark"} />
-          {" Dark" |> React.string}
+          {" Dark" -> React.string}
         </label>
       </fieldset>
 
       <h3 style="font-size: 1.2rem; font-weight: 600; margin: 1.5rem 0 1rem;">
-        {"Accessibility" |> React.string}
+        {"Accessibility" -> React.string}
       </h3>
 
       <label style="display: block; margin-bottom: 1rem;">
         <span style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-          {"Font Size (px)" |> React.string}
+          {"Font Size (px)" -> React.string}
         </span>
         <input
           type_="number"
@@ -416,17 +416,17 @@ let view = (settings: settings, isDark: bool) => {
 
       <label style="display: block; margin-bottom: 0.5rem;">
         <input type_="checkbox" defaultChecked=settings.highContrast />
-        {" High contrast mode" |> React.string}
+        {" High contrast mode" -> React.string}
       </label>
 
       <label style="display: block; margin-bottom: 0.5rem;">
         <input type_="checkbox" defaultChecked=settings.reducedMotion />
-        {" Reduced motion" |> React.string}
+        {" Reduced motion" -> React.string}
       </label>
 
       <label style="display: block; margin-bottom: 1rem;">
         <input type_="checkbox" defaultChecked=settings.screenReaderMode />
-        {" Screen reader mode (extra announcements)" |> React.string}
+        {" Screen reader mode (extra announcements)" -> React.string}
       </label>
     </section>
 
@@ -443,7 +443,7 @@ let view = (settings: settings, isDark: bool) => {
           font-weight: 600;
           cursor: pointer;
         `}>
-        {"Reset to Defaults" |> React.string}
+        {"Reset to Defaults" -> React.string}
       </button>
 
       <button
@@ -457,7 +457,7 @@ let view = (settings: settings, isDark: bool) => {
           font-weight: 600;
           cursor: pointer;
         `}>
-        {"Save" |> React.string}
+        {"Save" -> React.string}
       </button>
 
       <button
@@ -471,7 +471,7 @@ let view = (settings: settings, isDark: bool) => {
           font-weight: 600;
           cursor: pointer;
         `}>
-        {"Cancel" |> React.string}
+        {"Cancel" -> React.string}
       </button>
     </div>
   </main>
