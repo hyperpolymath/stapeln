@@ -130,5 +130,17 @@ let make = () => {
           </div>
       }}
     </div>
+
+    {/* Footer with Idris² badge */}
+    <div
+      style={ReactDOM.Style.make(
+        ~position="fixed",
+        ~bottom="16px",
+        ~right="16px",
+        ~zIndex="1000",
+        (),
+      )}>
+      <IdrisBadge style=Compact />
+    </div>
   </div>
 }
