@@ -1609,6 +1609,9 @@
                 <button class="tab" onclick="showPage('scripts')">📜 Scripts & Schemata</button>
                 <button class="tab" onclick="showPage('contractiles')">📋 Contractiles</button>
                 <button class="tab" onclick="showPage('settings')">⚙️ Settings</button>
+                <div style="flex: 1"></div>
+                <button class="tab" onclick="saveDesign()" title="Save design to JSON file">💾 Save</button>
+                <button class="tab" onclick="loadDesign()" title="Load design from JSON file">📂 Load</button>
             </div>
 
             <!-- Quick Actions Bar -->
@@ -3265,6 +3268,11 @@ alignment-checks:
             // Render stack view when switching to it
             if (pageId === 'stack') {
                 setTimeout(() => renderStackView(), 100);
+            }
+
+            // Update live previews when showing contractiles
+            if (pageId === 'contractiles') {
+                setTimeout(() => updateLivePreviews(), 100);
             }
         }
 
@@ -5612,6 +5620,223 @@ ${nodes.filter(n => n.type === 'database').map(n =>
             }, files.length * 200 + 500);
         }
 
+        // ========================================
+        // SAVE/LOAD DESIGN (Feature #1)
+        // ========================================
+
+        function saveDesign() {
+            if (nodes.length === 0) {
+                alert('⚠️ Nothing to save!\n\nAdd some components to your design first.');
+                return;
+            }
+
+            const design = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    name: 'stapeln-design',
+                    nodeCount: nodes.length,
+                    connectionCount: connections.length
+                },
+                nodes: nodes,
+                connections: connections
+            };
+
+            const json = JSON.stringify(design, null, 2);
+            const filename = `stapeln-design-${new Date().toISOString().split('T')[0]}.json`;
+
+            downloadFile(filename, json);
+
+            // Also save to localStorage for auto-recovery
+            localStorage.setItem('stapeln_last_design', json);
+            localStorage.setItem('stapeln_last_save', new Date().toISOString());
+
+            console.log('✓ Design saved:', filename);
+            alert(`💾 Design Saved!\n\n` +
+                  `File: ${filename}\n` +
+                  `Components: ${nodes.length}\n` +
+                  `Connections: ${connections.length}\n\n` +
+                  `Auto-save enabled - your work is backed up!`);
+        }
+
+        function loadDesign() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const design = JSON.parse(event.target.result);
+
+                        // Validate design structure
+                        if (!design.nodes || !Array.isArray(design.nodes)) {
+                            throw new Error('Invalid design file: missing nodes array');
+                        }
+
+                        // Confirm before loading (will clear current design)
+                        const confirmMsg = `Load design from file?\n\n` +
+                                         `File: ${file.name}\n` +
+                                         `Components: ${design.nodes.length}\n` +
+                                         `Connections: ${design.connections?.length || 0}\n\n` +
+                                         `⚠️ This will replace your current design!`;
+
+                        if (!confirm(confirmMsg)) return;
+
+                        // Clear canvas
+                        nodes = [];
+                        connections = [];
+                        document.querySelectorAll('.node').forEach(n => n.remove());
+                        document.querySelectorAll('.connection-line').forEach(c => c.remove());
+
+                        // Load nodes
+                        design.nodes.forEach(nodeData => {
+                            createNode(
+                                {
+                                    type: nodeData.type,
+                                    icon: nodeData.icon,
+                                    name: nodeData.name
+                                },
+                                nodeData.x,
+                                nodeData.y
+                            );
+
+                            // Update the newly created node with saved properties
+                            const lastNode = nodes[nodes.length - 1];
+                            Object.assign(lastNode, nodeData);
+                        });
+
+                        // Load connections
+                        if (design.connections && design.connections.length > 0) {
+                            setTimeout(() => {
+                                design.connections.forEach(conn => {
+                                    connections.push(conn);
+                                    renderConnection(conn);
+                                });
+                            }, 300);
+                        }
+
+                        console.log('✓ Design loaded:', file.name);
+                        alert(`✅ Design Loaded!\n\n` +
+                              `Loaded ${design.nodes.length} components and ${design.connections?.length || 0} connections\n\n` +
+                              `Your design is ready to work with!`);
+
+                        updateEmptyState();
+
+                    } catch (error) {
+                        console.error('Error loading design:', error);
+                        alert(`❌ Failed to load design\n\n` +
+                              `Error: ${error.message}\n\n` +
+                              `Make sure the file is a valid stapeln design file.`);
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            input.click();
+        }
+
+        function autoSave() {
+            if (nodes.length > 0) {
+                const design = {
+                    version: '1.0',
+                    timestamp: new Date().toISOString(),
+                    nodes: nodes,
+                    connections: connections
+                };
+                localStorage.setItem('stapeln_autosave', JSON.stringify(design));
+                console.log('🔄 Auto-saved design');
+            }
+        }
+
+        function checkAutoSave() {
+            const autosave = localStorage.getItem('stapeln_autosave');
+            if (autosave && nodes.length === 0) {
+                const design = JSON.parse(autosave);
+                const timestamp = new Date(design.timestamp).toLocaleString();
+
+                if (confirm(`🔄 Auto-saved design found!\n\n` +
+                           `Saved: ${timestamp}\n` +
+                           `Components: ${design.nodes.length}\n` +
+                           `Connections: ${design.connections?.length || 0}\n\n` +
+                           `Would you like to restore it?`)) {
+
+                    // Restore the design
+                    design.nodes.forEach(nodeData => {
+                        createNode(
+                            {
+                                type: nodeData.type,
+                                icon: nodeData.icon,
+                                name: nodeData.name
+                            },
+                            nodeData.x,
+                            nodeData.y
+                        );
+                        const lastNode = nodes[nodes.length - 1];
+                        Object.assign(lastNode, nodeData);
+                    });
+
+                    if (design.connections) {
+                        setTimeout(() => {
+                            design.connections.forEach(conn => {
+                                connections.push(conn);
+                                renderConnection(conn);
+                            });
+                        }, 300);
+                    }
+
+                    console.log('✓ Auto-save restored');
+                    updateEmptyState();
+                }
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(autoSave, 30000);
+
+        // Check for auto-save on page load
+        setTimeout(checkAutoSave, 1000);
+
+        // ========================================
+        // LIVE PREVIEW (Feature #2)
+        // ========================================
+
+        function updateLivePreviews() {
+            // Update Justfile preview
+            const justfileEditor = document.querySelector('#intentfile-tab .code-editor');
+            if (justfileEditor && nodes.length > 0) {
+                justfileEditor.value = generateJustfile();
+            }
+
+            // Update Mustfile preview
+            const mustfileEditor = document.querySelector('#mustfile-tab .code-editor');
+            if (mustfileEditor && nodes.length > 0) {
+                mustfileEditor.value = generateMustfile();
+            }
+
+            // Update Trustfile preview
+            const trustfileEditor = document.querySelector('#trustfile-tab .code-editor');
+            if (trustfileEditor && nodes.length > 0) {
+                trustfileEditor.value = generateTrustfile();
+            }
+
+            // Update Dustfile preview
+            const dustfileEditor = document.querySelector('#dustfile-tab .code-editor');
+            if (dustfileEditor && nodes.length > 0) {
+                dustfileEditor.value = generateDustfile();
+            }
+        }
+
+        // Update previews when topology changes
+        function notifyTopologyChange() {
+            updateLivePreviews();
+            autoSave();
+        }
+
         // Auto-validate when nodes change
         function createNode(data, x, y) {
             const nodeId = `node-${nodeIdCounter++}`;
@@ -5721,6 +5946,9 @@ ${nodes.filter(n => n.type === 'database').map(n =>
 
             // Update empty state
             updateEmptyState();
+
+            // Notify of topology change
+            notifyTopologyChange();
 
             // Auto-run validation when nodes change
             if (document.getElementById('validationPanel').classList.contains('active')) {
