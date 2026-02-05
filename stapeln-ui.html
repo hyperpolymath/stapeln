@@ -1964,13 +1964,100 @@
 
                 <!-- Image Designer -->
                 <div id="designer" class="page">
-                    <div class="canvas">
-                        <div class="simple-content">
-                            <h2>🎨 Lago Grey Image Designer</h2>
-                            <p>Visual base image builder coming soon...</p>
-                            <p style="margin-top: 16px; font-size: 14px;">
-                                Build minimal images by assembling Floes, Icebergs, and Glaciers
-                            </p>
+                    <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+                        <div class="page-header" style="padding: 24px 32px; border-bottom: 1px solid #2a3142;">
+                            <h2 style="font-size: 28px; color: #4a9eff; margin-bottom: 8px;">🌊 Lago Grey Image Designer</h2>
+                            <p class="subtitle" style="color: #8892a6;">Build minimal Linux containers by assembling ice formations (Floes, Icebergs, Glaciers)</p>
+                        </div>
+
+                        <div style="display: flex; flex: 1; overflow: hidden;">
+                            <!-- Left: Component Catalog -->
+                            <div class="lago-sidebar" style="width: 280px; background: #151922; border-right: 1px solid #2a3142; overflow-y: auto; padding: 20px;">
+                                <div class="lago-section">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">Base Image</h3>
+                                    <div id="lago-base-options"></div>
+                                </div>
+
+                                <div class="lago-section" style="margin-top: 24px;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">🧊 Floes (&lt; 1MB)</h3>
+                                    <div id="lago-floes-list"></div>
+                                </div>
+
+                                <div class="lago-section" style="margin-top: 24px;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">🏔️ Icebergs (1-75MB)</h3>
+                                    <div id="lago-icebergs-list"></div>
+                                </div>
+                            </div>
+
+                            <!-- Center: Canvas -->
+                            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #0a0e1a;">
+                                <div style="padding: 20px; border-bottom: 1px solid #2a3142; display: flex; justify-content: space-between; align-items: center;">
+                                    <h3 style="font-size: 18px; font-weight: 700; color: #4a9eff;">Your Lago Grey Image</h3>
+                                    <div style="display: flex; align-items: center; gap: 16px;">
+                                        <span style="font-size: 13px; color: #8892a6;">Total Size:</span>
+                                        <span id="lago-total-size" style="font-size: 20px; font-weight: 700; color: #4a9eff;">10 MB</span>
+                                        <span id="lago-classification" style="font-size: 14px; padding: 6px 12px; background: #1e2431; border-radius: 6px; color: #4a9eff;">🏔️ Small Iceberg</span>
+                                    </div>
+                                </div>
+
+                                <div id="lago-canvas-layers" style="flex: 1; overflow-y: auto; padding: 20px;"></div>
+
+                                <div style="padding: 20px; border-top: 1px solid #2a3142; background: #151922;">
+                                    <h4 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">Competitive Position</h4>
+                                    <div id="lago-comparison-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Right: Info & Export -->
+                            <div style="width: 320px; background: #151922; border-left: 1px solid #2a3142; overflow-y: auto; padding: 20px;">
+                                <div class="lago-section">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">Ice Formation Guide</h3>
+                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #1e2431; border-radius: 8px;">
+                                            <span style="font-size: 24px;">🧊</span>
+                                            <div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #e0e6ed;">Floe</div>
+                                                <div style="font-size: 11px; color: #8892a6;">&lt; 1MB - Small components</div>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #1e2431; border-radius: 8px;">
+                                            <span style="font-size: 24px;">🏔️</span>
+                                            <div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #e0e6ed;">Iceberg</div>
+                                                <div style="font-size: 11px; color: #8892a6;">1-75MB - Medium chunks</div>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #1e2431; border-radius: 8px;">
+                                            <span style="font-size: 24px;">🌊</span>
+                                            <div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #e0e6ed;">Glacier</div>
+                                                <div style="font-size: 11px; color: #8892a6;">75MB+ - Large masses</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="lago-section" style="margin-top: 24px;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">Export</h3>
+                                    <button onclick="exportContainerfile()" style="width: 100%; padding: 12px; margin-bottom: 8px; background: linear-gradient(135deg, #4a9eff, #7b6cff); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                                        📄 Containerfile
+                                    </button>
+                                    <button onclick="exportLagoManifest()" style="width: 100%; padding: 12px; margin-bottom: 8px; background: #1e2431; color: #b0b8c4; border: 1px solid #2a3142; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                                        📋 Manifest JSON
+                                    </button>
+                                    <button onclick="exportLagoCompletePackage()" style="width: 100%; padding: 12px; background: #1e2431; color: #b0b8c4; border: 1px solid #2a3142; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                                        📦 Complete Package
+                                    </button>
+                                    <p style="margin-top: 12px; font-size: 11px; color: #8892a6; line-height: 1.6;">
+                                        Click to download. Run 'podman build' to create image.
+                                    </p>
+                                </div>
+
+                                <div class="lago-section" style="margin-top: 24px;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #8892a6; margin-bottom: 12px;">Security</h3>
+                                    <div id="lago-security-info"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -6047,6 +6134,324 @@ ${nodes.filter(n => n.type === 'database').map(n =>
 
         // Initialize empty state on page load
         updateEmptyState();
+
+        // ========================================
+        // LAGO GREY IMAGE DESIGNER
+        // ========================================
+
+        // Ice formation catalog
+        const lagoFloes = [
+            { name: 'hello', size: 29000, icon: '🧊', desc: 'Minimal hello binary' },
+            { name: 'libsodium', size: 506000, icon: '🧊', desc: 'Modern crypto library' },
+            { name: 'libargon2', size: 42000, icon: '🧊', desc: 'Password hashing' },
+            { name: 'obli-pkg', size: 56000, icon: '🧊', desc: 'Package manager' }
+        ];
+
+        const lagoIcebergs = [
+            { name: 'liboqs', size: 11000000, icon: '🏔️', desc: 'Post-quantum crypto' }
+        ];
+
+        const lagoBaseImages = [
+            { name: 'Distroless', size: 10000000, fileCount: 20, desc: '~10 MB, ~20 files' },
+            { name: 'Alpine', size: 60000000, fileCount: 5000, desc: '~60 MB, ~5,000 files' },
+            { name: 'Scratch', size: 0, fileCount: 0, desc: '0 MB (empty)' }
+        ];
+
+        // Lago Grey Designer state
+        let lagoState = {
+            baseImage: 'Distroless',
+            formations: [], // Array of formation names
+            totalSize: 10000000
+        };
+
+        // Initialize Lago Grey Designer
+        function initLagoDesigner() {
+            renderLagoBaseOptions();
+            renderLagoFloes();
+            renderLagoIcebergs();
+            renderLagoCanvas();
+            updateLagoComparison();
+            updateLagoSecurity();
+        }
+
+        function renderLagoBaseOptions() {
+            const container = document.getElementById('lago-base-options');
+            container.innerHTML = lagoBaseImages.map(base => `
+                <button
+                    onclick="setLagoBaseImage('${base.name}')"
+                    style="width: 100%; padding: 12px; margin-bottom: 8px; background: ${lagoState.baseImage === base.name ? 'linear-gradient(135deg, #4a9eff, #7b6cff)' : '#1e2431'}; color: ${lagoState.baseImage === base.name ? 'white' : '#b0b8c4'}; border: 1px solid ${lagoState.baseImage === base.name ? '#4a9eff' : '#2a3142'}; border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.2s; text-align: left;">
+                    <div style="font-weight: 600; margin-bottom: 4px;">${base.name}</div>
+                    <div style="font-size: 11px; opacity: 0.8;">${base.desc}</div>
+                </button>
+            `).join('');
+        }
+
+        function renderLagoFloes() {
+            const container = document.getElementById('lago-floes-list');
+            container.innerHTML = lagoFloes.map(floe => {
+                const selected = lagoState.formations.includes(floe.name);
+                return `
+                    <button
+                        onclick="toggleLagoFormation('${floe.name}')"
+                        style="width: 100%; padding: 12px; margin-bottom: 8px; background: ${selected ? 'rgba(74, 158, 255, 0.2)' : '#1e2431'}; color: ${selected ? '#4a9eff' : '#b0b8c4'}; border: 1px solid ${selected ? '#4a9eff' : '#2a3142'}; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all 0.2s; text-align: left; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">${floe.icon}</span>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 2px;">${floe.name}</div>
+                            <div style="font-size: 10px; opacity: 0.8;">${formatBytes(floe.size)}</div>
+                        </div>
+                        ${selected ? '<span style="font-size: 16px;">✓</span>' : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderLagoIcebergs() {
+            const container = document.getElementById('lago-icebergs-list');
+            container.innerHTML = lagoIcebergs.map(iceberg => {
+                const selected = lagoState.formations.includes(iceberg.name);
+                return `
+                    <button
+                        onclick="toggleLagoFormation('${iceberg.name}')"
+                        style="width: 100%; padding: 12px; margin-bottom: 8px; background: ${selected ? 'rgba(74, 158, 255, 0.2)' : '#1e2431'}; color: ${selected ? '#4a9eff' : '#b0b8c4'}; border: 1px solid ${selected ? '#4a9eff' : '#2a3142'}; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all 0.2s; text-align: left; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 20px;">${iceberg.icon}</span>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 2px;">${iceberg.name}</div>
+                            <div style="font-size: 10px; opacity: 0.8;">${formatBytes(iceberg.size)}</div>
+                        </div>
+                        ${selected ? '<span style="font-size: 16px;">✓</span>' : ''}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function setLagoBaseImage(baseName) {
+            const base = lagoBaseImages.find(b => b.name === baseName);
+            if (!base) return;
+
+            lagoState.baseImage = baseName;
+            lagoState.totalSize = base.size + calculateFormationsSize();
+
+            renderLagoBaseOptions();
+            renderLagoCanvas();
+            updateLagoComparison();
+        }
+
+        function toggleLagoFormation(formationName) {
+            const idx = lagoState.formations.indexOf(formationName);
+            if (idx >= 0) {
+                lagoState.formations.splice(idx, 1);
+            } else {
+                lagoState.formations.push(formationName);
+            }
+
+            lagoState.totalSize = getCurrentBaseSize() + calculateFormationsSize();
+
+            renderLagoFloes();
+            renderLagoIcebergs();
+            renderLagoCanvas();
+            updateLagoComparison();
+            updateLagoSecurity();
+        }
+
+        function getCurrentBaseSize() {
+            const base = lagoBaseImages.find(b => b.name === lagoState.baseImage);
+            return base ? base.size : 0;
+        }
+
+        function calculateFormationsSize() {
+            return lagoState.formations.reduce((total, name) => {
+                const floe = lagoFloes.find(f => f.name === name);
+                if (floe) return total + floe.size;
+                const iceberg = lagoIcebergs.find(i => i.name === name);
+                if (iceberg) return total + iceberg.size;
+                return total;
+            }, 0);
+        }
+
+        function renderLagoCanvas() {
+            const container = document.getElementById('lago-canvas-layers');
+            const base = lagoBaseImages.find(b => b.name === lagoState.baseImage);
+
+            let layersHTML = `
+                <div style="padding: 16px; background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%); border: 2px solid #2a3142; border-radius: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 28px;">📦</span>
+                        <div style="flex: 1;">
+                            <div style="font-size: 15px; font-weight: 600; color: #e0e6ed;">${base.name} Base</div>
+                            <div style="font-size: 12px; color: #8892a6; margin-top: 2px;">${formatBytes(base.size)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            lagoState.formations.forEach(name => {
+                const floe = lagoFloes.find(f => f.name === name);
+                const iceberg = lagoIcebergs.find(i => i.name === name);
+                const formation = floe || iceberg;
+                if (formation) {
+                    layersHTML += `
+                        <div style="padding: 16px; background: linear-gradient(135deg, #1e2431 0%, #252d3d 100%); border: 2px solid #4a9eff; border-radius: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 28px;">${formation.icon}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 15px; font-weight: 600; color: #e0e6ed;">${formation.name}</div>
+                                    <div style="font-size: 12px; color: #8892a6; margin-top: 2px;">${formatBytes(formation.size)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (lagoState.formations.length === 0) {
+                layersHTML += `
+                    <div style="padding: 40px; text-align: center; color: #8892a6;">
+                        <p style="font-size: 14px; margin-bottom: 8px;">👈 Select components from the sidebar</p>
+                        <p style="font-size: 12px; opacity: 0.8;">Click on Floes or Icebergs to build your image</p>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = layersHTML;
+
+            // Update total size display
+            document.getElementById('lago-total-size').textContent = formatBytes(lagoState.totalSize);
+
+            // Update classification
+            let classification = '';
+            if (lagoState.totalSize < 1000000) {
+                classification = '🧊 Floe';
+            } else if (lagoState.totalSize <= 75000000) {
+                classification = '🏔️ Small Iceberg';
+            } else {
+                classification = '🌊 Glacier';
+            }
+            document.getElementById('lago-classification').textContent = classification;
+        }
+
+        function updateLagoComparison() {
+            const container = document.getElementById('lago-comparison-grid');
+            const alpineSize = 60000000;
+            const targetSize = 17500000;
+
+            const vsAlpine = lagoState.totalSize <= alpineSize
+                ? `✅ ${((1 - lagoState.totalSize / alpineSize) * 100).toFixed(1)}% smaller`
+                : `⚠️ ${((lagoState.totalSize / alpineSize - 1) * 100).toFixed(1)}% larger`;
+
+            const vsTarget = lagoState.totalSize <= targetSize
+                ? `✅ Under target!`
+                : `⚠️ ${formatBytes(lagoState.totalSize - targetSize)} over`;
+
+            container.innerHTML = `
+                <div style="padding: 12px; background: #1e2431; border-radius: 8px;">
+                    <div style="font-size: 11px; color: #8892a6; margin-bottom: 4px;">vs Alpine (60 MB):</div>
+                    <div style="font-size: 13px; font-weight: 600; color: ${lagoState.totalSize <= alpineSize ? '#4ade80' : '#f87171'};">${vsAlpine}</div>
+                </div>
+                <div style="padding: 12px; background: #1e2431; border-radius: 8px;">
+                    <div style="font-size: 11px; color: #8892a6; margin-bottom: 4px;">Target (17.5 MB):</div>
+                    <div style="font-size: 13px; font-weight: 600; color: ${lagoState.totalSize <= targetSize ? '#4ade80' : '#f87171'};">${vsTarget}</div>
+                </div>
+            `;
+        }
+
+        function updateLagoSecurity() {
+            const container = document.getElementById('lago-security-info');
+            const hasLiboqs = lagoState.formations.includes('liboqs');
+            const hasLibsodium = lagoState.formations.includes('libsodium');
+
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="padding: 10px; background: ${hasLiboqs ? 'rgba(76, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)'}; border: 1px solid ${hasLiboqs ? '#4ade80' : '#f87171'}; border-radius: 6px; font-size: 12px; color: ${hasLiboqs ? '#4ade80' : '#f87171'};">
+                        ${hasLiboqs ? '✅' : '⚠️'} ${hasLiboqs ? 'Post-quantum crypto' : 'No PQ crypto (add liboqs)'}
+                    </div>
+                    <div style="padding: 10px; background: ${hasLibsodium ? 'rgba(76, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)'}; border: 1px solid ${hasLibsodium ? '#4ade80' : '#f87171'}; border-radius: 6px; font-size: 12px; color: ${hasLibsodium ? '#4ade80' : '#f87171'};">
+                        ${hasLibsodium ? '✅' : '⚠️'} ${hasLibsodium ? 'Classical crypto' : 'No classical crypto'}
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        }
+
+        // Export functions
+        function exportContainerfile() {
+            const base = lagoBaseImages.find(b => b.name === lagoState.baseImage);
+            let baseImageName = 'gcr.io/distroless/static';
+            if (base.name === 'Alpine') baseImageName = 'alpine:latest';
+            else if (base.name === 'Scratch') baseImageName = 'scratch';
+
+            let containerfile = `# SPDX-License-Identifier: PMPL-1.0-or-later
+# Generated Containerfile for Lago Grey Image
+# Total Size: ${formatBytes(lagoState.totalSize)}
+# Classification: ${document.getElementById('lago-classification').textContent}
+
+FROM ${baseImageName}
+
+# Base: ${base.name} (${formatBytes(base.size)})
+
+`;
+
+            if (lagoState.formations.length > 0) {
+                containerfile += `# Ice Formations:\n`;
+                lagoState.formations.forEach(name => {
+                    const floe = lagoFloes.find(f => f.name === name);
+                    const iceberg = lagoIcebergs.find(i => i.name === name);
+                    const formation = floe || iceberg;
+                    if (formation) {
+                        containerfile += `# - ${formation.name} (${formatBytes(formation.size)})\n`;
+                    }
+                });
+                containerfile += `\n`;
+
+                lagoState.formations.forEach(name => {
+                    containerfile += `RUN apk add --no-cache ${name} || echo "Install ${name} from source"\n`;
+                });
+            }
+
+            containerfile += `\nCMD ["/bin/sh"]\n`;
+
+            downloadFile(`lago-grey-${Date.now()}.Containerfile`, containerfile);
+        }
+
+        function exportLagoManifest() {
+            const manifest = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                baseImage: lagoState.baseImage,
+                formations: lagoState.formations.map(name => {
+                    const floe = lagoFloes.find(f => f.name === name);
+                    const iceberg = lagoIcebergs.find(i => i.name === name);
+                    const formation = floe || iceberg;
+                    return {
+                        name: formation.name,
+                        size: formation.size,
+                        type: floe ? 'floe' : 'iceberg'
+                    };
+                }),
+                totalSize: lagoState.totalSize,
+                classification: document.getElementById('lago-classification').textContent
+            };
+
+            downloadFile(`lago-grey-manifest-${Date.now()}.json`, JSON.stringify(manifest, null, 2));
+        }
+
+        function exportLagoCompletePackage() {
+            alert('📦 Complete Package Export\n\nThis will generate:\n- Containerfile\n- Manifest JSON\n- Build script\n- README\n\nPackaged as lago-grey-complete.tar.gz\n\n(Feature coming soon!)');
+        }
+
+        // Initialize Lago Designer when showing designer page
+        const originalShowPage = showPage;
+        showPage = function(pageId) {
+            originalShowPage.call(this, pageId);
+            if (pageId === 'designer') {
+                setTimeout(() => initLagoDesigner(), 100);
+            }
+        };
+
     </script>
 </body>
 </html>
