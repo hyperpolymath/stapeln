@@ -1,18 +1,8 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# GraphQL Schema for stackur backend
+# GraphQL Schema for stapeln (MVP)
 
-# Enums
-enum ComponentType {
-  CERRO_TORRE
-  SVALINN
-  SELUR
-  VORDR
-  PODMAN
-  DOCKER
-  NERDCTL
-  VOLUME
-  NETWORK
-}
+scalar JSON
+scalar DateTime
 
 enum RuntimeEngine {
   PODMAN
@@ -20,97 +10,49 @@ enum RuntimeEngine {
   NERDCTL
 }
 
-enum ExportFormat {
-  SELUR_COMPOSE  # compose.toml
-  DOCKER_COMPOSE # docker-compose.yml
-  PODMAN_COMPOSE # podman-compose.yml
-}
-
-# Types
 type Position {
   x: Float!
   y: Float!
 }
 
-type AccessibilityMetadata {
-  ariaLabel: String!
-  ariaDescription: String!
-  brailleLabel: String!
-  semanticRole: String!
-  keyboardShortcut: String
-  xmlMetadata: String # XML representation for AT
-}
-
 type Component {
   id: ID!
-  type: ComponentType!
+  type: String!
   position: Position!
-  config: JSON!
-  a11y: AccessibilityMetadata!
-  createdAt: DateTime!
-  updatedAt: DateTime!
+  config: JSON
 }
 
 type Connection {
   id: ID!
-  from: ID! # Component ID
-  to: ID!   # Component ID
-  createdAt: DateTime!
-}
-
-type ValidationError {
-  code: String!
-  message: String!
-  componentId: ID
-  severity: String! # "error" | "warning"
-}
-
-type ValidationResult {
-  valid: Boolean!
-  errors: [ValidationError!]!
-  warnings: [ValidationError!]!
-  timestamp: DateTime!
+  from: ID!
+  to: ID!
 }
 
 type Stack {
   id: ID!
   name: String!
   description: String
+  runtime: RuntimeEngine!
   components: [Component!]!
   connections: [Connection!]!
-  runtime: RuntimeEngine!
-  validationResult: ValidationResult
   createdAt: DateTime!
   updatedAt: DateTime!
-  owner: User!
 }
 
-type User {
-  id: ID!
-  email: String!
-  stacks: [Stack!]!
-}
-
-type ExportResult {
-  format: ExportFormat!
-  content: String!
-  filename: String!
-  timestamp: DateTime!
-}
-
-# Inputs
 input PositionInput {
   x: Float!
   y: Float!
 }
 
 input ComponentInput {
-  type: ComponentType!
+  id: ID
+  type: String!
   position: PositionInput!
   config: JSON
 }
 
 input ConnectionInput {
+  id: ID
   from: ID!
   to: ID!
 }
@@ -119,73 +61,25 @@ input CreateStackInput {
   name: String!
   description: String
   runtime: RuntimeEngine!
+  components: [ComponentInput!]!
+  connections: [ConnectionInput!]!
 }
 
 input UpdateStackInput {
   name: String
   description: String
   runtime: RuntimeEngine
+  components: [ComponentInput!]
+  connections: [ConnectionInput!]
 }
 
-# Queries
 type Query {
-  # User queries
-  me: User!
-
-  # Stack queries
   stack(id: ID!): Stack
-  stacks: [Stack!]!
-
-  # Component queries (for palette)
-  availableComponents: [ComponentType!]!
-  componentMetadata(type: ComponentType!): AccessibilityMetadata!
-
-  # Validation
-  validateStack(id: ID!): ValidationResult!
-  previewValidation(components: [ComponentInput!]!, connections: [ConnectionInput!]!): ValidationResult!
+  stacks(limit: Int = 50): [Stack!]!
 }
 
-# Mutations
 type Mutation {
-  # Stack management
   createStack(input: CreateStackInput!): Stack!
   updateStack(id: ID!, input: UpdateStackInput!): Stack!
   deleteStack(id: ID!): Boolean!
-
-  # Component management
-  addComponent(stackId: ID!, component: ComponentInput!): Component!
-  updateComponent(id: ID!, position: PositionInput, config: JSON): Component!
-  removeComponent(id: ID!): Boolean!
-
-  # Connection management
-  addConnection(stackId: ID!, connection: ConnectionInput!): Connection!
-  removeConnection(id: ID!): Boolean!
-
-  # Export
-  exportStack(id: ID!, format: ExportFormat!): ExportResult!
-
-  # Validation
-  validateStack(id: ID!): ValidationResult!
 }
-
-# Subscriptions (WebSocket real-time updates)
-type Subscription {
-  # Stack updates
-  stackUpdated(id: ID!): Stack!
-
-  # Component updates
-  componentAdded(stackId: ID!): Component!
-  componentUpdated(id: ID!): Component!
-  componentRemoved(id: ID!): ID!
-
-  # Connection updates
-  connectionAdded(stackId: ID!): Connection!
-  connectionRemoved(id: ID!): ID!
-
-  # Validation updates
-  validationResult(stackId: ID!): ValidationResult!
-}
-
-# Scalar types
-scalar DateTime
-scalar JSON

@@ -15,6 +15,23 @@ image:https://img.shields.io/badge/backend-Elixir%20%2B%20Phoenix-4e2a8e.svg[Eli
 
 _"Containers for People Who Hate Containers"_
 
+== Product Goal
+
+**A 12-year-old who is reasonably IT-capable can help their parents build a secure container stack.**
+That means no prior container knowledge is required, and security guidance is clear, visual, and actionable.
+
+== Current Status (as of 2026-02-09)
+
+* **UI Prototype**: 8 views implemented (Network, Stack, Lago Grey, Ports, Security, Gaps, Simulation, Settings)
+* **Backend**: Not implemented yet (Phoenix/GraphQL planned)
+* **Validation Engine**: Not implemented yet (rules exist in tests, formal engines planned)
+* **Persistence**: Local import/export hooks exist; durable storage not wired
+* **Docs**: Some documents are aspirational; see `STATUS.md` for the source of truth
+
+This repo focuses on the stapeln app UI.
+The DOM‑mounter workstream has been extracted to a separate repo:
+`/var/mnt/eclipse/repos/stapeln-dom-mounter`.
+
 == What is stapeln?
 
 stapeln (Swedish for "the stack") is a **visual drag-and-drop designer** for creating secure container stacks. It combines:
