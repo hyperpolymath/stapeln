@@ -10,6 +10,14 @@ function isWasmActive(prim) {
   return PacketMathWasmJs.isWasmActive();
 }
 
+function addQ16Unsafe(prim0, prim1) {
+  return PacketMathWasmJs.addQ16(prim0, prim1);
+}
+
+function isAddWasmActive(prim) {
+  return PacketMathWasmJs.isAddWasmActive();
+}
+
 function clampInt(value, minValue, maxValue) {
   if (value < minValue) {
     return minValue;
@@ -31,6 +39,17 @@ function fromFixedCoord(coord) {
 function toProgressQ16(progress) {
   let raw = progress * 65536.0 | 0;
   return clampInt(raw, 0, 65536);
+}
+
+function advanceProgress(progress, step) {
+  let progressQ16 = toProgressQ16(progress);
+  let stepQ16 = toProgressQ16(step);
+  let nextQ16Raw = PacketMathWasmJs.addQ16(progressQ16, stepQ16);
+  let nextQ16 = clampInt(nextQ16Raw, 0, 65536);
+  return {
+    progress: nextQ16 / 65536.0,
+    arrived: nextQ16 >= 65536
+  };
 }
 
 function lerpCoordinate(source, target, progress) {
@@ -57,6 +76,8 @@ let maxProgressQ16 = 65536;
 export {
   lerpQ16Unsafe,
   isWasmActive,
+  addQ16Unsafe,
+  isAddWasmActive,
   coordScale,
   progressScale,
   maxProgressQ16,
@@ -64,6 +85,7 @@ export {
   toFixedCoord,
   fromFixedCoord,
   toProgressQ16,
+  advanceProgress,
   lerpCoordinate,
   lerpPosition,
 }

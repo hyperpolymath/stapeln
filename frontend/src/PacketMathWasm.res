@@ -7,6 +7,12 @@ external lerpQ16Unsafe: (int, int, int) => int = "lerpQ16"
 @module("./PacketMathWasm.js")
 external isWasmActive: unit => bool = "isWasmActive"
 
+@module("./PacketMathWasm.js")
+external addQ16Unsafe: (int, int) => int = "addQ16"
+
+@module("./PacketMathWasm.js")
+external isAddWasmActive: unit => bool = "isAddWasmActive"
+
 let coordScale = 1024.0
 let progressScale = 65536.0
 let maxProgressQ16 = 65536
@@ -27,6 +33,22 @@ let fromFixedCoord = (coord: int): float => float_of_int(coord) /. coordScale
 let toProgressQ16 = (progress: float): int => {
   let raw = int_of_float(progress *. progressScale)
   clampInt(raw, 0, maxProgressQ16)
+}
+
+type progressAdvance = {
+  progress: float,
+  arrived: bool,
+}
+
+let advanceProgress = (~progress: float, ~step: float): progressAdvance => {
+  let progressQ16 = toProgressQ16(progress)
+  let stepQ16 = toProgressQ16(step)
+  let nextQ16Raw = addQ16Unsafe(progressQ16, stepQ16)
+  let nextQ16 = clampInt(nextQ16Raw, 0, maxProgressQ16)
+  {
+    progress: float_of_int(nextQ16) /. progressScale,
+    arrived: nextQ16 >= maxProgressQ16,
+  }
 }
 
 let lerpCoordinate = (~source: float, ~target: float, ~progress: float): float => {

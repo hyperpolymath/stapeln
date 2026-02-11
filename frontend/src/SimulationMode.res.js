@@ -34,8 +34,9 @@ function stepPacketsKernel(packets, nodesById, step) {
     let match = packet.status;
     switch (match) {
       case "InTransit" :
-        let newProgress = packet.progress + step;
-        if (newProgress >= 1.0) {
+        let progressUpdate = PacketMathWasm.advanceProgress(packet.progress, step);
+        let newProgress = progressUpdate.progress;
+        if (progressUpdate.arrived) {
           return {
             id: packet.id,
             packetType: packet.packetType,
@@ -102,7 +103,7 @@ function stepPacketsKernel(packets, nodesById, step) {
           size: packet.size,
           encrypted: packet.encrypted,
           timestamp: packet.timestamp,
-          progress: packet.progress + step,
+          progress: PacketMathWasm.advanceProgress(packet.progress, step).progress,
           position: packet.position
         };
       case "Dropped" :
@@ -1086,7 +1087,7 @@ function SimulationMode(props) {
                         JsxRuntime.jsxs("div", {
                           children: [
                             JsxRuntime.jsx("div", {
-                              children: PacketMathWasm.isWasmActive() ? "WASM" : "JS",
+                              children: PacketMathWasm.isWasmActive() && PacketMathWasm.isAddWasmActive() ? "WASM" : "JS",
                               style: {
                                 color: "#00bcd4",
                                 fontSize: "20px",

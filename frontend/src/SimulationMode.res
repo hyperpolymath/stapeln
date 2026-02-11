@@ -126,9 +126,10 @@ let stepPacketsKernel = (
   Array.map(packets, packet => {
     switch packet.status {
     | InTransit =>
-      let newProgress = packet.progress +. step
+      let progressUpdate = PacketMathWasm.advanceProgress(~progress=packet.progress, ~step)
+      let newProgress = progressUpdate.progress
 
-      if newProgress >= 1.0 {
+      if progressUpdate.arrived {
         // Packet arrived
         {...packet, progress: 1.0, status: Delivered}
       } else {
@@ -151,7 +152,10 @@ let stepPacketsKernel = (
       }
     | Delivered =>
       // Age delivered packets so they can be collected below.
-      {...packet, progress: packet.progress +. step}
+      {
+        ...packet,
+        progress: PacketMathWasm.advanceProgress(~progress=packet.progress, ~step).progress,
+      }
     | _ => packet
     }
   })
@@ -841,7 +845,9 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                       (),
                     )}
                   >
-                    {(PacketMathWasm.isWasmActive() ? "WASM" : "JS")->React.string}
+                    {((PacketMathWasm.isWasmActive() && PacketMathWasm.isAddWasmActive())
+                        ? "WASM"
+                        : "JS")->React.string}
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Packet Kernel"->React.string}
