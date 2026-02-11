@@ -23,8 +23,8 @@ That means no prior container knowledge is required, and security guidance is cl
 == Current Status (as of 2026-02-09)
 
 * **UI Prototype**: 8 views implemented (Network, Stack, Lago Grey, Ports, Security, Gaps, Simulation, Settings)
-* **Backend**: Not implemented yet (Phoenix/GraphQL planned)
-* **Validation Engine**: Not implemented yet (rules exist in tests, formal engines planned)
+* **Backend**: MVP implemented (Phoenix REST + GraphQL via Absinthe)
+* **Validation Engine**: MVP checks implemented; full roadmap rules still pending
 * **Persistence**: Local import/export hooks exist; durable storage not wired
 * **Docs**: Some documents are aspirational; see `STATUS.md` for the source of truth
 
@@ -460,10 +460,10 @@ See link:ROADMAP.md[ROADMAP.md] for detailed timeline.
 * ⚠️ Gap analysis sidebar
 * ⚠️ Auth flow (PAM login)
 
-=== Phase 3: Backend & Security (0%) ❌
+=== Phase 3: Backend & Security (20%) ⚠️
 
 * ❌ miniKanren security engine
-* ❌ Elixir Phoenix + GraphQL
+* ⚠️ Elixir Phoenix + GraphQL (MVP endpoints live, production hardening pending)
 * ❌ Ephemeral pinhole GenServer
 * ❌ VeriSimDB integration
 * ❌ A2ML parser

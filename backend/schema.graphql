@@ -1,85 +1,54 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# GraphQL Schema for stapeln (MVP)
+# GraphQL Schema for Stapeln API surface (REST/GraphQL share NativeBridge behavior)
 
-scalar JSON
-scalar DateTime
-
-enum RuntimeEngine {
-  PODMAN
-  DOCKER
-  NERDCTL
-}
-
-type Position {
-  x: Float!
-  y: Float!
-}
-
-type Component {
-  id: ID!
-  type: String!
-  position: Position!
-  config: JSON
-}
-
-type Connection {
-  id: ID!
-  from: ID!
-  to: ID!
+type Service {
+  name: String!
+  kind: String
+  port: Int
 }
 
 type Stack {
   id: ID!
   name: String!
   description: String
-  runtime: RuntimeEngine!
-  components: [Component!]!
-  connections: [Connection!]!
-  createdAt: DateTime!
-  updatedAt: DateTime!
+  services: [Service!]!
+  createdAt: String!
+  updatedAt: String!
 }
 
-input PositionInput {
-  x: Float!
-  y: Float!
+type Finding {
+  id: String!
+  severity: String!
+  message: String!
+  hint: String!
 }
 
-input ComponentInput {
-  id: ID
-  type: String!
-  position: PositionInput!
-  config: JSON
+type ValidationResult {
+  score: Int!
+  findings: [Finding!]!
+  stack: Stack!
 }
 
-input ConnectionInput {
-  id: ID
-  from: ID!
-  to: ID!
-}
-
-input CreateStackInput {
+input ServiceInput {
   name: String!
-  description: String
-  runtime: RuntimeEngine!
-  components: [ComponentInput!]!
-  connections: [ConnectionInput!]!
+  kind: String
+  port: Int
 }
 
-input UpdateStackInput {
+input StackInput {
   name: String
   description: String
-  runtime: RuntimeEngine
-  components: [ComponentInput!]
-  connections: [ConnectionInput!]
+  services: [ServiceInput!]
 }
 
 type Query {
   stack(id: ID!): Stack
-  stacks(limit: Int = 50): [Stack!]!
+  stacks: [Stack!]!
 }
 
 type Mutation {
-  createStack(input: CreateStackInput!): Stack!
-  updateStack(id: ID!, input: UpdateStackInput!): Stack!
-  deleteStack(id: ID!): Boolean!
+  createStack(input: StackInput!): Stack
+  updateStack(id: ID!, input: StackInput!): Stack
+  validateStack(id: ID!): ValidationResult
 }
+

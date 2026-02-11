@@ -20,6 +20,10 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 - **TEA Architecture:** State, Msg, Update, View pattern in place.
 - **Security UX Components:** Port config, security inspector, gap analysis, simulation mode.
 - **Import/Export Hooks:** Buttons exist (not fully wired to durable storage).
+- **Backend API (MVP):** Phoenix REST endpoints for stacks and validation are live.
+- **GraphQL API (MVP):** Absinthe endpoint at `/api/graphql` is live.
+- **Shared API Boundary:** REST/GraphQL route through `backend/lib/stapeln/native_bridge.ex`.
+- **ABI/FFI Contract:** Idris2 ABI (`src/abi/*`) and Zig FFI (`ffi/zig/src/main.zig`) are concrete.
 
 ## Preserved Future Work
 
@@ -28,10 +32,10 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 
 ## What Is Not Implemented Yet
 
-- **Backend:** No Phoenix/GraphQL implementation; `backend/lib` is empty.
-- **Validation Engine:** No real engine in app; rules exist only in `tests/stapeln.test.js`.
+- **gRPC/GRC API:** Not implemented.
+- **Validation Engine Depth:** Rules are basic MVP checks; not yet parity with full security roadmap.
 - **Persistence:** No durable save/load outside ad-hoc import/export.
-- **Formal Verification Layers:** Idris2/miniKanren are planned, not wired.
+- **Formal Verification Layers:** Idris2 types are now present for ABI contracts, but full proof pipeline is not wired.
 
 ## Known Inconsistencies
 
@@ -42,7 +46,7 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 ## Immediate Focus (Next 4 Weeks)
 
 - Truth-align docs and roadmap.
-- Backend-first MVP (minimal persistence + validation API), with local fallback if needed.
+- Expand backend from MVP to production readiness (durable persistence, broader validation, gRPC/GRC if needed).
 - End-user onboarding flow focused on “container haters.”
 - Execute the six-stream plan in `docs/EXECUTION-PLAN-2026-02-11.md`.
 
