@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 
 import { addQ16, isAddWasmActive, isWasmActive, lerpQ16 } from "../frontend/src/PacketMathWasm.js";
+import { isBatchWasmActive, stepPacketsBatch } from "../frontend/src/PacketBatchKernel.js";
 
 const PACKET_COUNT = Number.parseInt(process.env.BENCH_PACKETS ?? "20000", 10);
 const ITERATIONS = Number.parseInt(process.env.BENCH_ITERS ?? "300", 10);
 const STEP = 0.016;
 const Q16_ONE = 65536;
 const COORD_SCALE = 1024;
+const OBJECT_PACKETS = Number.parseInt(process.env.BENCH_OBJECT_PACKETS ?? "5000", 10);
+const OBJECT_ITERS = Number.parseInt(process.env.BENCH_OBJECT_ITERS ?? "180", 10);
 
 const toProgressQ16 = (progress) => {
   const value = Math.trunc(progress * Q16_ONE);
@@ -125,19 +128,117 @@ const runFixedKernel = (input, addFn, lerpFn) => {
   return { durationNs, checksum };
 };
 
+const nodesById = {
+  "node-1": { x: 150, y: 250 },
+  "node-2": { x: 450, y: 250 },
+  "node-3": { x: 750, y: 250 },
+};
+
+const makeObjectPackets = () => {
+  const packets = new Array(OBJECT_PACKETS);
+  let seed = 0x9e3779b9;
+  const nextRand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 0xffffffff;
+  };
+
+  for (let i = 0; i < OBJECT_PACKETS; i += 1) {
+    const progress = nextRand() * 0.95;
+    packets[i] = {
+      id: `bench-${i}`,
+      packetType: "HTTPS",
+      status: "InTransit",
+      sourceNode: "node-1",
+      targetNode: "node-3",
+      payload: "bench",
+      size: 1500,
+      encrypted: true,
+      timestamp: 0,
+      progress,
+      position: [150 + (750 - 150) * progress, 250],
+    };
+  }
+  return packets;
+};
+
+const cloneObjectPackets = (packets) =>
+  packets.map((packet) => ({
+    ...packet,
+    position: [packet.position[0], packet.position[1]],
+  }));
+
+const runObjectFloatKernel = (inputPackets) => {
+  let packets = cloneObjectPackets(inputPackets);
+  let checksum = 0;
+  const start = process.hrtime.bigint();
+
+  for (let frame = 0; frame < OBJECT_ITERS; frame += 1) {
+    packets = packets.map((packet) => {
+      if (packet.status === "InTransit") {
+        const newProgress = packet.progress + STEP;
+        if (newProgress >= 1) {
+          return { ...packet, progress: 1, status: "Delivered" };
+        }
+
+        const src = nodesById[packet.sourceNode];
+        const tgt = nodesById[packet.targetNode];
+        if (src && tgt) {
+          const x = src.x + (tgt.x - src.x) * newProgress;
+          const y = src.y + (tgt.y - src.y) * newProgress;
+          return { ...packet, progress: newProgress, position: [x, y] };
+        }
+
+        return { ...packet, progress: newProgress };
+      }
+
+      if (packet.status === "Delivered") {
+        return { ...packet, progress: packet.progress + STEP };
+      }
+
+      return packet;
+    });
+
+    const probe = packets[frame % packets.length];
+    checksum += probe.progress + probe.position[0] + probe.position[1];
+  }
+
+  const durationNs = Number(process.hrtime.bigint() - start);
+  return { durationNs, checksum };
+};
+
+const runObjectBatchKernel = (inputPackets) => {
+  let packets = cloneObjectPackets(inputPackets);
+  let checksum = 0;
+  const start = process.hrtime.bigint();
+
+  for (let frame = 0; frame < OBJECT_ITERS; frame += 1) {
+    packets = stepPacketsBatch(packets, nodesById, STEP);
+    const probe = packets[frame % packets.length];
+    checksum += probe.progress + probe.position[0] + probe.position[1];
+  }
+
+  const durationNs = Number(process.hrtime.bigint() - start);
+  return { durationNs, checksum };
+};
+
 const nsPerOp = (durationNs) => durationNs / (PACKET_COUNT * ITERATIONS);
 const ms = (durationNs) => durationNs / 1_000_000;
 
 const baseInput = makeInput();
+const objectBaseInput = makeObjectPackets();
 
 // Warmup JIT and WASM instantiation.
 runFixedKernel(cloneInput(baseInput), addQ16, lerpQ16);
 runFixedKernel(cloneInput(baseInput), jsAddQ16, jsLerpQ16);
 runFloatKernel(cloneInput(baseInput));
+runObjectFloatKernel(objectBaseInput);
+runObjectBatchKernel(objectBaseInput);
 
 const floatResult = runFloatKernel(cloneInput(baseInput));
 const jsFixedResult = runFixedKernel(cloneInput(baseInput), jsAddQ16, jsLerpQ16);
 const adaptiveFixedResult = runFixedKernel(cloneInput(baseInput), addQ16, lerpQ16);
+const objectFloatResult = runObjectFloatKernel(objectBaseInput);
+const objectBatchResult = runObjectBatchKernel(objectBaseInput);
 
 const summary = {
   packets: PACKET_COUNT,
@@ -146,6 +247,7 @@ const summary = {
   wasmStatus: {
     lerp: isWasmActive(),
     add: isAddWasmActive(),
+    batch: isBatchWasmActive(),
   },
   timings: {
     floatMs: ms(floatResult.durationNs),
@@ -163,6 +265,20 @@ const summary = {
     float: Number(floatResult.checksum.toFixed(3)),
     jsFixed: jsFixedResult.checksum,
     adaptiveFixed: adaptiveFixedResult.checksum,
+  },
+  objectKernel: {
+    packets: OBJECT_PACKETS,
+    iterations: OBJECT_ITERS,
+    operations: OBJECT_PACKETS * OBJECT_ITERS,
+    floatMs: ms(objectFloatResult.durationNs),
+    batchMs: ms(objectBatchResult.durationNs),
+    floatNsPerOp: objectFloatResult.durationNs / (OBJECT_PACKETS * OBJECT_ITERS),
+    batchNsPerOp: objectBatchResult.durationNs / (OBJECT_PACKETS * OBJECT_ITERS),
+    batchVsFloat: objectFloatResult.durationNs / objectBatchResult.durationNs,
+    checksums: {
+      float: Number(objectFloatResult.checksum.toFixed(3)),
+      batch: Number(objectBatchResult.checksum.toFixed(3)),
+    },
   },
 };
 

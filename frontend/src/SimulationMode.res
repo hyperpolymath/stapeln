@@ -117,48 +117,22 @@ let enforcePacketCap = (packets: array<packet>): (array<packet>, int) =>
 let enforceEventCap = (events: array<networkEvent>): (array<networkEvent>, int) =>
   keepLastN(events, maxEventLogEntries)
 
-// The interpolation path delegates to PacketMathWasm, which prefers WASM and falls back to JS.
+@module("./PacketBatchKernel.js")
+external stepPacketsBatchExternal: (
+  ~packets: array<packet>,
+  ~nodesById: Js.Dict.t<nodePosition>,
+  ~step: float,
+) => array<packet> = "stepPacketsBatch"
+
+@module("./PacketBatchKernel.js")
+external isBatchWasmActive: unit => bool = "isBatchWasmActive"
+
+// Packet stepping runs as a batch kernel in JS/WASM to avoid per-packet bridge overhead.
 let stepPacketsKernel = (
   ~packets: array<packet>,
   ~nodesById: Js.Dict.t<nodePosition>,
   ~step: float,
-): array<packet> =>
-  Array.map(packets, packet => {
-    switch packet.status {
-    | InTransit =>
-      let progressUpdate = PacketMathWasm.advanceProgress(~progress=packet.progress, ~step)
-      let newProgress = progressUpdate.progress
-
-      if progressUpdate.arrived {
-        // Packet arrived
-        {...packet, progress: 1.0, status: Delivered}
-      } else {
-        // Calculate interpolated position
-        let sourceNode = Js.Dict.get(nodesById, packet.sourceNode)
-        let targetNode = Js.Dict.get(nodesById, packet.targetNode)
-
-        switch (sourceNode, targetNode) {
-        | (Some(src), Some(tgt)) =>
-          let (x, y) = PacketMathWasm.lerpPosition(
-            ~source=(src.x, src.y),
-            ~target=(tgt.x, tgt.y),
-            ~progress=newProgress,
-          )
-          {...packet, progress: newProgress, position: (x, y)}
-        | _ =>
-          // Keep moving progress even if one node lookup failed.
-          {...packet, progress: newProgress}
-        }
-      }
-    | Delivered =>
-      // Age delivered packets so they can be collected below.
-      {
-        ...packet,
-        progress: PacketMathWasm.advanceProgress(~progress=packet.progress, ~step).progress,
-      }
-    | _ => packet
-    }
-  })
+): array<packet> => stepPacketsBatchExternal(~packets, ~nodesById, ~step)
 
 // Initialize with sample nodes
 let init: state = {
@@ -845,9 +819,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                       (),
                     )}
                   >
-                    {((PacketMathWasm.isWasmActive() && PacketMathWasm.isAddWasmActive())
-                        ? "WASM"
-                        : "JS")->React.string}
+                    {(isBatchWasmActive() ? "WASM" : "JS")->React.string}
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Packet Kernel"->React.string}
