@@ -1,4 +1,11 @@
-# stackur Implementation Plan
+# stapeln Legacy Implementation Plan (Archive)
+
+> Status: archival reference only.
+>
+> Active planning sources:
+> - `STATUS.md`
+> - `ROADMAP.md`
+> - `docs/EXECUTION-PLAN-2026-02-11.md`
 
 ## Phase 1: Frontend Foundation (Week 1-2)
 

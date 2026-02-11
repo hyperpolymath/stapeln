@@ -1,6 +1,6 @@
 # stapeln Status (Source of Truth)
 
-**Date:** 2026-02-09
+**Date:** 2026-02-11
 
 ## Product Goal
 
@@ -36,11 +36,16 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 ## Known Inconsistencies
 
 - Some docs claim a “complete” product; these refer to an internal DOM‑mounter workstream.
-- `IMPLEMENTATION-PLAN.md` references “stackur” (legacy).
-- `ROADMAP.adoc` is a template and not authoritative.
+- `IMPLEMENTATION-PLAN.md` originated as a legacy `stackur` plan and is now archival context.
+- `ROADMAP.adoc` is an alias/deprecation pointer and not the planning source of truth.
 
 ## Immediate Focus (Next 4 Weeks)
 
 - Truth-align docs and roadmap.
 - Backend-first MVP (minimal persistence + validation API), with local fallback if needed.
 - End-user onboarding flow focused on “container haters.”
+- Execute the six-stream plan in `docs/EXECUTION-PLAN-2026-02-11.md`.
+
+## Readiness Gate Status
+
+- Current readiness blocker: repo clean gate fails when local edits are present (currently `container-stack/rokur/README.md`).

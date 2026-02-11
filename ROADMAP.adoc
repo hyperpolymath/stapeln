@@ -1,22 +1,12 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-= YOUR Template Repo Roadmap
+= stapeln Roadmap Alias (Deprecated)
 
-== Current Status
+This file is retained for compatibility with tooling that expects `ROADMAP.adoc`.
 
-Initial development phase.
+Authoritative planning documents:
 
-== Milestones
+* `ROADMAP.md` (primary roadmap)
+* `STATUS.md` (source-of-truth status)
+* `docs/EXECUTION-PLAN-2026-02-11.md` (current six-stream execution plan)
 
-=== v0.1.0 - Foundation
-* [ ] Core functionality
-* [ ] Basic documentation
-* [ ] CI/CD pipeline
-
-=== v1.0.0 - Stable Release
-* [ ] Full feature set
-* [ ] Comprehensive tests
-* [ ] Production ready
-
-== Future Directions
-
-_To be determined based on community feedback._
+Use those files for all active planning and progress updates.
