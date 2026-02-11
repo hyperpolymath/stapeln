@@ -42,7 +42,34 @@ gate_deno_tests() {
 
 gate_frontend_build() {
   cd "${ROOT_DIR}/frontend" || return 1
-  timeout 300s rescript build
+  local compiler_info_file="${ROOT_DIR}/frontend/lib/bs/compiler-info.json"
+  local react_compiler_info_file="${ROOT_DIR}/frontend/node_modules/@rescript/react/lib/bs/compiler-info.json"
+  local compiler_info_snapshot=""
+  local react_compiler_info_snapshot=""
+
+  if [[ -f "${compiler_info_file}" ]]; then
+    compiler_info_snapshot="$(cat "${compiler_info_file}")"
+  fi
+
+  if [[ -f "${react_compiler_info_file}" ]]; then
+    react_compiler_info_snapshot="$(cat "${react_compiler_info_file}")"
+  fi
+
+  if ! timeout 300s rescript build; then
+    return 1
+  fi
+
+  # ReScript rewrites generated_at timestamps in tracked metadata files.
+  # Restore snapshots to keep readiness checks non-mutating.
+  if [[ -n "${compiler_info_snapshot}" ]]; then
+    printf "%s" "${compiler_info_snapshot}" >"${compiler_info_file}"
+  fi
+
+  if [[ -n "${react_compiler_info_snapshot}" ]]; then
+    printf "%s" "${react_compiler_info_snapshot}" >"${react_compiler_info_file}"
+  fi
+
+  return 0
 }
 
 gate_backend_tests() {
