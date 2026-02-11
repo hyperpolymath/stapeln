@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // stapeln Test Suite - Comprehensive validation and generation tests
 
-import { assert, assertEquals, assertExists } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals, assertExists } from "./test_assert.js";
 
 // ============================================================================
 // Test Data
