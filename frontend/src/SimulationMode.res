@@ -36,6 +36,7 @@ type networkEvent =
   | PacketSent(string, string, packetType)
   | PacketReceived(string)
   | PacketDropped(string, string) // packet id, reason
+  | CapacityDrop(int) // packets dropped due to simulation cap
   | ConnectionEstablished(string, string)
   | ConnectionClosed(string, string)
   | FirewallBlock(string, string, int) // source, target, port
@@ -97,6 +98,64 @@ type msg =
   | ToggleEventLog
   | ClearEvents
 
+let maxActivePackets = 2000
+let maxEventLogEntries = 1000
+
+let keepLastN = (items: array<'a>, maxCount: int): (array<'a>, int) => {
+  let overflow = Array.length(items) - maxCount
+  if overflow <= 0 {
+    (items, 0)
+  } else {
+    // Drop the oldest entries and keep a sliding window of recent data.
+    (Belt.Array.keepWithIndex(items, (_, idx) => idx >= overflow), overflow)
+  }
+}
+
+let enforcePacketCap = (packets: array<packet>): (array<packet>, int) =>
+  keepLastN(packets, maxActivePackets)
+
+let enforceEventCap = (events: array<networkEvent>): (array<networkEvent>, int) =>
+  keepLastN(events, maxEventLogEntries)
+
+// The interpolation path delegates to PacketMathWasm, which prefers WASM and falls back to JS.
+let stepPacketsKernel = (
+  ~packets: array<packet>,
+  ~nodesById: Js.Dict.t<nodePosition>,
+  ~step: float,
+): array<packet> =>
+  Array.map(packets, packet => {
+    switch packet.status {
+    | InTransit =>
+      let newProgress = packet.progress +. step
+
+      if newProgress >= 1.0 {
+        // Packet arrived
+        {...packet, progress: 1.0, status: Delivered}
+      } else {
+        // Calculate interpolated position
+        let sourceNode = Js.Dict.get(nodesById, packet.sourceNode)
+        let targetNode = Js.Dict.get(nodesById, packet.targetNode)
+
+        switch (sourceNode, targetNode) {
+        | (Some(src), Some(tgt)) =>
+          let (x, y) = PacketMathWasm.lerpPosition(
+            ~source=(src.x, src.y),
+            ~target=(tgt.x, tgt.y),
+            ~progress=newProgress,
+          )
+          {...packet, progress: newProgress, position: (x, y)}
+        | _ =>
+          // Keep moving progress even if one node lookup failed.
+          {...packet, progress: newProgress}
+        }
+      }
+    | Delivered =>
+      // Age delivered packets so they can be collected below.
+      {...packet, progress: packet.progress +. step}
+    | _ => packet
+    }
+  })
+
 // Initialize with sample nodes
 let init: state = {
   nodes: [
@@ -145,7 +204,7 @@ let update = (msg: msg, state: state): state => {
     let targetNode = Belt.Array.getBy(state.nodes, n => n.id == targetId)
 
     switch (sourceNode, targetNode) {
-    | (Some(src), Some(tgt)) =>
+    | (Some(src), Some(_tgt)) =>
       let packetId = "packet-" ++ Float.toString(Date.now())
       let newPacket = {
         id: packetId,
@@ -161,13 +220,25 @@ let update = (msg: msg, state: state): state => {
         position: (src.x, src.y),
       }
 
-      let event = PacketSent(sourceId, targetId, packetType)
+      let nextPackets = Array.concat(state.packets, [newPacket])
+      let (cappedPackets, droppedForCap) = enforcePacketCap(nextPackets)
+      let nextEvents =
+        if droppedForCap > 0 {
+          Array.concat(state.events, [
+            PacketSent(sourceId, targetId, packetType),
+            CapacityDrop(droppedForCap),
+          ])
+        } else {
+          Array.concat(state.events, [PacketSent(sourceId, targetId, packetType)])
+        }
+      let (cappedEvents, _) = enforceEventCap(nextEvents)
 
       {
         ...state,
-        packets: Array.concat(state.packets, [newPacket]),
-        events: Array.concat(state.events, [event]),
+        packets: cappedPackets,
+        events: cappedEvents,
         totalPacketsSent: state.totalPacketsSent + 1,
+        totalPacketsDropped: state.totalPacketsDropped + droppedForCap,
       }
     | _ => state
     }
@@ -181,37 +252,34 @@ let update = (msg: msg, state: state): state => {
     | VeryFast => 4.0
     }
 
-    let updatedPackets = Array.map(state.packets, packet => {
-      if packet.status == InTransit {
-        let newProgress = packet.progress +. deltaTime *. speedMultiplier *. 0.001
+    let step = deltaTime *. speedMultiplier *. 0.001
 
-        if newProgress >= 1.0 {
-          // Packet arrived
-          {...packet, progress: 1.0, status: Delivered}
-        } else {
-          // Calculate interpolated position
-          let sourceNode = Belt.Array.getBy(state.nodes, n => n.id == packet.sourceNode)
-          let targetNode = Belt.Array.getBy(state.nodes, n => n.id == packet.targetNode)
+    // Build a node lookup once per frame and reuse it across packet updates.
+    let nodesById = Js.Dict.empty()
+    Array.forEach(state.nodes, node => Js.Dict.set(nodesById, node.id, node))
 
-          switch (sourceNode, targetNode) {
-          | (Some(src), Some(tgt)) =>
-            let x = src.x +. (tgt.x -. src.x) *. newProgress
-            let y = src.y +. (tgt.y -. src.y) *. newProgress
-            {...packet, progress: newProgress, position: (x, y)}
-          | _ => packet
-          }
-        }
-      } else {
-        packet
-      }
-    })
+    let updatedPackets = stepPacketsKernel(~packets=state.packets, ~nodesById, ~step)
 
     // Remove delivered packets after delay
     let filteredPackets = Belt.Array.keep(updatedPackets, p =>
       p.status != Delivered || p.progress < 1.2
     )
+    let (cappedPackets, droppedForCap) = enforcePacketCap(filteredPackets)
+    let nextEvents =
+      if droppedForCap > 0 {
+        Array.concat(state.events, [CapacityDrop(droppedForCap)])
+      } else {
+        state.events
+      }
+    let (cappedEvents, _) = enforceEventCap(nextEvents)
 
-    {...state, packets: filteredPackets, currentTime: state.currentTime +. deltaTime}
+    {
+      ...state,
+      packets: cappedPackets,
+      events: cappedEvents,
+      currentTime: state.currentTime +. deltaTime,
+      totalPacketsDropped: state.totalPacketsDropped + droppedForCap,
+    }
 
   | PacketArrived(packetId) =>
     let updatedPackets = Array.map(state.packets, packet =>
@@ -237,12 +305,13 @@ let update = (msg: msg, state: state): state => {
       }
     )
 
-    let event = PacketDropped(packetId, reason)
+    let nextEvents = Array.concat(state.events, [PacketDropped(packetId, reason)])
+    let (cappedEvents, _) = enforceEventCap(nextEvents)
 
     {
       ...state,
       packets: updatedPackets,
-      events: Array.concat(state.events, [event]),
+      events: cappedEvents,
       totalPacketsDropped: state.totalPacketsDropped + 1,
     }
 
@@ -388,6 +457,11 @@ let viewEvent = (event: networkEvent, index: int): React.element => {
     )
   | PacketReceived(packetId) => ("📥", "#4caf50", `Packet received: ${packetId}`)
   | PacketDropped(packetId, reason) => ("❌", "#f44336", `Packet dropped: ${packetId} - ${reason}`)
+  | CapacityDrop(count) => (
+      "🛑",
+      "#ff9800",
+      `Backpressure: dropped ${Int.toString(count)} packet(s) to stay under cap`,
+    )
   | ConnectionEstablished(src, tgt) => ("🔗", "#4caf50", `Connection: ${src} ↔ ${tgt}`)
   | ConnectionClosed(src, tgt) => ("🔌", "#9e9e9e", `Disconnected: ${src} ↔ ${tgt}`)
   | FirewallBlock(src, tgt, port) => (
@@ -739,6 +813,38 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   </div>
                   <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"In Transit"->React.string}
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="20px",
+                      ~fontWeight="700",
+                      ~color="#8892a6",
+                      (),
+                    )}
+                  >
+                    {Int.toString(maxActivePackets)->React.string}
+                  </div>
+                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                    {"Packet Cap"->React.string}
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    style={ReactDOM.Style.make(
+                      ~fontSize="20px",
+                      ~fontWeight="700",
+                      ~color="#00bcd4",
+                      (),
+                    )}
+                  >
+                    {(PacketMathWasm.isWasmActive() ? "WASM" : "JS")->React.string}
+                  </div>
+                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                    {"Packet Kernel"->React.string}
                   </div>
                 </div>
               </div>
