@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- Svalinn Edge Gateway Firewalld Zone -->
+<zone>
+  <short>Svalinn Edge</short>
+  <description>Public-facing HTTPS gateway with strict firewall rules for container verification API</description>
+
+  <!-- Allow HTTPS (443) -->
+  <service name="https"/>
+
+  <!-- Allow HTTP (80) for redirect to HTTPS -->
+  <service name="http"/>
+
+  <!-- IPv4 rules -->
+  <rule family="ipv4">
+    <source address="0.0.0.0/0"/>
+    <port protocol="tcp" port="443"/>
+    <accept/>
+  </rule>
+
+  <rule family="ipv4">
+    <source address="0.0.0.0/0"/>
+    <port protocol="tcp" port="80"/>
+    <accept/>
+  </rule>
+
+  <!-- IPv6 rules -->
+  <rule family="ipv6">
+    <source address="::/0"/>
+    <port protocol="tcp" port="443"/>
+    <accept/>
+  </rule>
+
+  <rule family="ipv6">
+    <source address="::/0"/>
+    <port protocol="tcp" port="80"/>
+    <accept/>
+  </rule>
+
+  <!-- Drop all other traffic -->
+  <rule>
+    <drop/>
+  </rule>
+</zone>

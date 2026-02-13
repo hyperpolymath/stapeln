@@ -1,0 +1,137 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Research Variants (R-) - READ THIS FIRST
+:toc: left
+
+[WARNING]
+====
+**You probably don't need these builds.**
+
+R- variants are for **formal verification research**, not production use.
+====
+
+== What Are R- Variants?
+
+Research builds include **Idris2 dependent type verification** in addition to Ada/SPARK proofs.
+
+[cols="1,3",options="header"]
+|===
+| Variant | Purpose
+
+| R-ct-i
+| Research infrastructure with Idris2 proofs
+
+| R-ct-a
+| Research attestation with crypto proofs in Idris2
+
+| R-ct
+| Research complete with full dependent type verification
+|===
+
+== When to Use R- Variants
+
+✅ **Use R- variants if:**
+
+* You're researching dependent types in systems programming
+* You're publishing academic papers on formal verification
+* You're experimenting with Idris2 integration in Ada systems
+* You understand what "dependent types" means
+* You need to verify properties that SPARK cannot express
+
+❌ **Do NOT use R- variants if:**
+
+* You just want "the most verified build" (use standard ct-a or ct)
+* You think "research" means "alpha/beta" (it doesn't - see below)
+* You're building production systems (use standard variants)
+* You don't know what Idris2 is
+* You just think it sounds cool
+
+== R- is NOT Alpha/Beta
+
+**Important distinction:**
+
+* **R- variants**: Experimental *formal verification methods* (stable code, experimental proofs)
+* **Alpha/Beta builds**: Unstable *features* (in `releases/` directory, not here)
+
+R- code is production-quality. The *verification approach* is experimental.
+
+== Verification Comparison
+
+[cols="1,1,1,1",options="header"]
+|===
+| Variant | Ada/SPARK | Idris2 | ATS2
+
+| Standard (ct-*)
+| ✅
+| ❌
+| ❌
+
+| Research (R-ct-*)
+| ✅
+| ✅
+| ❌
+
+| eXtreme (X-ct-*)
+| ✅
+| ❌
+| ✅
+|===
+
+== Performance Impact
+
+R- variants have **identical runtime performance** to standard builds.
+
+Verification happens at *build time only*.
+
+== Build Time
+
+Expect **2-3× longer build times** due to Idris2 proof checking:
+
+* ct-i: ~5 minutes
+* R-ct-i: ~15 minutes (includes Idris2 proofs)
+
+== Still Want R- Variants?
+
+If you understand the above and still want research builds:
+
+[source,bash]
+----
+# Build all research variants
+just build-research
+
+# Build individual variants
+just build-R-ct-i   # Infrastructure
+just build-R-ct-a   # Attestation
+just build-R-ct     # Complete
+----
+
+== Need Standard Builds?
+
+Most users should use standard variants:
+
+[source,bash]
+----
+cd ../containerfiles/
+
+# Standard builds (SPARK only, production-ready)
+just build-ct-i     # Infrastructure
+just build-ct-a     # Attestation
+just build-ct       # Complete
+----
+
+See `../containerfiles/README.adoc` for standard variant documentation.
+
+== Need eXtreme Security?
+
+For military/financial systems requiring linear type verification:
+
+[source,bash]
+----
+cd ../containerfiles-extreme/
+
+# eXtreme builds (ATS2 + SPARK)
+just build-X-ct-i   # Infrastructure
+just build-X-ct-a   # Attestation
+just build-X-ct     # Complete
+----
+
+See `../containerfiles-extreme/README.adoc` for extreme variant documentation.

@@ -1,0 +1,127 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= UX Error Catalog (MVP)
+:toc: preamble
+:toclevels: 2
+
+This catalog defines user-facing error copy and `vordr explain` responses that
+make strict validation understandable for non-experts.
+
+== 1. Output Structure
+
+Every error should present the same structure:
+
+* Summary (1 sentence)
+* Cause (what failed)
+* Evidence (key/value facts)
+* Fix (actionable steps)
+* Next (optional suggested command)
+
+== 2. Gatekeeper Failures
+
+=== 2.1 Missing Attestation (ERR_POLICY_DENIED)
+
+Summary::
+  Image is missing required attestations.
+Cause::
+  Required predicates were not present in the bundle.
+Evidence::
+  `missing = ["https://slsa.dev/provenance/v1", "https://spdx.dev/Document"]`
+Fix::
+  Rebuild the image with Cerro Torre or attach the required attestations.
+Next::
+  `ct pack <image> --attest` or `ct verify <bundle>`
+
+=== 2.2 Unknown Signer (ERR_POLICY_DENIED)
+
+Summary::
+  Bundle signed by a key that is not trusted.
+Cause::
+  Signer key ID not found in trust store.
+Evidence::
+  `seen = ["sha256:..."]`, `allowed = ["sha256:..."]`
+Fix::
+  Update the trust store or use an approved signer key.
+Next::
+  `ct key list` and update `trust-store.json`
+
+=== 2.3 Log Quorum Not Met (ERR_POLICY_DENIED)
+
+Summary::
+  Attestations were not logged by enough transparency logs.
+Cause::
+  Log quorum requirement not satisfied.
+Evidence::
+  `required = 1`, `observed = 0`
+Fix::
+  Submit the bundle to the configured log operator.
+Next::
+  `ct log submit <bundle>`
+
+=== 2.4 Subject Digest Mismatch (ERR_POLICY_DENIED)
+
+Summary::
+  Attestation subject does not match the image digest.
+Cause::
+  Bundle contents correspond to a different image.
+Evidence::
+  `expected = sha256:<digest>`, `observed = [...]`
+Fix::
+  Regenerate the bundle for the exact image digest.
+Next::
+  `ct pack <image> --digest <digest>`
+
+== 3. Runtime Errors
+
+=== 3.1 Runtime Not Found (ERR_RUNTIME_NOT_FOUND)
+
+Summary::
+  Vordr runtime is not installed or not on PATH.
+Cause::
+  `vordr` command not found.
+Fix::
+  Install Vordr or update PATH.
+Next::
+  `just build-vordr` (if in-tree)
+
+=== 3.2 Runtime Execution Failed (ERR_RUNTIME_EXEC)
+
+Summary::
+  Vordr failed to start the container.
+Cause::
+  Runtime returned non-zero exit.
+Evidence::
+  stderr output from Vordr.
+Fix::
+  Inspect runtime error output, then retry.
+Next::
+  `vordr explain --last`
+
+== 4. Registry Errors
+
+=== 4.1 Authentication Failed (ERR_AUTH)
+
+Summary::
+  Registry requires authentication.
+Cause::
+  Missing or invalid credentials.
+Fix::
+  Login to the registry.
+Next::
+  `vordr login <registry>`
+
+=== 4.2 Image Not Found (ERR_IMAGE_NOT_FOUND)
+
+Summary::
+  Image reference not found in registry.
+Cause::
+  Tag or repository does not exist.
+Fix::
+  Confirm image name and tag.
+Next::
+  `vordr image search <name>`
+
+== 5. UI Copy Guidance
+
+* Keep messages short and direct.
+* Always include "Fix" and "Next" unless impossible.
+* Avoid acronyms without expansion on first use.

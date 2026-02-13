@@ -1,0 +1,478 @@
+= Cerro-Torre QoL + Ergonomics Completion Audit
+:toc: left
+:toclevels: 3
+:date: 2025-12-29
+:status: In Progress
+
+Cerro-Torre is a provenance-verified container distribution system with a verifiable manifest (.ctp), a SPARK-verified build core, and attestations (in-toto/SBOM/logs).
+
+== Rating Scale
+* *Fullest*: Complete implementation with tests, docs, and conformance vectors
+* *Full*: Working implementation with documentation
+* *Strong*: Implementation exists, needs polish/testing
+* *Moderate*: Scaffolded with clear path, partial implementation
+* *Basic*: Spec exists, CLI scaffolded, no implementation
+* *Not implemented*: No spec, no code
+
+== Overall Status: *Basic*
+
+Most features are specified and CLI-scaffolded but not yet implemented.
+
+---
+
+== A. User "pack / verify / explain" loop (non-negotiable QoL)
+
+*Section Rating: Basic*
+
+=== A1. `ct pack <source> -o thing.ctp` is documented and works deterministically
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| Documented | ✓ `spec/cli-ergonomics.adoc` section on `ct pack`
+| CLI Scaffold | ✓ `src/cli/cerro_cli.adb:Run_Pack`
+| Implemented | ✗ Returns "Not yet implemented"
+| Determinism test | ✗ No `tests/` directory exists
+| Golden test | ✗ Not created
+|===
+
+*Evidence needed:*
+[source,bash]
+----
+ct pack docker.io/library/nginx:1.26 -o nginx1.ctp
+ct pack docker.io/library/nginx:1.26 -o nginx2.ctp
+sha256sum nginx1.ctp nginx2.ctp  # Must match
+----
+
+*TODO:*
+- [ ] Implement OCI image reading (skopeo integration)
+- [ ] Implement bundle writer with canonicalization
+- [ ] Add `tests/golden/pack-determinism.sh`
+
+=== A2. `ct verify thing.ctp` returns structured reasons for failure
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| Exit codes defined | ✓ `src/cli/ct_errors.ads` (0-12 codes)
+| CLI Scaffold | ✓ `src/cli/cerro_cli.adb:Run_Verify`
+| --json output | ✓ Documented in spec, not implemented
+| Implemented | ✗ Returns "Not yet implemented"
+|===
+
+*Exit codes defined:*
+[source]
+----
+0  = SUCCESS
+1  = HASH_MISMATCH
+2  = SIGNATURE_INVALID
+3  = KEY_NOT_TRUSTED
+4  = POLICY_REJECTION
+5  = MISSING_ATTESTATION
+10 = MALFORMED_BUNDLE
+11 = IO_ERROR
+12 = NETWORK_ERROR
+----
+
+*TODO:*
+- [ ] Implement bundle parser
+- [ ] Implement hash verification
+- [ ] Implement signature verification
+- [ ] Add `tests/errors/` with corrupt/invalid bundles
+
+=== A3. `ct explain thing.ctp` prints a human narrative of the chain
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| Documented | ✓ `spec/cli-ergonomics.adoc`
+| CLI Scaffold | ✓ `src/cli/cerro_cli.adb:Run_Explain`
+| Output format stable | ✗ Not defined
+| Implemented | ✗ Returns "Not yet implemented"
+|===
+
+*TODO:*
+- [ ] Define explain output format in spec
+- [ ] Implement bundle parsing for explain
+- [ ] Add redact mode for sensitive data
+
+---
+
+== B. Keys + trust ergonomics (without mixing concerns)
+
+*Section Rating: Basic*
+
+=== B1. Key lifecycle UX exists
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| `ct keygen` | ✓ Scaffolded
+| `ct key list` | ✓ Scaffolded
+| `ct key import` | ✓ Scaffolded
+| `ct key export` | ✓ Scaffolded
+| `ct key default` | ✓ Scaffolded
+| Storage location | ✓ `~/.config/cerro/keys/` documented
+| Argon2id policy | ✓ `spec/keystore-policy.json`
+| Implemented | ✗ All return "Not yet implemented"
+|===
+
+*TODO:*
+- [ ] Implement libsodium Ed25519 keygen
+- [ ] Implement Argon2id key encryption
+- [ ] Add key fingerprint generation
+
+=== B2. Policy UX exists and is minimal-by-default
+
+*Status: Moderate*
+
+[cols="1,3"]
+|===
+| Policy schema | ✓ `spec/policy-schema.json` (full schema)
+| Example policies | ✓ `examples/policy.json`, `examples/policy-strict.json`, `examples/policy-enterprise.json`
+| `--policy` flag | ✓ Documented, scaffolded
+| `ct policy validate` | ✗ Not scaffolded
+| Minimal default | ✓ `examples/policy.json` trusts all
+|===
+
+*TODO:*
+- [ ] Add `ct policy validate` command
+- [ ] Implement policy parsing
+- [ ] Add policy schema validation
+
+=== B3. Rotation and multi-signer story exists
+
+*Status: Moderate*
+
+[cols="1,3"]
+|===
+| `ct re-sign` | ✓ Scaffolded in CLI
+| Multi-sig in policy | ✓ `threshold` and `threshold_from` in schema
+| Deny-lists | ✓ `signers.denied` with date ranges in schema
+| Pinning | ✓ `pin` section in policy schema
+| Implemented | ✗ All scaffolded, not implemented
+|===
+
+*TODO:*
+- [ ] Implement re-sign command
+- [ ] Implement threshold signature verification
+- [ ] Add multi-sig test cases
+
+---
+
+== C. Offline + mirror UX (distribution reality)
+
+*Section Rating: Basic*
+
+=== C1. Offline export/import exists (airgap)
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| `ct export` | ✓ Scaffolded
+| `ct import` | ✓ Scaffolded
+| Archive format | ✓ tar, tar.gz, tar.zst documented
+| Include keys option | ✓ `--include-keys` documented
+| Implemented | ✗ Returns "Not yet implemented"
+|===
+
+*TODO:*
+- [ ] Implement archive creation
+- [ ] Implement archive extraction
+- [ ] Add offline verification test
+
+=== C2. Mirror resolution is deterministic
+
+*Status: Not implemented*
+
+[cols="1,3"]
+|===
+| Mirror config | ✗ Not in config.toml spec
+| `--offline` mode | ✗ Not scaffolded
+| Explicit fail on network | ✗ Not implemented
+|===
+
+*TODO:*
+- [ ] Add mirror config section to config.toml
+- [ ] Add `--offline` flag to verify/explain
+- [ ] Implement network guard in offline mode
+
+---
+
+== D. Determinism and canonicalization (seam-critical)
+
+*Section Rating: Strong*
+
+=== D1. Canonicalization rules are written and tested
+
+*Status: Strong*
+
+[cols="1,3"]
+|===
+| Spec exists | ✓ `spec/manifest-canonicalization.adoc` (comprehensive)
+| UTF-8 rules | ✓ Section 3
+| Whitespace rules | ✓ Section 5
+| Key ordering | ✓ Section 6 (lexicographic UTF-8)
+| Numeric rules | ✓ Section 7
+| Conformance vectors | ✗ Not created yet
+| ATS shadow verifier | ✓ `tools/ats-shadow/main.dats`
+|===
+
+*TODO:*
+- [ ] Create `tests/canon/valid/` with valid input files
+- [ ] Create `tests/canon/invalid/` with rejection cases
+- [ ] Create `tests/canon/idempotence/` test suite
+
+=== D2. `.ctp` is Turing-incomplete by construction
+
+*Status: Strong*
+
+[cols="1,3"]
+|===
+| No loops/recursion | ✓ TOML format is inherently Turing-incomplete
+| Bounded resources | ✓ Manifest-format spec has size limits
+| Parser rejects forbidden | ✗ Not implemented
+| Fuzz tests | ✗ Not created
+| Proof obligations | ✓ Documented in `docs/handovers/01-canonical-authority.adoc`
+|===
+
+*TODO:*
+- [ ] Implement manifest parser with rejection
+- [ ] Add fuzz test targets
+- [ ] Document Turing-incompleteness formally
+
+---
+
+== E. Build-core evaluation gates (developer ergonomics)
+
+*Section Rating: Moderate*
+
+=== E1. Proof/verification gates are separated
+
+*Status: Moderate*
+
+[cols="1,3"]
+|===
+| CI job matrix | ✗ Single `ada-spark-ci.yml` without separation
+| `core-proof` job | ✗ Not separated
+| `core-unit` job | ✗ Not separated
+| `tooling-lint` job | ✗ Not separated
+| Can work without full proofs | ✓ SPARK proof is optional in CI
+|===
+
+*TODO:*
+- [ ] Split CI into: `build`, `unit-test`, `spark-proof`, `lint`, `docs`
+- [ ] Make SPARK proof optional for contributors
+- [ ] Add local dev mode without proof requirements
+
+=== E2. Fast "developer mode" exists
+
+*Status: Not implemented*
+
+[cols="1,3"]
+|===
+| `ct build --dev` | ✗ Not scaffolded
+| Dev artifacts marked | ✗ Not implemented
+| Verify refuses dev | ✗ Not implemented
+|===
+
+*TODO:*
+- [ ] Add `--dev` flag to pack command
+- [ ] Add dev marker in bundle metadata
+- [ ] Add `--allow-dev` to verify
+
+---
+
+== F. Seam + surface checks
+
+*Section Rating: Moderate*
+
+=== F1. Spec version pin is declared and printed
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| `ct version` | ✓ Prints "0.1.0-dev"
+| Spec version in output | ✗ Not printed
+| CI fails on spec change | ✗ Not implemented
+|===
+
+*TODO:*
+- [ ] Add spec version constant
+- [ ] Print in `ct --version` output
+- [ ] Add CI check for spec version consistency
+
+=== F2. Conformance harness imports producer vectors
+
+*Status: Not implemented*
+
+[cols="1,3"]
+|===
+| Verified Container Spec repo | ✓ Referenced in `spec/svalinn-integration.adoc`
+| CI job `conformance-producer` | ✗ Not created
+| Vector commit hash recorded | ✗ Not implemented
+|===
+
+*TODO:*
+- [ ] Create conformance test harness
+- [ ] Import vectors from verified-container-spec
+- [ ] Add CI job for conformance
+
+=== F3. Cross-interop test with Svalinn
+
+*Status: Not implemented*
+
+[cols="1,3"]
+|===
+| Integration spec | ✓ `spec/svalinn-integration.adoc`
+| CI job `interop-cerro-svalinn` | ✗ Not created
+| Green matrix published | ✗ Not implemented
+|===
+
+*TODO:*
+- [ ] Create interop test script
+- [ ] Add CI job (nightly)
+- [ ] Publish results to docs
+
+---
+
+== G. Smoothing (high leverage)
+
+*Section Rating: Basic*
+
+=== G1. `ct doctor` exists
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| CLI Scaffold | ✓ `src/cli/cerro_cli.adb:Run_Doctor`
+| Checks documented | ✓ Crypto, config, keys, registry, system
+| Actionable output | ✓ Format defined in scaffold
+| Implemented | ✗ Returns "Not yet implemented"
+|===
+
+*TODO:*
+- [ ] Implement crypto backend checks
+- [ ] Implement config validation
+- [ ] Implement key expiration check
+
+=== G2. `ct diff a.ctp b.ctp` exists
+
+*Status: Basic*
+
+[cols="1,3"]
+|===
+| CLI Scaffold | ✓ `src/cli/cerro_cli.adb:Run_Diff`
+| Output format | ✓ Layer/config/sig/attestation diff defined
+| `--json` output | ✓ Documented
+| Implemented | ✗ Returns "Not yet implemented"
+|===
+
+*TODO:*
+- [ ] Implement bundle comparison
+- [ ] Define stable JSON diff schema
+- [ ] Add diff test cases
+
+=== G3. "User mental model" doc exists
+
+*Status: Not implemented*
+
+[cols="1,3"]
+|===
+| `docs/mental-model.adoc` | ✗ Not created
+| Consistent with CLI | N/A
+| 2 pages max | N/A
+|===
+
+*TODO:*
+- [ ] Create mental model document
+- [ ] Review against actual CLI
+- [ ] Keep concise (2 pages)
+
+---
+
+== Developer Evaluation Setup
+
+=== Required CI Checks
+
+[cols="1,1,2"]
+|===
+| Check | Status | Notes
+
+| `e2e-pack-verify` | ✗ | Need to create
+| `canonicalization-conformance` | ✗ | Need vectors
+| `conformance-producer` | ✗ | Need to import from spec repo
+| `interop-cerro-svalinn` | ✗ | Need to create
+| `schema-lint` | ✗ | Need to add
+| `fuzz-smoke` | ✗ | Need to add
+|===
+
+=== Labels (for PR triage)
+
+*TODO: Create these labels in repo*
+- `surface-change`
+- `seam-break`
+- `canonicalization`
+- `policy`
+- `interop`
+- `proof-gate`
+- `qol`
+
+=== PR Template
+
+*TODO: Create `.github/PULL_REQUEST_TEMPLATE.md`*
+
+[source,markdown]
+----
+## Summary
+
+## Checklist
+- [ ] Surface impact: _describe_
+- [ ] Seam impact: _none / Svalinn / Verified Container Spec_
+- [ ] Migration plan: _if breaking_
+- [ ] Vectors updated: _yes / no / N/A_
+- [ ] Docs updated: _yes / no / N/A_
+----
+
+---
+
+== Summary by Section
+
+[cols="1,1,3"]
+|===
+| Section | Rating | Key Gaps
+
+| A. pack/verify/explain | Basic | All scaffolded, none implemented
+| B. Keys + trust | Basic-Moderate | Schema complete, implementation pending
+| C. Offline + mirror | Basic | Scaffolded, no mirror config
+| D. Determinism | Strong | Spec complete, vectors needed
+| E. Build gates | Moderate | CI not properly separated
+| F. Seam checks | Not implemented-Moderate | No conformance/interop tests
+| G. Smoothing | Basic-Not implemented | Commands scaffolded, mental model missing
+|===
+
+== Priority Actions
+
+1. *Implement core crypto* (SHA-256, Ed25519 via libsodium)
+2. *Create canonicalization conformance vectors*
+3. *Implement `ct pack` and `ct verify`*
+4. *Create mental model document*
+5. *Separate CI into proper job matrix*
+6. *Add conformance test harness*
+
+== Files to Create
+
+- `tests/canon/valid/*.ctp`
+- `tests/canon/invalid/*.ctp`
+- `tests/errors/*.ctp`
+- `tests/golden/pack-determinism.sh`
+- `docs/mental-model.adoc`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.gitlab-ci.yml` (proper job matrix)

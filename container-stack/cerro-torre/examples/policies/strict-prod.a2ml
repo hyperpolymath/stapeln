@@ -1,0 +1,66 @@
+@policy(id="strict-prod", version="2.0"):
+  @meta(created="2025-12-01", updated="2026-01-28"):
+    Description: Production deployment policy with strict verification
+    Owner: Platform Team
+    Approved-by: CISO
+    Last-review: 2026-01-15
+
+  @requires(attestation="rekor", min-signatures=2):
+    All bundles MUST have Rekor transparency log entry at rekor.sigstore.dev
+    AND at least 2 signatures from trusted keys in trust-store-2026
+
+    @trusted-keys:
+      - release-key-2026
+      - backup-key-2026
+
+    @key-requirements:
+      Algorithms: ed25519 OR ml-dsa-65
+      Expiry: MUST be valid at deployment time
+      Revocation: MUST NOT be revoked
+
+  @requires(sbom="spdx", version="2.3"):
+    All bundles MUST include SPDX 2.3 SBOM
+    SBOM MUST list all dependencies with CVE scan results
+    No CRITICAL vulnerabilities allowed
+    HIGH vulnerabilities MUST have mitigation plan
+
+    @sbom-requirements:
+      Format: spdx-json
+      License-info: REQUIRED
+      Package-verification: sha256
+      CVE-scan: grype OR trivy
+
+  @requires(registry-allowlist):
+    @allowed:
+      - docker.io
+      - ghcr.io
+      - registry.example.com
+      - quay.io/verified/*
+
+    @blocked:
+      - quay.io/untrusted/*
+      - docker.io/malicious/*
+      - "*:latest"
+
+    Rationale: Only verified registries allowed, no floating tags
+
+  @requires(build-attestation):
+    Bundles MUST include SLSA provenance
+    Build MUST be from approved CI/CD (GitHub Actions OR GitLab CI)
+    Source repository MUST be verified
+
+  @audit(log="/var/log/ct/policy-decisions.log"):
+    Policy enforcement decisions logged with:
+    - Bundle hash (sha256)
+    - Verification result (pass/fail)
+    - Timestamp (RFC3339)
+    - Signing keys used (key IDs)
+    - Policy version applied
+    - Rekor entry hash
+
+  @attestation(policy-signature):
+    signed-by: policy-admin-key
+    signature: ed25519:9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e
+    rekor-entry: f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e
+    timestamp: 2026-01-28T10:00:00Z
+@end

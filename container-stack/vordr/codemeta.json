@@ -1,0 +1,99 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/2.0/codemeta.jsonld",
+  "@type": "SoftwareSourceCode",
+  "name": "Vörðr",
+  "identifier": "vordr",
+  "description": "Formally verified container orchestration and verification system with dependent types, eBPF monitoring, and threshold authorization",
+  "applicationCategory": "Security",
+  "codeRepository": "https://gitlab.com/hyperpolymath/vordr",
+  "dateCreated": "2025-01-15",
+  "dateModified": "2026-01-19",
+  "license": "https://spdx.org/licenses/PMPL-1.0-or-later.html",
+  "version": "0.1.0",
+  "developmentStatus": "active",
+  "isPartOf": {
+    "@type": "SoftwareApplication",
+    "name": "Svalinn",
+    "description": "Security infrastructure suite"
+  },
+  "author": [
+    {
+      "@type": "Organization",
+      "name": "Hyperpolymath",
+      "url": "https://hyperpolymath.org"
+    }
+  ],
+  "programmingLanguage": [
+    {
+      "@type": "ComputerLanguage",
+      "name": "Idris2",
+      "url": "https://idris-lang.org",
+      "alternateName": "Dependent Types"
+    },
+    {
+      "@type": "ComputerLanguage",
+      "name": "Rust",
+      "url": "https://www.rust-lang.org"
+    },
+    {
+      "@type": "ComputerLanguage",
+      "name": "Elixir",
+      "url": "https://elixir-lang.org"
+    },
+    {
+      "@type": "ComputerLanguage",
+      "name": "Ada/SPARK",
+      "url": "https://www.adacore.com/about-spark"
+    },
+    {
+      "@type": "ComputerLanguage",
+      "name": "ReScript",
+      "url": "https://rescript-lang.org"
+    }
+  ],
+  "runtimePlatform": [
+    "Linux (eBPF)",
+    "Deno",
+    "BEAM (Erlang VM)"
+  ],
+  "operatingSystem": "Linux",
+  "keywords": [
+    "formal-verification",
+    "dependent-types",
+    "container-security",
+    "eBPF",
+    "threshold-signatures",
+    "SPARK",
+    "reversible-computing",
+    "attestation"
+  ],
+  "softwareRequirements": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "Idris2",
+      "version": ">=0.6.0"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "Rust",
+      "version": ">=1.75"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "Elixir",
+      "version": ">=1.15"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "GNAT",
+      "version": ">=13.0"
+    }
+  ],
+  "relatedLink": [
+    "https://gitlab.com/hyperpolymath/svalinn",
+    "https://gitlab.com/hyperpolymath/cerro-torre"
+  ],
+  "readme": "README.adoc",
+  "issueTracker": "https://gitlab.com/hyperpolymath/vordr/-/issues",
+  "contIntegration": "https://gitlab.com/hyperpolymath/vordr/-/pipelines"
+}

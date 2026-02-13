@@ -1,0 +1,308 @@
+= Cerro Torre Evaluation Report
+:toc: left
+:toclevels: 2
+
+This document records periodic, evidence-backed evaluations of completion against the repo's checklists.
+It is intentionally *veridical*: every claim must link to a command output, file path, or CI run.
+
+== How to use this
+* Create a new section per evaluation date.
+* For each domain, choose a rating and provide evidence.
+* Link to the exact checklist file and (where relevant) the exact checklist item IDs (e.g., "A1", "C2").
+
+== Rating scale
+* *Fullest* — Delight + polish; minimal friction; interop + migrations are boring and reliable.
+* *Full* — Paved road end-to-end; strong diagnostics; stable surfaces; CI gates enforce the contract.
+* *Strong* — Very usable; small sharp edges remain; most seams covered by conformance and interop.
+* *Moderate* — Works for insiders; occasional setup/debug friction; partial conformance/interop.
+* *Basic* — Core functions exist but are fragile/manual; little automation or diagnostics.
+* *Not implemented* — Missing or not verifiable.
+
+== Evidence rules
+A rating without evidence is invalid.
+Accepted evidence types:
+* CI run URL(s) (preferred)
+* exact command + output excerpt (redacted if needed) committed under `evidence/`
+* file paths + commit hashes
+
+== Change control
+* Any claim of *Full* or above MUST reference passing required CI checks.
+* If a rating drops, record the regression cause and link to the issue/PR.
+
+---
+
+=== 2025-12-30 (Evaluator: claude-code)
+
+Checklist: link:QOL-AUDIT.adoc[QOL-AUDIT.adoc] @ commit `d4e378d7cfb688488795718847514aff530a33f5`
+
+Scope: Branch `claude/cerro-torre-mvp-plan-tKJdw`, pre-v0.1
+
+Platforms covered: linux x86_64 (specification only, no runtime tests)
+
+==== Overall rating
+
+*Rating:* Basic
+
+*Justification:*
+
+- All core CLI commands scaffolded with help text but no functional implementation
+- Comprehensive specifications exist (canonicalization, policy, index, crypto suites)
+- No tests directory, no conformance vectors, no CI job separation
+- Mental model doc missing; onboarding story incomplete
+
+==== Domain ratings (with evidence)
+
+[cols="1,1,4",options="header"]
+|===
+| Domain | Rating | Evidence (links / commands)
+
+| A. Onboarding + doctor
+| Basic
+| * `ct doctor` scaffolded but returns "Not yet implemented"
+  * Evidence: `evidence/2025-12-30/cli-scaffold.txt`
+  * CLI source: `src/cli/cerro_cli.adb:357-392`
+  * Missing: actual crypto backend check, config validation
+
+| B. CLI ergonomics + surfaces
+| Basic-Moderate
+| * 17+ commands scaffolded in `src/cli/cerro_cli.ads`
+  * Exit codes defined: `src/cli/ct_errors.ads` (0-12)
+  * Spec: `spec/cli-ergonomics.adoc` (comprehensive)
+  * Evidence: `evidence/2025-12-30/cli-scaffold.txt`
+  * Missing: implementation, --json output
+
+| C. Happy-path E2E (README is executable)
+| Not implemented
+| * `ct pack` returns "Not yet implemented"
+  * `ct verify` returns "Not yet implemented"
+  * No tests/ directory exists
+  * Evidence: `evidence/2025-12-30/tests-dir.txt`
+  * No golden tests, no determinism check
+
+| D. Config/state/cleanup
+| Basic
+| * Key storage location documented: `~/.config/cerro/keys/`
+  * Keystore policy spec: `spec/keystore-policy.json`
+  * Argon2id policy documented in spec
+  * Evidence: `evidence/2025-12-30/schema-files.txt`
+  * Missing: implementation, config.toml spec for mirrors
+
+| E. Release/reproducibility
+| Moderate
+| * Canonicalization spec: `spec/manifest-canonicalization.adoc` (comprehensive)
+  * Manifest format spec: `spec/manifest-format.md`
+  * Bundle format: `spec/ctp-bundle-format.adoc`
+  * Missing: conformance vectors, reproducible build evidence
+
+| F. Seam + surface checks (conformance/interop)
+| Not implemented
+| * Svalinn integration spec exists: `spec/svalinn-integration.adoc`
+  * No conformance test harness
+  * No interop CI job
+  * CI not separated: single `ada-spark-ci.yml`
+  * Evidence: `.github/workflows/ada-spark-ci.yml` (40 lines, minimal)
+
+| G. Smoothing docs + usability
+| Not implemented
+| * No `docs/mental-model.adoc`
+  * No `.github/PULL_REQUEST_TEMPLATE.md`
+  * Troubleshooting: `ct doctor` scaffolded only
+  * Example policies exist: `evidence/2025-12-30/example-policies.txt`
+|===
+
+==== Evidence files committed
+
+[source]
+----
+evidence/2025-12-30/
+├── cli-scaffold.txt        # ls -la src/cli/*.ad[sb]
+├── example-policies.txt    # ls -la examples/*.json
+├── schema-files.txt        # ls -la spec/*.json
+└── tests-dir.txt           # ls tests/ (shows non-existent)
+----
+
+==== Checklist item status (cross-reference to QOL-AUDIT.adoc)
+
+[cols="1,1,3",options="header"]
+|===
+| Item | Status | Notes
+
+| A1. `ct pack` deterministic
+| Basic
+| CLI scaffold exists, not implemented
+
+| A2. `ct verify` structured errors
+| Basic
+| Exit codes defined in `ct_errors.ads`, not implemented
+
+| A3. `ct explain` narrative
+| Basic
+| CLI scaffold exists, not implemented
+
+| B1. Key lifecycle
+| Basic
+| All subcommands scaffolded, none implemented
+
+| B2. Policy UX
+| Moderate
+| Schema complete (`policy-schema.json`), examples exist
+
+| B3. Rotation/multi-signer
+| Moderate
+| Schema supports threshold/deny, `ct re-sign` scaffolded
+
+| C1. Offline export/import
+| Basic
+| Scaffolded, not implemented
+
+| C2. Mirror resolution
+| Not impl
+| No mirror config section, no --offline flag
+
+| D1. Canonicalization rules
+| Strong
+| Spec complete, ATS shadow exists, vectors missing
+
+| D2. Turing-incomplete
+| Strong
+| TOML inherently bounded, spec documents limits
+
+| E1. Proof gates separated
+| Moderate
+| Single CI workflow, SPARK proof optional
+
+| E2. Developer mode
+| Not impl
+| No --dev flag, no dev markers
+
+| F1. Spec version pin
+| Basic
+| `ct version` prints 0.1.0-dev, no spec version
+
+| F2. Conformance harness
+| Not impl
+| No harness, no vectors imported
+
+| F3. Svalinn interop
+| Not impl
+| Spec exists, no CI job
+
+| G1. `ct doctor`
+| Basic
+| Scaffolded with check list, not implemented
+
+| G2. `ct diff`
+| Basic
+| Scaffolded with sample output, not implemented
+
+| G3. Mental model doc
+| Not impl
+| Does not exist
+|===
+
+==== Regressions since last evaluation
+
+* N/A — First evaluation
+
+==== Top 5 next actions (ranked)
+
+. [ ] *Implement core crypto* — SHA-256 + Ed25519 via libsodium bindings. Required for any verification.
+. [ ] *Create tests/ directory with conformance vectors* — `tests/canon/valid/`, `tests/canon/invalid/`, `tests/errors/`. Enables CI gates.
+. [ ] *Implement `ct pack` and `ct verify`* — Core loop. Without this, nothing is usable.
+. [ ] *Create `docs/mental-model.adoc`* — 2-page user guide. Critical for onboarding.
+. [ ] *Separate CI into job matrix* — `build`, `unit-test`, `spark-proof`, `lint`. Enables proper gates.
+
+==== Notes
+
+* Schema completeness is high — `policy-schema.json`, `index-schema.json`, `crypto-suites.json`, `keystore-policy.schema.json` all exist and are comprehensive.
+* CLI scaffold is thorough with detailed help text for all 17+ commands.
+* The gap between "specified" and "implemented" is the primary issue.
+* ATS2 shadow verifier exists (`tools/ats-shadow/`) but is non-authoritative.
+* Next evaluation should be after implementing pack/verify and creating test vectors.
+
+---
+
+== Evaluation Template (copy for next evaluation)
+
+=== YYYY-MM-DD (Evaluator: NAME/HANDLE)
+
+Checklist: link:QOL-AUDIT.adoc[QOL-AUDIT.adoc] @ commit `COMMIT_HASH`
+
+Scope: (release tag, branch, or commit range)
+
+Platforms covered: (e.g., linux x86_64 rootless, linux aarch64 rootful, etc.)
+
+==== Overall rating
+
+*Rating:* (Fullest | Full | Strong | Moderate | Basic | Not implemented)
+
+*Justification (1–3 sentences):*
+
+- ...
+
+==== Domain ratings (with evidence)
+
+[cols="1,1,4",options="header"]
+|===
+| Domain | Rating | Evidence (links / commands)
+
+| A. Onboarding + doctor
+| (..)
+| * CI: ...
+  * Evidence file: `evidence/YYYY-MM-DD/doctor.txt`
+  * Notes: ...
+
+| B. CLI ergonomics + surfaces
+| (..)
+| * CI: ...
+  * Schema: `spec/*.json` @ commit ...
+  * Notes: ...
+
+| C. Happy-path E2E (README is executable)
+| (..)
+| * CI: ...
+  * Logs: ...
+  * Notes: ...
+
+| D. Config/state/cleanup
+| (..)
+| * Docs: `docs/...`
+  * CI: ...
+  * Notes: ...
+
+| E. Release/reproducibility
+| (..)
+| * Release assets: ...
+  * Attestations: ...
+  * Notes: ...
+
+| F. Seam + surface checks (conformance/interop)
+| (..)
+| * Conformance: ...
+  * Interop matrix: ...
+  * Notes: ...
+
+| G. Smoothing docs + usability
+| (..)
+| * Troubleshooting: ...
+  * Mental model: ...
+  * Notes: ...
+|===
+
+==== Regressions since last evaluation
+
+* None / list issues
+- (issue/PR link) — what regressed, impact, mitigation
+
+==== Top 5 next actions (ranked)
+
+. [ ] (action) — link to issue/PR, owner, target milestone
+. [ ] ...
+. [ ] ...
+. [ ] ...
+. [ ] ...
+
+==== Notes
+
+* Anything learned during evaluation that should become a checklist item:
+- ...

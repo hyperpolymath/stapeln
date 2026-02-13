@@ -1,0 +1,11 @@
+{
+  "containers": [
+    {
+      "id": "demo-1",
+      "name": "hello",
+      "image": "registry.example.com/hello:latest",
+      "status": "stopped",
+      "policyVerdict": "verified"
+    }
+  ]
+}

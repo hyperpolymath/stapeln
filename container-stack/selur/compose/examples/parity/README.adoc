@@ -1,0 +1,23 @@
+= Compose Parity Example
+
+This example exercises the Phase A parity path: networks, volumes, ports, and health checks.
+
+== Requirements
+
+* Vörðr MCP server reachable at `VORDR_MCP_URL` (default: http://localhost:8081).
+* Svalinn v2 run endpoint reachable at `SVALINN_URL` (default: http://localhost:8080).
+
+== Run
+
+[source,sh]
+----
+selur-compose -f examples/parity/compose.toml up
+selur-compose -f examples/parity/compose.toml down -v
+----
+
+== What This Tests
+
+* Network creation for `front` and `back`.
+* Volume creation for `webdata` and `redisdata`.
+* Port mappings on 8080 and 6379.
+* Health checks + restart policy propagation.

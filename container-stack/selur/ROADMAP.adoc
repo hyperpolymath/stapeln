@@ -1,0 +1,242 @@
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+// SPDX-License-Identifier: PMPL-1.0-or-later
+
+= selur Development Roadmap
+:toc: left
+:toclevels: 2
+
+== Vision
+
+selur provides zero-overhead, formally verified IPC between Svalinn (edge gateway) and Vörðr (container runtime) using Ephapax-linear types and WASM. This roadmap outlines the path from MVP to production-ready sealant.
+
+== Phase 1: MVP (Q1 2026)
+
+=== Core Features
+
+* [x] Repository initialization
+* [ ] Ephapax-linear bridge definition (zero-copy IPC)
+* [ ] Zig → WASM32 compilation
+* [ ] Basic memory region management
+* [ ] Request/response message passing
+
+=== Verification
+
+* [ ] Idris2 proof: `noLostRequests`
+* [ ] Idris2 proof: `noMemoryLeaks`
+* [ ] Property-based tests (QuickCheck)
+
+=== Performance
+
+* [ ] Benchmark against JSON/HTTP baseline
+* [ ] Benchmark against gRPC baseline
+* [ ] Target: 30-50% latency reduction
+
+=== Documentation
+
+* [x] README.adoc with architecture overview
+* [x] ROADMAP.adoc (this file)
+* [ ] ARCHITECTURE.adoc with formal model
+* [ ] API documentation (rustdoc)
+
+== Phase 2: Integration (Q2 2026)
+
+=== Svalinn Integration
+
+* [ ] ReScript bindings for selur.wasm
+* [ ] Deno WASM runtime integration
+* [ ] Edge request handling via selur
+* [ ] Error propagation and recovery
+
+=== Vörðr Integration
+
+* [ ] Rust library for embedding selur
+* [ ] Container lifecycle hooks
+* [ ] Resource limits and isolation
+* [ ] Metrics and observability
+
+=== Cerro Torre Integration
+
+* [ ] ct-seal CLI support (`--selur` flag)
+* [ ] .ctp bundle compatibility
+* [ ] Welding kit integration
+* [ ] Gluing mode fallback
+
+=== Security
+
+* [ ] SELinux policy for WASM sandbox
+* [ ] AppArmor profile
+* [ ] Seccomp filter
+* [ ] Memory safety audit
+
+== Phase 3: Production Hardening (Q3 2026)
+
+=== Performance Optimization
+
+* [ ] Profile WASM execution
+* [ ] Optimize memory allocation
+* [ ] Reduce syscall overhead
+* [ ] SIMD acceleration (where applicable)
+
+=== Reliability
+
+* [ ] Graceful degradation on WASM failure
+* [ ] Circuit breaker pattern
+* [ ] Health checks and monitoring
+* [ ] Automated recovery
+
+=== Testing
+
+* [ ] Integration test suite (Svalinn + Vörðr)
+* [ ] Chaos testing (network faults, OOM, etc.)
+* [ ] Fuzzing (libFuzzer)
+* [ ] Performance regression tests
+
+=== Documentation
+
+* [ ] Integration guide for operators
+* [ ] Troubleshooting guide
+* [ ] Performance tuning guide
+* [ ] Security best practices
+
+== Phase 4: Ecosystem & Standardization (Q4 2026)
+
+=== Language Bindings
+
+* [ ] ReScript bindings (priority)
+* [ ] Gleam bindings
+* [ ] Elixir NIF
+* [ ] Python bindings (via wasmtime-py)
+
+=== Formal Methods
+
+* [ ] Complete Idris2 proof suite
+* [ ] Publish formal specification
+* [ ] Coq alternative proofs (optional)
+* [ ] Submit to POPL/PLDI (optional)
+
+=== Standardization
+
+* [ ] Propose .ctp spec to OCI
+* [ ] Collaborate with CNCF WASM Working Group
+* [ ] Publish RFC for Ephapax-linear IPC
+* [ ] Reference implementation status
+
+=== Ecosystem Support
+
+* [ ] Welding kits for major images (Alpine, Nginx, etc.)
+* [ ] Collaboration with Chainguard
+* [ ] Collaboration with Wolfi/Debian
+* [ ] CI/CD integration examples
+
+== Long-Term Goals (2027+)
+
+=== Advanced Features
+
+* [ ] Multi-region WASM (distributed selur)
+* [ ] Hardware acceleration (Intel SGX, AWS Nitro)
+* [ ] Zero-copy networking (io_uring)
+* [ ] eBPF integration
+
+=== Research
+
+* [ ] Publish in academic venue (OSDI, USENIX ATC)
+* [ ] Case study: Ephapax in production
+* [ ] Comparison with capability-based systems
+
+=== Community
+
+* [ ] CNCF incubation (if applicable)
+* [ ] KubeCon/CloudNativeCon talks
+* [ ] Training materials and workshops
+* [ ] Contributor onboarding program
+
+== Milestones
+
+[cols="1,2,2", options="header"]
+|===
+|Date |Milestone |Deliverables
+
+|2026-03-31
+|Phase 1 Complete
+|MVP with Ephapax bridge, Idris2 proofs, benchmarks
+
+|2026-06-30
+|Phase 2 Complete
+|Svalinn + Vörðr integration, ct-seal CLI support
+
+|2026-09-30
+|Phase 3 Complete
+|Production-ready, documented, tested
+
+|2026-12-31
+|Phase 4 Complete
+|Standardization proposals, ecosystem adoption
+|===
+
+== Success Metrics
+
+=== Performance
+
+* Latency: <1ms (vs 2.3ms for JSON/HTTP)
+* Throughput: >10K req/s (vs 4.3K req/s)
+* Memory: <2MB overhead (vs 8.2MB)
+
+=== Adoption
+
+* 3+ major image providers with welding kits
+* 100+ GitHub stars
+* 5+ production deployments
+
+=== Quality
+
+* 0 critical security vulnerabilities
+* >85% test coverage
+* Formal proofs verified in Idris2
+
+== Dependencies
+
+=== Internal
+
+* link:https://github.com/hyperpolymath/ephapax[ephapax] - Linear type system
+* link:https://github.com/hyperpolymath/svalinn[svalinn] - Edge gateway
+* link:https://github.com/hyperpolymath/cerro-torre[cerro-torre] - Container tooling
+
+=== External
+
+* link:https://ziglang.org/[Zig] - WASM compilation
+* link:https://wasmtime.dev/[Wasmtime] - WASM runtime
+* link:https://www.idris-lang.org/[Idris2] - Formal verification
+
+== Risks & Mitigation
+
+[cols="2,2,2", options="header"]
+|===
+|Risk |Impact |Mitigation
+
+|WASM performance overhead
+|High
+|Profile early, optimize hot paths, fallback to native
+
+|Idris2 proof complexity
+|Medium
+|Start with simple proofs, iterate incrementally
+
+|Ecosystem adoption lag
+|Medium
+|Focus on Chainguard first, provide excellent docs
+
+|Breaking changes in Ephapax
+|Low
+|Pin versions, contribute upstream
+|===
+
+== Contributing
+
+See link:CONTRIBUTING.adoc[CONTRIBUTING.adoc] for how to contribute to this roadmap.
+
+Priority areas for community contribution:
+
+* Language bindings (ReScript, Gleam, Elixir)
+* Formal verification proofs
+* Performance benchmarking
+* Integration testing

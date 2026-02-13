@@ -1,0 +1,334 @@
+image:https://img.shields.io/badge/License-PMPL--1.0-blue.svg[License: PMPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
+
+
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn
+:toc: preamble
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
+
+image:https://img.shields.io/badge/spec-verified--container--spec-green.svg[Spec,link="https://github.com/hyperpolymath/verified-container-spec"]
+
+*Post-Cloud Security Architecture: Edge gateway for verified container operations.*
+
+[.lead]
+Svalinn is a Deno-based HTTP gateway that validates container operation requests and delegates to https://github.com/hyperpolymath/vordr[Vörðr]. It provides REST API access, JSON Schema validation, policy enforcement, OAuth2/JWT authentication, and a Compose-compatible orchestration CLI (`svalinn-compose`).
+
+== Project Status
+
+**Integration Complete (90%)** -- Core modules implemented and wired together (2026-01-25)
+
+[cols="1,1,3",options="header"]
+|===
+|Component |Status |Description
+
+|*Edge Gateway*
+|✅ Complete
+|Hono-based HTTP server with JSON Schema validation (ReScript/Deno, 400+ lines)
+
+|*Vörðr Integration*
+|✅ Complete
+|MCP client delegating to Vörðr via JSON-RPC 2.0 (ReScript, 330+ lines)
+
+|*Policy Engine*
+|✅ Complete
+|Gatekeeper policy validation and enforcement (ReScript, 330+ lines)
+
+|*Authentication*
+|✅ Complete
+|OAuth2/OIDC + JWT + API keys + mTLS middleware (ReScript, 430+ lines)
+
+|*Request Validation*
+|✅ Complete
+|JSON Schema validation using Ajv (ReScript, 230+ lines)
+
+|*svalinn-compose*
+|⏳ Planned
+|Compose-compatible multi-container orchestration CLI
+
+|*Total Implementation*
+|2,770+ lines
+|Type-safe ReScript compiled to JavaScript
+|===
+
+== Architecture
+
+----
+                    ┌─────────────────────────────────────────────┐
+                    │         VERIFIED CONTAINER ECOSYSTEM        │
+                    └─────────────────────────────────────────────┘
+                                          │
+          ┌───────────────────────────────┼───────────────────────────────┐
+          │                               │                               │
+          ▼                               ▼                               ▼
+  ┌───────────────┐            ┌─────────────────┐            ┌─────────────────┐
+  │   SVALINN     │            │     VÖRÐR       │            │  CERRO TORRE    │
+  │  Edge Shield  │───────────▶│   Container     │◀───────────│    Builder      │
+  │ (ReScript/    │  delegates │    Engine       │  produces  │   (Ada/SPARK)   │
+  │    Deno)      │            │  (Rust/Ada)     │            │                 │
+  └───────┬───────┘            └────────┬────────┘            └─────────────────┘
+          │                             │                               │
+          │         ┌───────────────────┴───────────────────┐           │
+          │         │                                       │           │
+          ▼         ▼                                       ▼           ▼
+  ┌───────────────────────────────────────────────────────────────────────────┐
+  │                      VERIFIED-CONTAINER-SPEC                              │
+  │                   (Protocol Specification)                                │
+  │         Attestation Format │ Trust Model │ Verification Semantics         │
+  └───────────────────────────────────────────────────────────────────────────┘
+----
+
+=== What Svalinn Does
+
+* **Edge Gateway** -- REST API for container operations (Hono/Deno)
+* **Request Validation** -- JSON Schema validation against verified-container-spec
+* **Delegation** -- Forwards verified requests to Vörðr via MCP/JSON-RPC
+* **Policy Enforcement** -- Configurable allow/deny rules per operation type
+* **Authentication** -- OAuth2/OIDC and JWT token validation
+* **Compose Orchestration** -- Multi-container deployment via `svalinn-compose`
+
+=== What Svalinn Does NOT Do
+
+* **Container Runtime** -- That's https://github.com/hyperpolymath/vordr[Vörðr]
+* **Image Building** -- That's https://github.com/hyperpolymath/cerro-torre[Cerro Torre]
+* **Formal Verification** -- That's the Idris2/Elixir layers in Vörðr
+
+== Getting Started
+
+=== Prerequisites
+
+[source,shell]
+----
+# Deno runtime (>= 2.0)
+curl -fsSL https://deno.land/install.sh | sh
+
+# Just command runner (optional but recommended)
+cargo install just
+----
+
+=== Configuration
+
+[source,shell]
+----
+export SVALINN_PORT=8000           # Gateway port (default: 8000)
+export SVALINN_HOST=0.0.0.0        # Bind address (default: 0.0.0.0)
+export VORDR_ENDPOINT=http://localhost:8080  # Vörðr MCP endpoint
+export SPEC_VERSION=v0.1.0         # Spec version for validation
+----
+
+=== Build and Run
+
+[source,shell]
+----
+# Development (hot reload)
+just dev
+
+# Production server
+just serve
+
+# Compile to binary
+just build
+
+# Run tests
+just test
+----
+
+== svalinn-compose
+
+Compose-compatible orchestration with security extensions.
+
+[source,shell]
+----
+# Start services defined in svalinn-compose.yaml
+svalinn-compose up
+
+# Start in detached mode
+svalinn-compose up -d
+
+# Stop and remove containers
+svalinn-compose down
+
+# List running services
+svalinn-compose ps
+
+# View logs (follow mode)
+svalinn-compose logs -f web
+
+# Scale a service
+svalinn-compose scale web=3
+
+# Validate compose file
+svalinn-compose config
+----
+
+=== Compose File Format
+
+[source,yaml]
+----
+version: "1.0"
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    x-svalinn:
+      policy: strict
+      verify: true
+
+x-svalinn:
+  policy: standard
+  attestations:
+    require-sbom: true
+    require-signature: true
+----
+
+== REST API
+
+[cols="1,2,2",options="header"]
+|===
+|Endpoint |Method |Description
+
+|`/healthz`
+|GET
+|Health check with Vörðr connection status
+
+|`/v1/containers`
+|GET
+|List all containers
+
+|`/v1/containers/:id`
+|GET
+|Get container info
+
+|`/v1/run`
+|POST
+|Run a container (validated against schema)
+
+|`/v1/verify`
+|POST
+|Verify image attestations
+
+|`/v1/containers/:id/stop`
+|POST
+|Stop a container
+
+|`/v1/containers/:id`
+|DELETE
+|Remove a container
+
+|`/v1/images`
+|GET
+|List images
+|===
+
+== Project Structure
+
+----
+svalinn/
+├── src/
+│   ├── gateway/
+│   │   ├── Gateway.res         # HTTP server with Hono (400+ lines)
+│   │   └── Types.res           # Type definitions
+│   ├── auth/
+│   │   ├── Types.res           # Auth types, RBAC roles (270 lines)
+│   │   ├── JWT.res             # JWT verification, JWKS caching (370+ lines)
+│   │   ├── OAuth2.res          # OAuth2 flows (230+ lines)
+│   │   └── Middleware.res      # Hono auth middleware (430+ lines)
+│   ├── mcp/
+│   │   └── McpClient.res       # Vörðr MCP client (330+ lines)
+│   ├── validation/
+│   │   └── Validation.res      # JSON Schema validation (230+ lines)
+│   ├── policy/
+│   │   └── PolicyEngine.res    # Gatekeeper policies (330+ lines)
+│   └── bindings/
+│       ├── Hono.res            # Hono framework bindings (90 lines)
+│       ├── Deno.res            # Deno runtime bindings
+│       └── Fetch.res           # Fetch API bindings
+├── tests/
+│   └── integration_test.res    # Integration test suite (330+ lines)
+├── spec/
+│   └── schemas/                # JSON Schema definitions
+│       ├── gateway-run-request.v1.json
+│       ├── gateway-verify-request.v1.json
+│       ├── gatekeeper-policy.v1.json
+│       └── ...
+├── INTEGRATION-STATUS.md       # Current integration progress
+├── SEAM-ANALYSIS.md            # Integration seam analysis
+├── Justfile                    # Build commands
+├── rescript.json               # ReScript configuration
+└── deno.json                   # Deno configuration
+----
+
+== Integration with Svalinn Ecosystem
+
+[cols="1,2,1",options="header"]
+|===
+|Component |Role |Link
+
+|*Vörðr*
+|Container engine with formal verification
+|https://github.com/hyperpolymath/vordr[vordr]
+
+|*Cerro Torre*
+|Provenance-verified image packaging
+|https://github.com/hyperpolymath/cerro-torre[cerro-torre]
+
+|*verified-container-spec*
+|Protocol specification
+|https://github.com/hyperpolymath/verified-container-spec[verified-container-spec]
+|===
+
+=== Runtime Integration Gateway
+
+Svalinn can act as a centralized verification gateway for other runtimes (nerdctl, Podman). This allows existing container tools to delegate `.ctp` verification to Svalinn, which then forwards verified requests to Vörðr.
+
+See the https://github.com/hyperpolymath/verified-container-spec/blob/main/spec/runtime-integration.adoc[Runtime Integration Specification] for details on the gateway pattern (Section 4.4).
+
+== Development
+
+=== Justfile Commands
+
+[source,shell]
+----
+just                    # List all commands
+just dev                # Development server (hot reload)
+just serve              # Production server
+just build              # Compile to binary (dist/svalinn)
+just test               # Run test suite
+just check              # Type check
+just lint               # Lint code
+just fmt                # Format code
+just precommit          # fmt + lint + check + test
+----
+
+=== Contributing
+
+* *Language Policy*: ReScript (compiles to JavaScript) + Deno runtime (no Node, npm, bun, TypeScript)
+* *Type Safety*: All code written in ReScript for compile-time type checking
+* *Security*: HTTPS in production, no hardcoded secrets
+* *Licensing*: PMPL-1.0 OR PMPL-1.0-or-later, SPDX headers required
+
+**Implementation Language:**
+- Primary: ReScript (`.res` files → `.res.js`)
+- Runtime: Deno 2.0+ (executes compiled JavaScript)
+- Bindings: ReScript bindings for Hono, Deno APIs, Web Crypto, Ajv
+
+== License
+
+This project is dual-licensed under:
+
+* Palimpsest-MPL-1.0 License
+* PMPL-1.0-or-later
+
+See link:LICENSE.txt[LICENSE.txt] for details.
+
+== References
+
+* https://github.com/hyperpolymath/vordr[Vörðr Container Engine]
+* https://github.com/hyperpolymath/verified-container-spec[Verified Container Specification]
+* https://github.com/hyperpolymath/cerro-torre[Cerro Torre Builder]
+* https://rescript-lang.org/[ReScript]
+* https://deno.land/[Deno]
+* https://modelcontextprotocol.io/[Model Context Protocol]

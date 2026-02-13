@@ -1,0 +1,192 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Evaluation Report
+:toc: left
+:toclevels: 2
+
+This document records periodic, evidence-backed evaluations of completion against the repo's checklists.
+It is intentionally *veridical*: every claim must link to a command output, file path, or CI run.
+
+== How to use this
+* Create a new section per evaluation date.
+* For each domain, choose a rating and provide evidence.
+* Link to the exact checklist file and (where relevant) the exact checklist item IDs (e.g., "A1", "C2").
+
+== Rating scale
+* *Fullest* — Delight + polish; minimal friction; interop + migrations are boring and reliable.
+* *Full* — Paved road end-to-end; strong diagnostics; stable surfaces; CI gates enforce the contract.
+* *Strong* — Very usable; small sharp edges remain; most seams covered by conformance and interop.
+* *Moderate* — Works for insiders; occasional setup/debug friction; partial conformance/interop.
+* *Basic* — Core functions exist but are fragile/manual; little automation or diagnostics.
+* *Not implemented* — Missing or not verifiable.
+
+== Evidence rules
+A rating without evidence is invalid.
+Accepted evidence types:
+* CI run URL(s) (preferred)
+* exact command + output excerpt (redacted if needed) committed under `evidence/`
+* file paths + commit hashes
+
+== Change control
+* Any claim of *Full* or above MUST reference passing required CI checks.
+* If a rating drops, record the regression cause and link to the issue/PR.
+
+---
+
+=== 2025-01-15 (Evaluator: Claude/Automated)
+Checklist: link:CHECKLIST-QOL.adoc[CHECKLIST-QOL.adoc] @ commit `beeac38fb885c253c6fbb80b9f1d1e1b1ce6aee8`
+Scope: `claude/add-doctor-onboarding-HtRN3` branch
+Platforms covered: linux x86_64 (CI target)
+
+==== Overall rating
+*Rating:* Moderate
+
+*Justification:*
+Core infrastructure is now in place: doctor command, system commands, auth, compose subset, security profiles, JSON schemas, CI workflows, and documentation. The surface contract and conformance frameworks are established. However, full E2E testing and some CI workflows need runtime dependencies that aren't yet available in standard CI runners.
+
+==== Domain ratings (with evidence)
+
+[cols="1,1,4",options="header"]
+|===
+| Domain | Rating | Evidence (links / commands)
+
+| A. Onboarding + doctor
+| Strong
+| * `vordr/src/cli/doctor.rs` - Full implementation with 5 check categories
+  * CI: `.github/workflows/doctor-smoke.yml`
+  * Schema: `spec/schemas/doctor-report.v1.json`
+  * Notes: Doctor outputs structured JSON, provides fix commands, exits non-zero on failures
+
+| B. CLI ergonomics + surfaces
+| Moderate
+| * Schema: `spec/schemas/*.json` @ commit beeac38
+  * Contract: `docs/surface-contract.adoc`
+  * Exit codes: Defined in surface-contract.adoc, taxonomy complete
+  * Notes: JSON output supported for most commands. Help examples TBD.
+
+| C. Happy-path E2E (README is executable)
+| Basic
+| * CI: `.github/workflows/e2e-readme.yml`
+  * Notes: Workflow created but full lifecycle requires OCI runtime in CI.
+  * Partial: ps, system df, system prune work without runtime
+
+| D. Config/state/cleanup
+| Moderate
+| * Cleanup: `vordr/src/cli/system.rs` - prune with --dry-run
+  * XDG: Paths respect XDG, documented in troubleshooting
+  * Notes: config show/migrate TBD. System prune fully functional.
+
+| E. Release/reproducibility
+| Moderate
+| * Release: `.github/workflows/release.yml` with matrix builds
+  * SBOM: CycloneDX + SPDX generation in workflow
+  * Provenance: SLSA-style provenance.json generated
+  * Notes: Not yet tested with actual release. Install script TBD.
+
+| F. Seam + surface checks (conformance/interop)
+| Moderate
+| * Spec version: `spec/SPEC_VERSION` pins OCI + internal specs
+  * Conformance: `.github/workflows/conformance-consumer.yml`
+  * Surface lint: `.github/workflows/surface-contract-lint.yml`
+  * Notes: Framework in place. Test vectors not yet imported.
+
+| G. Smoothing docs + usability
+| Strong
+| * Troubleshooting: `docs/troubleshooting.adoc` - 20 failure modes
+  * Mental model: `docs/mental-model.adoc` - Under 2 pages
+  * Completions: `vordr/src/cli/completion.rs` - bash/zsh/fish
+  * Notes: Documentation comprehensive. Manpage generation in release workflow.
+|===
+
+==== Regressions since last evaluation
+* N/A (First evaluation)
+
+==== Top 5 next actions (ranked)
+. [ ] Add OCI runtime (youki) to CI for full E2E tests — target: e2e-readme workflow
+. [ ] Implement `vordr config show` and `vordr config migrate` — target: D1 completion
+. [ ] Add examples to clap help output — target: B1 completion
+. [ ] Create install.sh script for one-command install — target: A3 completion
+. [ ] Import conformance test vectors from verified-container-spec — target: F2 completion
+
+==== Notes
+* Anything learned during evaluation that should become a checklist item:
+- Consider adding a "minimal working CI" checklist item for projects where full E2E requires specific runtimes
+- The doctor command provides a good template for other diagnostic commands
+- Schema versioning pattern (`.v1.json`) should be enforced by linter
+
+---
+
+== Template for Future Evaluations
+
+=== YYYY-MM-DD (Evaluator: NAME/HANDLE)
+Checklist: link:CHECKLIST-QOL.adoc[CHECKLIST-QOL.adoc] @ commit `COMMIT_HASH`
+Scope: (release tag, branch, or commit range)
+Platforms covered: (e.g., linux x86_64 rootless, linux aarch64 rootful, etc.)
+
+==== Overall rating
+*Rating:* (Fullest | Full | Strong | Moderate | Basic | Not implemented)
+*Justification (1–3 sentences):*
+- ...
+
+==== Domain ratings (with evidence)
+
+[cols="1,1,4",options="header"]
+|===
+| Domain | Rating | Evidence (links / commands)
+
+| A. Onboarding + doctor
+| (..)
+| * CI: ...
+  * Evidence file: `evidence/YYYY-MM-DD/doctor.txt`
+  * Notes: ...
+
+| B. CLI ergonomics + surfaces
+| (..)
+| * CI: ...
+  * Schema: `schema/*.json` @ commit ...
+  * Notes: ...
+
+| C. Happy-path E2E (README is executable)
+| (..)
+| * CI: ...
+  * Logs: ...
+  * Notes: ...
+
+| D. Config/state/cleanup
+| (..)
+| * Docs: `docs/...`
+  * CI: ...
+  * Notes: ...
+
+| E. Release/reproducibility
+| (..)
+| * Release assets: ...
+  * Attestations: ...
+  * Notes: ...
+
+| F. Seam + surface checks (conformance/interop)
+| (..)
+| * Conformance: ...
+  * Interop matrix: ...
+  * Notes: ...
+
+| G. Smoothing docs + usability
+| (..)
+| * Troubleshooting: ...
+  * Mental model: ...
+  * Notes: ...
+|===
+
+==== Regressions since last evaluation
+* None / list issues
+- (issue/PR link) — what regressed, impact, mitigation
+
+==== Top 5 next actions (ranked)
+. [ ] (action) — link to issue/PR, owner, target milestone
+. [ ] ...
+. [ ] ...
+. [ ] ...
+. [ ] ...
+
+==== Notes
+* Anything learned during evaluation that should become a checklist item:
+- ...

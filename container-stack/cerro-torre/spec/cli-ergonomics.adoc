@@ -1,0 +1,544 @@
+= Cerro Torre CLI Ergonomics Specification
+:status: normative
+:audience: users, implementers
+:version: 0.1
+
+== Philosophy
+
+Cerro Torre is "ship containers safely" — the distribution complement to Svalinn's "run containers nicely".
+
+A user should be able to:
+
+1. Wrap an OCI image into a verifiable bundle (`.ctp`)
+2. Move that bundle around (offline, airgapped, mirrors)
+3. Verify it deterministically
+4. Install/run it with minimal ceremony
+
+== Command Overview
+
+[source]
+----
+ct pack       # Create .ctp bundle from OCI image
+ct verify     # Verify a .ctp bundle
+ct explain    # Human-readable verification chain
+ct keygen     # Generate signing keypair
+ct key        # Key management (list, import, export)
+ct fetch      # Pull .ctp from registry or create from image
+ct push       # Publish .ctp to registry/mirror
+ct export     # Export for offline media
+ct import     # Import from offline media
+----
+
+== Core Commands
+
+=== ct pack
+
+Create a verifiable `.ctp` bundle from an OCI image reference.
+
+[source,bash]
+----
+ct pack <image-ref> -o <output.ctp>
+ct pack docker.io/library/nginx:1.26 -o nginx.ctp
+ct pack oci:./local-image -o local.ctp
+----
+
+Options:
+[cols="2,4"]
+|===
+| Option | Description
+
+| `-o, --output <file>`
+| Output path for .ctp bundle (required)
+
+| `-k, --key <key-id>`
+| Signing key to use (default: default key)
+
+| `--suite <suite-id>`
+| Crypto suite (default: CT-SIG-01)
+
+| `--no-sign`
+| Create unsigned bundle (for later signing)
+
+| `--provenance <file>`
+| Include SLSA provenance attestation
+
+| `--sbom <file>`
+| Include SPDX SBOM attestation
+|===
+
+Output on success:
+[source]
+----
+✓ Packed nginx:1.26 → nginx.ctp
+  Manifest:  sha256:a1b2c3...
+  Layers:    3 (48.2 MiB)
+  Signed by: cerro-dev-2025 (ed25519)
+----
+
+=== ct verify
+
+Verify a `.ctp` bundle against policy.
+
+[source,bash]
+----
+ct verify <bundle.ctp>
+ct verify nginx.ctp
+ct verify nginx.ctp --policy strict.json
+----
+
+Options:
+[cols="2,4"]
+|===
+| Option | Description
+
+| `--policy <file>`
+| Trust policy file (default: ~/.config/cerro/policy.json)
+
+| `--offline`
+| Skip transparency log checks
+
+| `--verbose`
+| Show detailed verification steps
+
+| `--json`
+| Output machine-readable JSON
+|===
+
+Exit codes:
+[cols="1,3"]
+|===
+| Code | Meaning
+
+| 0 | Verification succeeded
+| 1 | Hash mismatch (content tampered)
+| 2 | Signature invalid or missing
+| 3 | Key not trusted by policy
+| 4 | Policy rejection (registry/base image not allowed)
+| 5 | Missing required attestation
+| 10 | Malformed bundle
+| 11 | I/O error
+|===
+
+Error output (specific and actionable):
+[source]
+----
+✗ Verification failed: signature invalid
+
+  Bundle:    nginx.ctp
+  Signer:    unknown-key-2025
+  Algorithm: ed25519
+
+  The signature does not match the manifest content.
+  This may indicate tampering or corruption.
+
+  To see the expected signers: ct explain nginx.ctp --signers
+  To update your trust policy:  ct key import <keyfile>
+----
+
+=== ct explain
+
+Print human-readable verification chain.
+
+[source,bash]
+----
+ct explain <bundle.ctp>
+ct explain nginx.ctp
+ct explain nginx.ctp --signers
+ct explain nginx.ctp --layers
+----
+
+Output:
+[source]
+----
+Bundle: nginx.ctp
+
+Package:
+  Name:    ct-nginx
+  Version: 1.26.0-1
+  Suite:   CT-SIG-01 (classical)
+
+Provenance:
+  Source:  docker.io/library/nginx:1.26
+  Fetched: 2025-01-15T10:30:00Z
+
+Content:
+  Manifest: sha256:a1b2c3d4...
+  Layers:   3 total, 48.2 MiB
+    [0] sha256:e1f2g3... (base, 25.1 MiB)
+    [1] sha256:h4i5j6... (config, 1.2 KiB)
+    [2] sha256:k7l8m9... (app, 23.1 MiB)
+
+Signatures:
+  ✓ cerro-dev-2025 (ed25519)
+    Fingerprint: SHA256:abc123...
+    Signed at:   2025-01-15T10:31:00Z
+
+Trust Chain:
+  ✓ Key trusted by policy (signers.allowed)
+  ✓ Registry allowed (registries.allowed)
+  ✓ Suite permitted (suites.allowed)
+----
+
+== Key Management
+
+=== ct keygen
+
+Generate a new signing keypair.
+
+[source,bash]
+----
+ct keygen
+ct keygen --id my-signing-key
+ct keygen --suite CT-SIG-02  # hybrid post-quantum
+----
+
+Options:
+[cols="2,4"]
+|===
+| Option | Description
+
+| `--id <name>`
+| Key identifier (default: auto-generated)
+
+| `--suite <suite-id>`
+| Crypto suite for key type
+
+| `--output <dir>`
+| Output directory (default: ~/.config/cerro/keys/)
+
+| `--no-password`
+| Don't encrypt private key (not recommended)
+|===
+
+Output:
+[source]
+----
+Generated keypair: cerro-dev-2025
+
+  Public key:  ~/.config/cerro/keys/cerro-dev-2025.pub
+  Private key: ~/.config/cerro/keys/cerro-dev-2025.key (encrypted)
+
+  Fingerprint: SHA256:abc123def456...
+  Algorithm:   ed25519 (CT-SIG-01)
+
+To share your public key:
+  ct key export cerro-dev-2025 --public
+----
+
+=== ct key
+
+Key management subcommands.
+
+[source,bash]
+----
+ct key list                    # List all keys
+ct key import <file>           # Import a public key
+ct key export <id> --public    # Export public key
+ct key delete <id>             # Remove a key
+ct key default <id>            # Set default signing key
+----
+
+=== ct key list
+
+[source]
+----
+Keys in ~/.config/cerro/keys/
+
+  ID                  TYPE      SUITE      DEFAULT
+  cerro-dev-2025      keypair   CT-SIG-01  ✓
+  upstream-nginx      public    CT-SIG-01
+  corporate-root      public    CT-SIG-02
+----
+
+=== ct key import
+
+[source,bash]
+----
+ct key import upstream-nginx.pub
+ct key import https://example.com/keys/signer.pub
+ct key import --trust upstream-nginx  # Add to policy.allowed_signers
+----
+
+== Trust Policy
+
+=== Policy File Format
+
+Location: `~/.config/cerro/policy.json` (or specified with `--policy`)
+
+[source,json]
+----
+{
+  "version": "1",
+  "default_action": "deny",
+
+  "signers": {
+    "allowed": [
+      { "key_id": "cerro-official-2025", "required": true },
+      { "key_id": "upstream-*", "required": false }
+    ],
+    "threshold": 1
+  },
+
+  "registries": {
+    "allowed": [
+      "docker.io/library/*",
+      "ghcr.io/cerro-torre/*",
+      "registry.internal.corp/*"
+    ],
+    "blocked": [
+      "*.untrusted.example"
+    ]
+  },
+
+  "suites": {
+    "allowed": ["CT-SIG-01", "CT-SIG-02"],
+    "minimum": "CT-SIG-01"
+  },
+
+  "base_images": {
+    "allowed": [
+      "docker.io/library/alpine:3.*",
+      "docker.io/library/debian:bookworm*"
+    ]
+  },
+
+  "require_attestations": {
+    "provenance": true,
+    "sbom": false
+  }
+}
+----
+
+=== Minimal Starter Policy
+
+[source,bash]
+----
+ct policy init                    # Create default policy
+ct policy add-signer <key-id>     # Trust a signer
+ct policy add-registry <pattern>  # Allow a registry
+ct policy show                    # Display current policy
+----
+
+== Distribution Commands
+
+=== ct fetch
+
+Pull a `.ctp` bundle from a registry, or create one from an OCI image.
+
+[source,bash]
+----
+ct fetch <ref> -o <output.ctp>
+ct fetch cerro-registry.io/nginx:1.26 -o nginx.ctp
+ct fetch docker.io/library/nginx:1.26 -o nginx.ctp --create
+----
+
+Options:
+[cols="2,4"]
+|===
+| Option | Description
+
+| `-o, --output <file>`
+| Output path
+
+| `--create`
+| If .ctp doesn't exist, create from OCI image
+
+| `--verify`
+| Verify after fetching (default: true)
+
+| `--policy <file>`
+| Policy for verification
+|===
+
+=== ct push
+
+Publish a `.ctp` bundle to a registry or mirror.
+
+[source,bash]
+----
+ct push <bundle.ctp> <destination>
+ct push nginx.ctp cerro-registry.io/nginx:1.26
+ct push nginx.ctp s3://my-bucket/packages/nginx.ctp
+ct push nginx.ctp git://github.com/org/manifests
+----
+
+Supported destinations:
+
+* OCI registries (docker.io, ghcr.io, etc.)
+* S3-compatible object stores
+* Git repositories (manifest-only)
+* Local filesystem / NFS
+
+=== ct export
+
+Export bundle(s) for offline transfer.
+
+[source,bash]
+----
+ct export <bundles...> -o <archive>
+ct export nginx.ctp redis.ctp -o offline-bundle.tar
+ct export --manifest packages.txt -o airgap.tar
+----
+
+Options:
+[cols="2,4"]
+|===
+| Option | Description
+
+| `-o, --output <file>`
+| Output archive path
+
+| `--manifest <file>`
+| File listing bundles to export
+
+| `--include-keys`
+| Include public keys for verification
+
+| `--format <fmt>`
+| Archive format: tar (default), tar.gz, tar.zst
+|===
+
+Output structure:
+[source]
+----
+airgap.tar
+├── manifest.json           # Index of contents
+├── bundles/
+│   ├── nginx.ctp
+│   └── redis.ctp
+├── keys/                   # If --include-keys
+│   └── cerro-dev-2025.pub
+└── policy.json             # Recommended policy
+----
+
+=== ct import
+
+Import from offline archive.
+
+[source,bash]
+----
+ct import <archive>
+ct import airgap.tar
+ct import airgap.tar --verify --policy strict.json
+ct import airgap.tar --keys-only  # Just import public keys
+----
+
+Options:
+[cols="2,4"]
+|===
+| Option | Description
+
+| `--verify`
+| Verify each bundle after import
+
+| `--policy <file>`
+| Policy for verification
+
+| `--keys-only`
+| Only import keys, not bundles
+
+| `--output-dir <dir>`
+| Where to place imported bundles
+|===
+
+== Configuration
+
+=== Config File
+
+Location: `~/.config/cerro/config.toml`
+
+[source,toml]
+----
+[defaults]
+policy = "~/.config/cerro/policy.json"
+key = "cerro-dev-2025"
+suite = "CT-SIG-01"
+
+[registries]
+default = "cerro-registry.io"
+
+[output]
+format = "text"  # or "json"
+color = "auto"   # or "always", "never"
+verbose = false
+
+[cache]
+dir = "~/.cache/cerro"
+max_size = "1G"
+----
+
+== Error Messages
+
+All errors MUST be:
+
+1. **Specific** — exactly what failed
+2. **Actionable** — what the user can do
+3. **Contextual** — relevant bundle/key/policy info
+
+=== Error Templates
+
+[source]
+----
+✗ <category>: <specific problem>
+
+  <context fields>
+
+  <explanation if non-obvious>
+
+  <suggested action(s)>
+----
+
+=== Error Categories
+
+[cols="2,4"]
+|===
+| Category | Examples
+
+| Hash mismatch
+| Layer content differs from manifest
+
+| Signature invalid
+| Signature doesn't verify against content
+
+| Key not trusted
+| Signer not in policy.signers.allowed
+
+| Policy rejection
+| Registry not in policy.registries.allowed
+
+| Missing attestation
+| Required SBOM not present
+
+| Malformed bundle
+| Invalid TOML, missing required fields
+
+| Network error
+| Registry unreachable, timeout
+
+| I/O error
+| File not found, permission denied
+|===
+
+== Implementation Priority
+
+=== MVP (v0.1)
+
+1. `ct pack` — basic OCI → .ctp
+2. `ct verify` — verification with good errors
+3. `ct explain` — human-readable chain
+4. `ct keygen` / `ct key list` — minimal key management
+5. Policy file support (read-only)
+
+=== v0.2
+
+1. `ct fetch` / `ct push` — registry operations
+2. `ct key import` / `ct key export`
+3. `ct policy init` / `ct policy add-*`
+4. `ct export` / `ct import` — offline support
+
+=== v0.3
+
+1. Transparency log integration
+2. Threshold signatures (FROST)
+3. `ct attest` — add attestations
+4. `ct audit` — policy audit trail

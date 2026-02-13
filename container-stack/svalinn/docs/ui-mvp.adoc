@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= UI MVP Spec (Containers + Inspector)
+:toc: preamble
+:toclevels: 2
+
+This specification outlines a minimal UI that makes verified containers usable
+for non-specialists.
+
+== 1. Primary Views
+
+=== 1.1 Containers List
+
+* Columns: Name, Image, Status, Policy Verdict, Last Event
+* Actions: Start, Stop, Remove, Inspect
+* Badge: Policy verdict (green/amber/red)
+
+=== 1.2 Inspector
+
+Tabs:
+
+* Overview: status, image digest, runtime profile
+* Attestations: predicates, signer key IDs, log IDs
+* Logs: tail with filter and copy
+* Config: ports, env, volumes, network
+* Policy: reason + `vordr explain` output
+
+=== 1.3 Run Wizard
+
+Fields:
+
+* Image name
+* Ports (repeatable)
+* Env vars (repeatable)
+* Volumes (repeatable)
+* Policy profile (strict/balanced/dev)
+* Remove on exit (toggle)
+
+=== 1.4 Policy & Trust
+
+* Policy summary (required predicates, log quorum)
+* Trust store (signer IDs + log operators)
+* "Why rejected?" help panel
+
+== 2. UX Behaviors
+
+* Show a default "safe" preset with minimal fields.
+* Provide a one-click "copy docker run" equivalent.
+* Use inline error callouts with fix suggestions.
+* Offer a "developer mode" to relax policy for local tests.
+
+== 3. Required Data
+
+From the gateway:
+
+* `/verify` report output (predicates, signers, logs)
+* `/run` response (jobId, policyHash)
+* `/status/:id` for state
+
+From Vordr:
+
+* `vordr ps --json`
+* `vordr inspect --json <id>`
+* `vordr logs <id>`
+
+== 4. Empty States
+
+* No containers: prompt to run an image with the wizard.
+* No attestations: show what is missing and link to documentation.

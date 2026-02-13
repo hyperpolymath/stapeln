@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+[Unit]
+Description=Selur Welded Gateway (Svalinn + Vörðr)
+Documentation=https://github.com/hyperpolymath/selur
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/selur-launcher
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/selur-sv /run/selur-sv.sock
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=512
+
+# Environment
+Environment="SELUR_WASM=/usr/local/lib/selur.wasm"
+Environment="SVALINN_PORT=8000"
+Environment="VORDR_ENDPOINT=selur://unix:///run/selur-sv.sock"
+
+[Install]
+WantedBy=multi-user.target

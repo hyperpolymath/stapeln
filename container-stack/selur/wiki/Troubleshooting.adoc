@@ -1,0 +1,564 @@
+= Troubleshooting
+:toc:
+:toclevels: 3
+
+Common issues and solutions when using selur.
+
+== Build Issues
+
+=== Zig Compilation Errors
+
+==== Error: `no field named 'root_source_file'`
+
+**Full error:**
+----
+error: no field named 'root_source_file' in struct 'Build.ExecutableOptions'
+----
+
+**Cause:** Using Zig version older than 0.16.0-dev
+
+**Solution:**
+
+[source,bash]
+----
+# Check your version
+zig version
+
+# Should output: 0.16.0-dev or later
+# If not, update Zig: https://ziglang.org/download/
+----
+
+==== Error: `union 'builtin.CallingConvention' has no member named 'C'`
+
+**Full error:**
+----
+error: union 'builtin.CallingConvention' has no member named 'C'
+----
+
+**Cause:** Using `callconv(.C)` with WASM32 target (not supported)
+
+**Solution:** This is already fixed in the repository. If you see this, update to latest:
+
+[source,bash]
+----
+git pull origin main
+just build
+----
+
+==== Error: WASM file too large
+
+**Error:**
+----
+selur.wasm is 527KB but expected <500KB
+----
+
+**Cause:** Debug build includes symbols
+
+**Solution:** This is normal. The WASM module is ~527KB in release mode. For smaller size:
+
+[source,bash]
+----
+# In zig/build.zig, use optimize: .ReleaseSmall
+zig build -Doptimize=ReleaseSmall wasm
+----
+
+This can reduce size to ~400KB.
+
+=== Rust Compilation Errors
+
+==== Error: `failed to resolve: use of undeclared crate`
+
+**Full error:**
+----
+error[E0433]: failed to resolve: use of undeclared crate or module `selur`
+----
+
+**Cause:** selur not in dependencies
+
+**Solution:** Add to `Cargo.toml`:
+
+[source,toml]
+----
+[dependencies]
+selur = { path = "/absolute/path/to/selur" }
+# Or from crates.io when published:
+# selur = "1.0"
+----
+
+==== Error: `mismatched types` with ErrorCode
+
+**Full error:**
+----
+error[E0308]: mismatched types
+expected `Box<dyn Error>`, found `anyhow::Error`
+----
+
+**Solution:** Use `.into()` to convert:
+
+[source,rust]
+----
+return Err(e.into());
+----
+
+=== Idris2 Verification Issues
+
+==== Error: `Module name does not match file name`
+
+**Full error:**
+----
+Error: Module name Selur.Proofs does not match file name "proofs.idr"
+----
+
+**Cause:** Idris2 requires exact case-sensitive filename matching
+
+**Solution:** Files are already named correctly (`Proofs.idr`, `Theorems.idr`). If you see this, update:
+
+[source,bash]
+----
+git pull origin main
+----
+
+==== Error: `Name is private`
+
+**Full error:**
+----
+Error: Name Proofs.Request is private
+----
+
+**Cause:** Missing `public export` declarations
+
+**Solution:** Already fixed in repository. Update to latest.
+
+==== Error: `idris2: command not found`
+
+**Cause:** Idris2 not installed
+
+**Solution:** Install Idris2 (optional - proofs are pre-verified):
+
+[source,bash]
+----
+# macOS
+brew install idris2
+
+# Linux (from source)
+git clone https://github.com/idris-lang/Idris2.git
+cd Idris2
+make bootstrap
+make install
+----
+
+Or skip verification:
+
+[source,bash]
+----
+# Just build and test without verification
+just build
+cargo test
+----
+
+== Runtime Issues
+
+=== Bridge Initialization
+
+==== Error: `Failed to load WASM module: No such file or directory`
+
+**Cause:** WASM file doesn't exist at specified path
+
+**Solution:**
+
+[source,bash]
+----
+# Build WASM file first
+cd /path/to/selur
+just build
+
+# Verify it exists
+ls -lh zig-out/bin/selur.wasm
+
+# Use absolute path in code
+let bridge = Bridge::new("/absolute/path/to/selur/zig-out/bin/selur.wasm")?;
+----
+
+==== Error: `Failed to instantiate module`
+
+**Cause:** WASM file corrupted or incompatible
+
+**Solution:**
+
+[source,bash]
+----
+# Rebuild from scratch
+just clean
+just build
+
+# Verify file integrity
+wasm-validate zig-out/bin/selur.wasm  # If you have wabt tools
+----
+
+==== Error: `Memory allocation failed`
+
+**Cause:** System out of memory
+
+**Solution:**
+
+[source,bash]
+----
+# Check available memory
+free -h
+
+# Close other applications
+# Or increase swap space
+----
+
+selur needs at least 1 MB of continuous memory for WASM linear memory.
+
+=== Request Processing
+
+==== Error: `Request too large`
+
+**Error response:** `ErrorCode::InvalidRequest`
+
+**Cause:** Request exceeds 1 MB (1048576 bytes)
+
+**Solution:** Split large payloads or compress:
+
+[source,rust]
+----
+const MAX_REQUEST_SIZE: usize = 1048576;
+
+if request.len() > MAX_REQUEST_SIZE {
+    // Option 1: Split into multiple requests
+    // Option 2: Compress payload
+    // Option 3: Use chunked transfer
+}
+----
+
+==== Error: `Container not found`
+
+**Error response:** `ErrorCode::ContainerNotFound`
+
+**Cause:** Container ID doesn't exist or was deleted
+
+**Solution:**
+
+[source,rust]
+----
+// List containers first
+let containers = list_containers(&mut bridge)?;
+
+// Verify ID exists
+if !containers.contains(&target_id) {
+    eprintln!("Container {} not found", target_id);
+    // Handle gracefully
+}
+----
+
+==== Error: `Permission denied`
+
+**Error response:** `ErrorCode::PermissionDenied`
+
+**Cause:** Insufficient permissions for operation
+
+**Solution:** Check that:
+- Container is in correct state (e.g., can't start a running container)
+- User has appropriate permissions
+- Operation is allowed by policy
+
+=== Memory Issues
+
+==== Memory leak detected
+
+**Symptom:** `memory_size()` increases over time
+
+**Solution:**
+
+[source,rust]
+----
+// Check memory periodically
+let initial_mem = bridge.memory_size()?;
+
+// ... operations ...
+
+let final_mem = bridge.memory_size()?;
+if final_mem != initial_mem {
+    eprintln!("WARNING: Memory leak detected!");
+    eprintln!("Initial: {} bytes", initial_mem);
+    eprintln!("Final: {} bytes", final_mem);
+
+    // This should never happen - file a bug report
+}
+----
+
+If you see this, it's a bug. Please report at: https://github.com/hyperpolymath/selur/issues
+
+==== Out of memory
+
+**Error:** `Failed to allocate WASM memory`
+
+**Solution:**
+
+[source,bash]
+----
+# Increase system memory limits
+ulimit -m unlimited
+
+# Or restart your application
+# selur resets memory on Bridge::new()
+----
+
+== Performance Issues
+
+=== Slow request processing
+
+**Symptom:** Requests take >1ms each
+
+**Debugging:**
+
+[source,rust]
+----
+use std::time::Instant;
+
+let start = Instant::now();
+let response = bridge.send_request(&request)?;
+let elapsed = start.elapsed();
+
+println!("Request took: {:?}", elapsed);
+----
+
+**Common causes:**
+
+1. **Debug build** - Use `cargo build --release`
+2. **Large payloads** - Minimize request/response sizes
+3. **Bridge recreation** - Reuse `Bridge` instance
+
+**Solution:**
+
+[source,rust]
+----
+// Bad: Creates new bridge for each request (slow)
+for req in requests {
+    let mut bridge = Bridge::new("selur.wasm")?;  // ❌ Expensive!
+    bridge.send_request(&req)?;
+}
+
+// Good: Reuse bridge (fast)
+let mut bridge = Bridge::new("selur.wasm")?;
+for req in requests {
+    bridge.send_request(&req)?;  // ✅ Fast!
+}
+----
+
+=== High memory usage
+
+**Symptom:** Application using gigabytes of RAM
+
+**Cause:** Not dropping `Bridge` instances
+
+**Solution:**
+
+[source,rust]
+----
+// Ensure bridges are dropped
+{
+    let mut bridge = Bridge::new("selur.wasm")?;
+    // ... use bridge ...
+} // Bridge dropped here, memory freed
+
+// Or explicitly drop
+let mut bridge = Bridge::new("selur.wasm")?;
+// ... use bridge ...
+drop(bridge);  // Free memory immediately
+----
+
+== Testing Issues
+
+=== Tests ignored
+
+**Output:**
+----
+test tests::test_bridge_load ... ignored
+test tests::test_send_request ... ignored
+----
+
+**Cause:** Tests require WASM file to exist
+
+**Solution:**
+
+[source,bash]
+----
+# Build WASM first
+just build
+
+# Then run tests
+cargo test
+
+# They should pass now
+----
+
+=== Tests fail with "module not found"
+
+**Error:**
+----
+thread 'tests::test_bridge_load' panicked at 'Failed to load: No such file'
+----
+
+**Solution:** Tests expect WASM at relative path:
+
+[source,bash]
+----
+# From selur root directory:
+just build    # Creates zig-out/bin/selur.wasm
+cargo test    # Finds it at ../zig-out/bin/selur.wasm
+----
+
+=== Benchmark fails
+
+**Error:**
+----
+cargo bench
+error: bench target is configured with harness = false
+----
+
+**Solution:** This is expected. Benchmarks use criterion:
+
+[source,bash]
+----
+# Benchmarks work fine, just can't use --harness
+cargo bench
+# Outputs detailed performance metrics
+----
+
+== Integration Issues
+
+=== Svalinn Integration
+
+==== TypeScript import errors
+
+**Error:**
+----
+Cannot find module './selur_bindings.ts'
+----
+
+**Solution:** Create TypeScript bindings (not yet implemented):
+
+[source,bash]
+----
+# For now, use Rust Bridge via Deno FFI
+# Or wait for official TypeScript bindings
+----
+
+=== Vörðr Integration
+
+==== Elixir NIF compilation fails
+
+**Error:**
+----
+** (Mix) Could not compile dependency :selur
+----
+
+**Solution:** Ensure Rust toolchain is available:
+
+[source,bash]
+----
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Build selur Rust crate
+cd selur
+cargo build --release
+----
+
+== Platform-Specific Issues
+
+=== Linux
+
+==== Error: `ld: cannot find -lwasmtime`
+
+**Solution:**
+
+[source,bash]
+----
+# Wasmtime is statically linked, this shouldn't happen
+# If it does, try:
+cargo clean
+cargo build
+----
+
+=== macOS
+
+==== Error: `library not loaded: @rpath/libwasmtime.dylib`
+
+**Solution:**
+
+[source,bash]
+----
+# Wasmtime is statically linked
+# If you see this, reinstall Rust:
+rustup update
+cargo clean
+cargo build
+----
+
+=== Windows
+
+==== Error: `The system cannot find the path specified`
+
+**Solution:** Use forward slashes or raw strings:
+
+[source,rust]
+----
+// Option 1: Forward slashes
+let bridge = Bridge::new("C:/Users/name/selur/zig-out/bin/selur.wasm")?;
+
+// Option 2: Raw string
+let bridge = Bridge::new(r"C:\Users\name\selur\zig-out\bin\selur.wasm")?;
+----
+
+==== Error: `CreateFileW failed with ERROR_SHARING_VIOLATION`
+
+**Cause:** Another process has WASM file open
+
+**Solution:** Close other programs or rebuild:
+
+[source,bash]
+----
+just clean
+just build
+----
+
+== Getting More Help
+
+If your issue isn't listed here:
+
+1. **Check FAQ:** link:FAQ.adoc[Frequently Asked Questions]
+2. **Read docs:** link:../docs/ARCHITECTURE.adoc[Architecture], link:../docs/API.adoc[API Reference]
+3. **Search issues:** https://github.com/hyperpolymath/selur/issues
+4. **Ask for help:** Open a new issue with:
+   - Operating system and version
+   - Zig version (`zig version`)
+   - Rust version (`rustc --version`)
+   - Error message (full output)
+   - Minimal reproduction code
+
+## Debug Mode
+
+Enable debug logging:
+
+[source,rust]
+----
+use env_logger;
+
+fn main() {
+    env_logger::init();
+    // Your code here
+}
+----
+
+Then run with:
+
+[source,bash]
+----
+RUST_LOG=debug cargo run
+----
+
+This will show detailed WASM interaction logs.

@@ -1,0 +1,127 @@
+// SPDX-License-Identifier: MPL-2.0-or-later
+= Cerro Torre MVP Bundle Helper
+:toc: preamble
+:toclevels: 2
+
+This directory provides a bootstrap tool for generating Verified Container Spec
+attestation bundles and trust stores for the MVP CI pipeline.
+
+== Dependencies
+
+* `python3`
+* `openssl` (Ed25519 keygen + signing)
+
+== Commands
+
+=== 1. Generate signer + log keys
+
+[source,shell]
+----
+python3 tools/mvp/ct_mvp.py keygen --out-dir tools/mvp/keys
+----
+
+This prints key IDs to stdout and writes:
+
+* `tools/mvp/keys/signer.key`
+* `tools/mvp/keys/signer.pub`
+* `tools/mvp/keys/log.key`
+* `tools/mvp/keys/log.pub`
+
+=== 2. Create a trust store
+
+[source,shell]
+----
+python3 tools/mvp/ct_mvp.py trust-store \
+  --signer-pub tools/mvp/keys/signer.pub \
+  --log-pub tools/mvp/keys/log.pub \
+  --log-id verified-container-log-mvp \
+  --log-url https://logs.mvp.local \
+  --out tools/mvp/trust-store.json
+----
+
+=== 3. Create an attestation bundle
+
+[source,shell]
+----
+
+=== 3.1 Resolve image digest (CI helper)
+
+If `CT_MVP_IMAGE_DIGEST` is not set, the CI pipeline resolves it via:
+
+[source,shell]
+----
+oras manifest fetch --descriptor <image-ref> | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])'
+----
+python3 tools/mvp/ct_mvp.py bundle \
+  --image-name registry.example.com/hello:latest \
+  --image-digest sha256:<image-digest> \
+  --signer-key tools/mvp/keys/signer.key \
+  --signer-pub tools/mvp/keys/signer.pub \
+  --log-key tools/mvp/keys/log.key \
+  --log-id verified-container-log-mvp \
+  --out tools/mvp/bundle.json
+----
+
+=== 4. Attach bundle via OCI referrers
+
+Requires `oras` and registry credentials.
+
+[source,shell]
+----
+tools/mvp/publish_bundle.sh \
+  registry.example.com/hello:latest \
+  tools/mvp/bundle.json \
+  application/vnd.verified-container.bundle+json
+----
+
+== MVP Notes
+
+* The log entry is generated as a single-entry log with `treeSize = 1`.
+* The Signed Entry Timestamp (SET) is an Ed25519 signature over the canonical
+  log entry JSON. This is a bootstrap contract and should be formalized for
+  1.0.
+* CI can invoke Svalinn's gateway via `SVALINN_GATEWAY_URL` and pass inline
+  bundle + trust store JSON.
+
+== Plugin API (Images)
+
+Run the minimal plugin service:
+
+[source,shell]
+----
+python3 tools/mvp/ct_plugin.py
+----
+
+Endpoints:
+
+* `GET /healthz`
+* `GET /v1/images` (serves `tools/mvp/images.json`)
+
+== MVP Pack (Wrap Existing OCI Image)
+
+This MVP flow wraps an existing image reference and generates a bundle and
+trust store. It does not build from `.ctp` yet.
+
+[source,shell]
+----
+
+== MVP Build (from .ctp)
+
+This MVP build flow downloads the source tarball, verifies the hash, expands it
+into a rootfs directory, and writes a minimal OCI layout plus bundle.
+
+[source,shell]
+----
+ct pack --manifest manifests/hello.ctp.example --out-dir tools/mvp/build-output
+----
+
+Requirements for the Ada MVP build:
+
+* `curl`, `tar`, `sha256sum`, `stat`
+* `openssl`
+* `base64`
+python3 tools/mvp/ct_pack.py \
+  --image registry.example.com/hello:latest \
+  --out-dir tools/mvp/output \
+  --attach
+----

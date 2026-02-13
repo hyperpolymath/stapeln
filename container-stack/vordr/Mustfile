@@ -1,0 +1,234 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Mustfile — Mandatory verification gates for Vörðr
+# All targets MUST pass before merge to main
+#
+# Usage: must <target>
+# Or with mustfile runner: mustfile --all
+
+# ============================================================================
+# LANGUAGE POLICY: Enforce RSR language restrictions
+# ============================================================================
+
+.PHONY: must-language-policy
+must-language-policy:
+	@echo "Checking language policy..."
+	@# No TypeScript except in runtime/
+	@! find . -name '*.ts' -not -path './runtime/*' -not -path './node_modules/*' | grep . || \
+		(echo "ERROR: TypeScript found outside runtime/" && exit 1)
+	@# No Go
+	@! find . -name '*.go' -not -path './vendor/*' | grep . || \
+		(echo "ERROR: Go files found (banned by RSR)" && exit 1)
+	@# No Python (except SaltStack)
+	@! find . -name '*.py' -not -path './salt/*' -not -path './.venv/*' | grep . || \
+		(echo "ERROR: Python found outside salt/ (banned by RSR)" && exit 1)
+	@# No Java
+	@! find . -name '*.java' | grep . || \
+		(echo "ERROR: Java files found (banned by RSR)" && exit 1)
+	@echo "✓ Language policy check passed"
+
+# ============================================================================
+# SECURITY: No hardcoded secrets
+# ============================================================================
+
+.PHONY: must-security
+must-security:
+	@echo "Checking for hardcoded secrets..."
+	@! grep -rn --include='*.rs' --include='*.idr' --include='*.ex' --include='*.exs' \
+		--include='*.adb' --include='*.ads' --include='*.res' \
+		-E '(password|secret|api_key|apikey|token|private_key)\s*=\s*["\x27][^"\x27]{8,}' . || \
+		(echo "ERROR: Potential hardcoded secrets found" && exit 1)
+	@! grep -rn -E 'ghp_|gho_|github_pat_|sk-|pk_live_|pk_test_' . --include='*.rs' \
+		--include='*.idr' --include='*.ex' --include='*.adb' --include='*.res' || \
+		(echo "ERROR: API tokens found in code" && exit 1)
+	@echo "✓ Security check passed"
+
+# ============================================================================
+# SPDX: All source files must have license headers
+# ============================================================================
+
+.PHONY: must-spdx
+must-spdx:
+	@echo "Checking SPDX headers..."
+	@for ext in rs idr ex exs adb ads res scm; do \
+		for f in $$(find . -name "*.$${ext}" -not -path './target/*' -not -path './_build/*' -not -path './node_modules/*'); do \
+			head -5 "$$f" | grep -q 'SPDX-License-Identifier' || \
+				(echo "ERROR: Missing SPDX header in $$f" && exit 1); \
+		done; \
+	done
+	@echo "✓ SPDX check passed"
+
+# ============================================================================
+# IDRIS2: Type checking and proof verification
+# ============================================================================
+
+.PHONY: must-idris2
+must-idris2:
+	@echo "Type checking Idris2 code..."
+	@if [ -d src/idris2 ] && [ -n "$$(ls -A src/idris2/*.idr 2>/dev/null)" ]; then \
+		cd src/idris2 && idris2 --check *.idr || exit 1; \
+		echo "✓ Idris2 type check passed"; \
+	else \
+		echo "⊘ No Idris2 source files yet"; \
+	fi
+
+.PHONY: must-idris2-proofs
+must-idris2-proofs:
+	@echo "Verifying Idris2 proofs..."
+	@if [ -d src/idris2/proofs ] && [ -n "$$(ls -A src/idris2/proofs/*.idr 2>/dev/null)" ]; then \
+		cd src/idris2/proofs && idris2 --check *.idr || exit 1; \
+		echo "✓ Idris2 proofs verified"; \
+	else \
+		echo "⊘ No proof files yet"; \
+	fi
+
+# ============================================================================
+# RUST: Build, lint, and test
+# ============================================================================
+
+.PHONY: must-rust
+must-rust:
+	@echo "Building and testing Rust code..."
+	@if [ -f src/rust/Cargo.toml ]; then \
+		cd src/rust && cargo fmt --check || exit 1; \
+		cd src/rust && cargo clippy -- -D warnings || exit 1; \
+		cd src/rust && cargo test || exit 1; \
+		echo "✓ Rust checks passed"; \
+	else \
+		echo "⊘ No Rust Cargo.toml yet"; \
+	fi
+
+.PHONY: must-rust-riscv
+must-rust-riscv:
+	@echo "Cross-compiling Rust for RISC-V..."
+	@if [ -f src/rust/Cargo.toml ]; then \
+		cd src/rust && cargo build --target riscv64gc-unknown-linux-gnu --release || exit 1; \
+		echo "✓ RISC-V cross-compilation passed"; \
+	else \
+		echo "⊘ No Rust Cargo.toml yet"; \
+	fi
+
+# ============================================================================
+# ELIXIR: Format, dialyzer, and test
+# ============================================================================
+
+.PHONY: must-elixir
+must-elixir:
+	@echo "Testing Elixir code..."
+	@if [ -f src/elixir/mix.exs ]; then \
+		cd src/elixir && mix format --check-formatted || exit 1; \
+		cd src/elixir && mix dialyzer || exit 1; \
+		cd src/elixir && mix test || exit 1; \
+		echo "✓ Elixir checks passed"; \
+	else \
+		echo "⊘ No Elixir mix.exs yet"; \
+	fi
+
+# ============================================================================
+# ADA/SPARK: Build and prove
+# ============================================================================
+
+.PHONY: must-ada
+must-ada:
+	@echo "Building Ada code..."
+	@if [ -f src/ada/*.gpr ]; then \
+		cd src/ada && gprbuild -P *.gpr || exit 1; \
+		echo "✓ Ada build passed"; \
+	else \
+		echo "⊘ No Ada project file yet"; \
+	fi
+
+.PHONY: must-spark
+must-spark:
+	@echo "Running SPARK proofs..."
+	@if [ -f src/ada/*.gpr ]; then \
+		cd src/ada && gnatprove -P *.gpr --level=2 || exit 1; \
+		echo "✓ SPARK proofs passed"; \
+	else \
+		echo "⊘ No Ada project file yet"; \
+	fi
+
+# ============================================================================
+# RSR COMPLIANCE: Required files and structure
+# ============================================================================
+
+.PHONY: must-rsr
+must-rsr:
+	@echo "Checking RSR compliance..."
+	@test -f LICENSE.txt || test -f LICENSE || (echo "ERROR: Missing LICENSE" && exit 1)
+	@test -f README.adoc || test -f README.md || (echo "ERROR: Missing README" && exit 1)
+	@test -f SECURITY.md || (echo "ERROR: Missing SECURITY.md" && exit 1)
+	@test -f META.scm || (echo "ERROR: Missing META.scm" && exit 1)
+	@test -f ECOSYSTEM.scm || (echo "ERROR: Missing ECOSYSTEM.scm" && exit 1)
+	@test -f STATE.scm || (echo "ERROR: Missing STATE.scm" && exit 1)
+	@test -d .well-known || (echo "ERROR: Missing .well-known/" && exit 1)
+	@test -f .well-known/security.txt || (echo "ERROR: Missing .well-known/security.txt" && exit 1)
+	@echo "✓ RSR compliance check passed"
+
+# ============================================================================
+# SCM FILES: Validate Scheme syntax
+# ============================================================================
+
+.PHONY: must-scm-syntax
+must-scm-syntax:
+	@echo "Validating SCM file syntax..."
+	@for f in META.scm ECOSYSTEM.scm STATE.scm PLAYBOOK.scm AGENTIC.scm NEUROSYM.scm; do \
+		if [ -f "$$f" ]; then \
+			guile -c "(load \"$$f\")" 2>/dev/null || \
+				(echo "WARNING: $$f may have syntax issues (non-blocking)"); \
+		fi; \
+	done
+	@echo "✓ SCM syntax check complete"
+
+# ============================================================================
+# DOCUMENTATION: Required docs exist and are valid
+# ============================================================================
+
+.PHONY: must-docs
+must-docs:
+	@echo "Checking documentation..."
+	@test -f README.adoc || (echo "ERROR: Missing README.adoc" && exit 1)
+	@test -f ROADMAP.adoc || (echo "ERROR: Missing ROADMAP.adoc" && exit 1)
+	@# Check AsciiDoc syntax if asciidoctor is available
+	@if command -v asciidoctor >/dev/null 2>&1; then \
+		asciidoctor --backend=docbook --out-file=/dev/null README.adoc || exit 1; \
+		asciidoctor --backend=docbook --out-file=/dev/null ROADMAP.adoc || exit 1; \
+	fi
+	@echo "✓ Documentation check passed"
+
+# ============================================================================
+# ECHIDNA: Fuzzing (if Echidna tests exist)
+# ============================================================================
+
+.PHONY: must-fuzz
+must-fuzz:
+	@echo "Running fuzzing tests..."
+	@if [ -d tests/echidna ]; then \
+		echo "Running Echidna fuzzing..."; \
+		cd tests/echidna && cargo +nightly fuzz run fuzz_main -- -max_total_time=60 || exit 1; \
+		echo "✓ Fuzzing passed"; \
+	else \
+		echo "⊘ No Echidna tests yet"; \
+	fi
+
+# ============================================================================
+# AGGREGATE: All mandatory checks
+# ============================================================================
+
+.PHONY: must-all
+must-all: must-language-policy must-security must-spdx must-rsr must-docs \
+          must-idris2 must-rust must-elixir must-ada must-scm-syntax
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo "  ALL MANDATORY CHECKS PASSED"
+	@echo "═══════════════════════════════════════════════════════════════"
+
+# ============================================================================
+# FULL: All checks including optional proofs and fuzzing
+# ============================================================================
+
+.PHONY: must-full
+must-full: must-all must-idris2-proofs must-spark must-rust-riscv must-fuzz
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════"
+	@echo "  ALL CHECKS (INCLUDING PROOFS & FUZZING) PASSED"
+	@echo "═══════════════════════════════════════════════════════════════"

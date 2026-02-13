@@ -1,0 +1,103 @@
+= selur Examples
+:toc:
+
+Examples demonstrating selur integration with Svalinn and Vörðr.
+
+== Basic Example
+
+Demonstrates zero-copy IPC between Svalinn (edge gateway) and Vörðr (container orchestrator) using the selur WASM sealant.
+
+=== Prerequisites
+
+1. Build selur.wasm:
++
+[source,bash]
+----
+cd ..
+just build
+----
+
+2. Ensure selur.wasm exists at `../zig-out/bin/selur.wasm`
+
+=== Running
+
+[source,bash]
+----
+cd basic
+cargo run --manifest-path ../../Cargo.toml --example basic
+----
+
+Or run directly with rustc:
+
+[source,bash]
+----
+cd basic
+rustc main.rs -L ../../target/debug -lextern selur
+./main
+----
+
+=== What it does
+
+1. Loads `selur.wasm` via Wasmtime
+2. Creates a sample `CREATE_CONTAINER` request
+3. Sends request through the bridge (Svalinn → WASM → Vörðr)
+4. Receives and parses response
+
+=== Expected Output
+
+----
+selur Basic Example: Svalinn → Vörðr communication via WASM
+============================================================
+
+1. Loading selur.wasm...
+   ✓ Loaded WASM module
+
+2. Creating sample request...
+   Request: 47 bytes
+   Command: CREATE_CONTAINER (0x01)
+   Payload: container_config.json
+
+3. Sending request through selur bridge...
+   ✓ Received response: 5 bytes
+   Status: SUCCESS
+
+4. Example complete!
+   Zero-copy IPC demonstrated via Ephapax-linear types.
+----
+
+== Integration with Svalinn
+
+To integrate selur with a real Svalinn gateway:
+
+[source,typescript]
+----
+// Svalinn (Deno/TypeScript)
+import { Bridge } from "./selur_bindings.ts";
+
+const bridge = new Bridge("./selur.wasm");
+const response = await bridge.sendRequest(containerRequest);
+----
+
+== Integration with Vörðr
+
+Vörðr receives requests from the WASM module via the exported functions:
+
+[source,rust]
+----
+// Vörðr (Rust/Elixir)
+#[no_mangle]
+pub extern "C" fn handle_request(ptr: u32, len: u32) -> u32 {
+    // Process container lifecycle request
+    // Return response code
+}
+----
+
+== More Examples
+
+* `distributed/` - Multi-node selur deployment
+* `benchmarks/` - Performance comparison vs JSON/HTTP
+* `security/` - Signature verification and attestation
+
+== License
+
+PMPL-1.0-or-later

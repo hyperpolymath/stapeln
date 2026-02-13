@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Mustfile - hyperpolymath mandatory checks (ReScript/Zero Trust/OSS)
+# See: https://github.com/hyperpolymath/mustfile
+
+version: 1
+
+checks:
+  # --- Core Checks ---
+  - name: rescript-build
+    desc: Ensure ReScript code compiles without errors
+    run: npx rescript build
+    hint: "Run `just rescript-fix` if this fails"
+
+  - name: rescript-types
+    desc: Enforce type safety (no `any` or unsafe escapes)
+    run: npx rescript check
+    hint: "ReScript type errors must be resolved before merging"
+
+  - name: security
+    desc: Lint + audit dependencies + SBOM
+    run: |
+      just lint &&
+      npm audit --production --audit-level=critical &&
+      npm run sbom
+    hint: "Critical security issues block merges"
+
+  - name: tests
+    desc: Run all tests (unit, integration, E2E)
+    run: just test
+    hint: "Use `just test-watch` for development"
+
+  - name: format
+    desc: Enforce code style (ReScript + MD/JSON/YAML)
+    run: just fmt
+    hint: "Run `just fmt-fix` to auto-format"
+
+  # --- Zero Trust & Rootless ---
+  - name: container-lint
+    desc: Lint Containerfile for rootless best practices
+    run: hadolint --config .hadolint.yaml Containerfile
+    hint: "Follows Chainguard rootless guidelines"
+
+  - name: selinux-policies
+    desc: Validate SELinux policies (if applicable)
+    run: just selinux-check
+    hint: "Required for production deployments"
+
+  - name: apparmor-profiles
+    desc: Validate AppArmor profiles
+    run: just apparmor-check
+    hint: "Required for high-isolation services"
+
+  # --- Ethical/Compliance ---
+  - name: ethical-compliance
+    desc: Check for ethical compliance (licenses, data privacy)
+    run: just ethical-check
+    hint: "Aligns with PhD research on Applied Ethics"
+
+  - name: wasm-proxy-rules
+    desc: Validate WASM proxy rules (public-facing services)
+    run: just wasm-check
+    hint: "Ensures Zero Trust alignment for public endpoints"
+
+  # --- Infrastructure ---
+  - name: terraform-validate
+    desc: Validate Terraform configs (migration from SaltStack)
+    run: just tf-validate
+    hint: "Part of cicd-hyper-a pipeline"
+
+  - name: ansible-lint
+    desc: Lint Ansible playbooks
+    run: just ansible-lint
+    hint: "Used for non-containerized infrastructure"
+
+  # --- Supply Chain ---
+  - name: sbom
+    desc: Generate SBOM for supply chain transparency
+    run: npm run sbom
+    hint: "Required for proven-library and container images"
+
+  - name: provenance
+    desc: Verify build provenance (SLSA compliance)
+    run: just provenance-check
+    hint: "Critical for cicd-hyper-a pipeline"
+
+  # --- CI/CD ---
+  - name: ci
+    desc: Run all checks (pre-merge gate)
+    run: just ci
+    hint: "Runs in cicd-hyper-a on PRs"
+
+  - name: deployment-safety
+    desc: Check deployment safety (immutable tags, rollback plans)
+    run: just deploy-check
+    hint: "Required for production pushes to svalinn/vordr"
+
+  # --- PhD Research ---
+  - name: research-compliance
+    desc: Validate compliance with PhD research standards
+    run: just research-check
+    hint: "Checks for reproducibility and ethical alignment"
+
+  # --- Fallbacks ---
+  - name: podman-fallback
+    desc: Validate podman compatibility (developmental fallback)
+    run: just podman-check
+    hint: "Only for non-production environments"

@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+//
+// Ephapax-linear bridge between Svalinn and Vörðr
+// Zero-copy IPC via WASM linear memory
+
+module selur.bridge
+
+// Import core types
+import selur.types (Request, Response, Region)
+
+// Define the main bridge function with linear types
+// The @r region annotation ensures zero-copy semantics
+bridge :: Region r => Request@r -> Response@r
+bridge req =
+  // Step 1: Receive request from Svalinn (consumes req@r)
+  let validated_req = validate_request req in
+
+  // Step 2: Delegate to Vörðr (zero-copy via shared memory)
+  let response = vordr_handle validated_req in
+
+  // Step 3: Return response to Svalinn (transfers ownership)
+  response
+
+// Validate request before processing
+// Ensures type safety and bounds checking
+validate_request :: Request@r -> Request@r
+validate_request req =
+  if request_size req > MAX_REQUEST_SIZE then
+    error "Request too large"
+  else if request_size req == 0 then
+    error "Empty request"
+  else
+    req
+
+// Delegate to Vörðr container runtime
+// This is where the actual container operation happens
+vordr_handle :: Request@r -> Response@r
+vordr_handle req =
+  // Extract command from request
+  let cmd = request_command req in
+
+  // Dispatch based on command type
+  case cmd of
+    CreateContainer config ->
+      create_container config
+    StartContainer id ->
+      start_container id
+    StopContainer id ->
+      stop_container id
+    InspectContainer id ->
+      inspect_container id
+    _ ->
+      error_response "Unknown command"
+
+// Container operations (implemented for Vörðr integration)
+create_container :: ContainerConfig@r -> Response@r
+create_container config =
+  -- Validate container configuration
+  if config_name config == "" then
+    mk_error_response InvalidRequest "Container name required"
+  else
+    -- Allocate new container ID
+    let container_id = allocate_container_id () in
+    -- Create container in Vörðr runtime
+    vordr_create_container container_id config
+    -- Return success response with container ID
+    mk_success_response (encode_container_id container_id)
+
+start_container :: ContainerId@r -> Response@r
+start_container id =
+  -- Check if container exists
+  if not (vordr_container_exists id) then
+    mk_error_response ContainerNotFound "Container does not exist"
+  else
+    -- Start the container
+    vordr_start_container id
+    -- Return success response
+    mk_success_response (encode_status "running")
+
+stop_container :: ContainerId@r -> Response@r
+stop_container id =
+  -- Check if container exists
+  if not (vordr_container_exists id) then
+    mk_error_response ContainerNotFound "Container does not exist"
+  else
+    -- Stop the container gracefully
+    vordr_stop_container id
+    -- Return success response
+    mk_success_response (encode_status "stopped")
+
+inspect_container :: ContainerId@r -> Response@r
+inspect_container id =
+  -- Check if container exists
+  if not (vordr_container_exists id) then
+    mk_error_response ContainerNotFound "Container does not exist"
+  else
+    -- Get container state from Vörðr
+    let state = vordr_get_container_state id in
+    -- Return state as response
+    mk_success_response (encode_container_state state)
+
+error_response :: String -> Response@r
+error_response msg =
+  mk_error_response InvalidRequest msg
+
+// Constants
+MAX_REQUEST_SIZE :: Int
+MAX_REQUEST_SIZE = 1048576  -- 1 MB
+
+// Helper functions for request introspection
+request_size :: Request@r -> Int
+request_size (Request cmd payload corr_id) = bytes_length payload
+
+request_command :: Request@r -> Command@r
+request_command (Request cmd payload corr_id) = cmd
+
+// Response construction helpers
+mk_success_response :: Bytes@r -> Response@r
+mk_success_response payload =
+  Response Success payload (generate_correlation_id ())
+
+mk_error_response :: ResponseStatus -> String -> Response@r
+mk_error_response status msg =
+  Response status (string_to_bytes msg) (generate_correlation_id ())
+
+// Configuration helpers
+config_name :: ContainerConfig@r -> String
+config_image :: ContainerConfig@r -> String
+config_volumes :: ContainerConfig@r -> [VolumeMount@r]
+config_network :: ContainerConfig@r -> NetworkConfig@r
+
+// FFI declarations for Vörðr runtime
+foreign import vordr_create_container :: ContainerId@r -> ContainerConfig@r -> Response@r
+foreign import vordr_start_container :: ContainerId@r -> Response@r
+foreign import vordr_stop_container :: ContainerId@r -> Response@r
+foreign import vordr_get_container_state :: ContainerId@r -> ContainerState@r
+foreign import vordr_container_exists :: ContainerId@r -> Bool
+foreign import allocate_container_id :: () -> ContainerId@r
+foreign import generate_correlation_id :: () -> String
+
+// Encoding helpers for response payloads
+encode_container_id :: ContainerId@r -> Bytes@r
+encode_status :: String -> Bytes@r
+encode_container_state :: ContainerState@r -> Bytes@r
+
+// Utility functions
+bytes_length :: Bytes@r -> Int
+string_to_bytes :: String -> Bytes@r
+
+// Export bridge function for WASM compilation
+export bridge

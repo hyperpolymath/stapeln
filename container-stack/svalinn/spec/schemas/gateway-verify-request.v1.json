@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://svalinn.dev/schemas/gateway-verify-request.v1.json",
+  "title": "Gateway Verify Request",
+  "type": "object",
+  "required": ["imageDigest"],
+  "properties": {
+    "bundlePath": { "type": "string" },
+    "trustStorePath": { "type": "string" },
+    "policyPath": { "type": "string" },
+    "bundle": { "type": "object" },
+    "trustStore": { "type": "object" },
+    "policy": { "type": "object" },
+    "imageDigest": { "type": "string" }
+  }
+}

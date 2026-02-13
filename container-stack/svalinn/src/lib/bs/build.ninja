@@ -1,0 +1,68 @@
+rescript = 1
+g_finger := /var/mnt/eclipse/repos/svalinn/node_modules/@rescript/core/lib/ocaml/install.stamp
+rule astj
+  command = /var/mnt/eclipse/repos/svalinn/node_modules/.deno/rescript@11.1.4/node_modules/rescript/linux/bsc.exe -w +A-48-42 -bs-v 11.1.4 -uncurried -bs-no-version-header -absname -bs-ast -o $out $i
+o ./Main.ast : astj ../.././Main.res
+rule deps
+  command = /var/mnt/eclipse/repos/svalinn/node_modules/.deno/rescript@11.1.4/node_modules/rescript/linux/bsb_helper.exe -hash d7ba2d3871e0c5b55f3a58895fbfe7ce $in
+  restat = 1
+o ./Main.d : deps ./Main.ast
+rule mij
+  command = /var/mnt/eclipse/repos/svalinn/node_modules/.deno/rescript@11.1.4/node_modules/rescript/linux/bsc.exe -I gateway -I validation -I vordr -I mcp -I bindings -I policy -I auth -I dist -I lib/bs/vordr -I lib/bs/validation -I lib/bs/gateway -I lib/bs/mcp -I lib/bs/bindings -I lib/bs/policy -I lib/bs/auth -I lib/bs -I lib/ocaml -I lib -I node_modules/.bin -I node_modules -I . -I /var/mnt/eclipse/repos/svalinn/node_modules/@rescript/core/lib/ocaml -bs-no-version-header -w +A-48-42 -uncurried -bs-package-name svalinn-gateway -bs-package-output esmodule:$in_d:.res.js -bs-v $g_finger $i
+  dyndep = 1
+  restat = 1
+o ./Main.cmj ./Main.cmi ../.././Main.res.js : mij ./Main.ast
+o auth/JWT.ast : astj ../../auth/JWT.res
+o auth/JWT.d : deps auth/JWT.ast
+o auth/JWT.cmj auth/JWT.cmi ../../auth/JWT.res.js : mij auth/JWT.ast
+o auth/OAuth2.ast : astj ../../auth/OAuth2.res
+o auth/OAuth2.d : deps auth/OAuth2.ast
+o auth/OAuth2.cmj auth/OAuth2.cmi ../../auth/OAuth2.res.js : mij auth/OAuth2.ast
+o auth/AuthTypes.ast : astj ../../auth/AuthTypes.res
+o auth/AuthTypes.d : deps auth/AuthTypes.ast
+o auth/AuthTypes.cmj auth/AuthTypes.cmi ../../auth/AuthTypes.res.js : mij auth/AuthTypes.ast
+o auth/Middleware.ast : astj ../../auth/Middleware.res
+o auth/Middleware.d : deps auth/Middleware.ast
+o auth/Middleware.cmj auth/Middleware.cmi ../../auth/Middleware.res.js : mij auth/Middleware.ast
+o policy/PolicyEngine.ast : astj ../../policy/PolicyEngine.res
+o policy/PolicyEngine.d : deps policy/PolicyEngine.ast
+o policy/PolicyEngine.cmj policy/PolicyEngine.cmi ../../policy/PolicyEngine.res.js : mij policy/PolicyEngine.ast
+o bindings/Deno.ast : astj ../../bindings/Deno.res
+o bindings/Deno.d : deps bindings/Deno.ast
+o bindings/Deno.cmj bindings/Deno.cmi ../../bindings/Deno.res.js : mij bindings/Deno.ast
+o bindings/Hono.ast : astj ../../bindings/Hono.res
+o bindings/Hono.d : deps bindings/Hono.ast
+o bindings/Hono.cmj bindings/Hono.cmi ../../bindings/Hono.res.js : mij bindings/Hono.ast
+o bindings/Fetch.ast : astj ../../bindings/Fetch.res
+o bindings/Fetch.d : deps bindings/Fetch.ast
+o bindings/Fetch.cmj bindings/Fetch.cmi ../../bindings/Fetch.res.js : mij bindings/Fetch.ast
+o mcp/Tools.ast : astj ../../mcp/Tools.res
+o mcp/Tools.d : deps mcp/Tools.ast
+o mcp/Tools.cmj mcp/Tools.cmi ../../mcp/Tools.res.js : mij mcp/Tools.ast
+o mcp/Server.ast : astj ../../mcp/Server.res
+o mcp/Server.d : deps mcp/Server.ast
+o mcp/Server.cmj mcp/Server.cmi ../../mcp/Server.res.js : mij mcp/Server.ast
+o mcp/McpTypes.ast : astj ../../mcp/McpTypes.res
+o mcp/McpTypes.d : deps mcp/McpTypes.ast
+o mcp/McpTypes.cmj mcp/McpTypes.cmi ../../mcp/McpTypes.res.js : mij mcp/McpTypes.ast
+o mcp/McpClient.ast : astj ../../mcp/McpClient.res
+o mcp/McpClient.d : deps mcp/McpClient.ast
+o mcp/McpClient.cmj mcp/McpClient.cmi ../../mcp/McpClient.res.js : mij mcp/McpClient.ast
+o vordr/Client.ast : astj ../../vordr/Client.res
+o vordr/Client.d : deps vordr/Client.ast
+o vordr/Client.cmj vordr/Client.cmi ../../vordr/Client.res.js : mij vordr/Client.ast
+o vordr/VordrTypes.ast : astj ../../vordr/VordrTypes.res
+o vordr/VordrTypes.d : deps vordr/VordrTypes.ast
+o vordr/VordrTypes.cmj vordr/VordrTypes.cmi ../../vordr/VordrTypes.res.js : mij vordr/VordrTypes.ast
+o validation/Validation.ast : astj ../../validation/Validation.res
+o validation/Validation.d : deps validation/Validation.ast
+o validation/Validation.cmj validation/Validation.cmi ../../validation/Validation.res.js : mij validation/Validation.ast
+o gateway/Gateway.ast : astj ../../gateway/Gateway.res
+o gateway/Gateway.d : deps gateway/Gateway.ast
+o gateway/Gateway.cmj gateway/Gateway.cmi ../../gateway/Gateway.res.js : mij gateway/Gateway.ast
+o gateway/GatewayTypes.ast : astj ../../gateway/GatewayTypes.res
+o gateway/GatewayTypes.d : deps gateway/GatewayTypes.ast
+o gateway/GatewayTypes.cmj gateway/GatewayTypes.cmi ../../gateway/GatewayTypes.res.js : mij gateway/GatewayTypes.ast
+o gateway/SecurityHeaders.ast : astj ../../gateway/SecurityHeaders.res
+o gateway/SecurityHeaders.d : deps gateway/SecurityHeaders.ast
+o gateway/SecurityHeaders.cmj gateway/SecurityHeaders.cmi ../../gateway/SecurityHeaders.res.js : mij gateway/SecurityHeaders.ast

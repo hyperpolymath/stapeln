@@ -1,0 +1,752 @@
+= Developer Guide
+:toc:
+:toclevels: 3
+
+Complete guide for developers contributing to or extending selur.
+
+== Development Environment Setup
+
+=== Required Tools
+
+[cols="1,1,2"]
+|===
+| Tool | Version | Purpose
+
+| **Zig**
+| 0.16.0-dev+
+| WASM compilation
+
+| **Rust**
+| 1.70+
+| Rust bindings and examples
+
+| **Cargo**
+| Latest
+| Rust package manager
+
+| **Just**
+| 1.0+
+| Task runner
+
+| **Git**
+| 2.0+
+| Version control
+|===
+
+=== Optional Tools
+
+[cols="1,1,2"]
+|===
+| Tool | Version | Purpose
+
+| **Idris2**
+| 0.7.0+
+| Formal proof verification
+
+| **wabt**
+| Latest
+| WASM debugging tools
+
+| **wasm-objdump**
+| Latest
+| WASM inspection
+
+| **criterion**
+| 0.5+
+| Benchmarking (via Cargo)
+|===
+
+=== Clone and Build
+
+[source,bash]
+----
+# Clone repository
+git clone https://github.com/hyperpolymath/selur.git
+cd selur
+
+# Build everything
+just build    # Builds WASM module
+cargo build   # Builds Rust bindings
+cargo test    # Runs tests
+
+# Verify formal proofs (optional, requires Idris2)
+just verify
+----
+
+== Project Structure
+
+----
+selur/
+├── ephapax/              # Ephapax-linear bridge
+│   ├── bridge.eph        # Main bridge logic
+│   └── types.eph         # Type definitions
+│
+├── zig/                  # Zig WASM runtime
+│   ├── build.zig         # Build configuration
+│   └── runtime.zig       # WASM implementation
+│
+├── idris/                # Idris2 formal proofs
+│   ├── Proofs.idr        # Core proofs
+│   └── Theorems.idr      # High-level theorems
+│
+├── src/                  # Rust bindings
+│   └── lib.rs            # Public API
+│
+├── examples/             # Example programs
+│   ├── basic/            # Basic usage
+│   └── error_handling/   # Error handling patterns
+│
+├── benches/              # Performance benchmarks
+│   └── ipc_benchmark.rs  # WASM vs JSON/HTTP
+│
+├── docs/                 # API and architecture docs
+│   ├── API.adoc
+│   └── ARCHITECTURE.adoc
+│
+├── wiki/                 # User and developer wiki
+│
+├── justfile              # Task definitions
+├── Cargo.toml            # Rust package config
+├── README.adoc           # Project readme
+├── ROADMAP.adoc          # Development roadmap
+├── ECOSYSTEM.scm         # Ecosystem metadata
+├── META.scm              # Architecture decisions
+└── STATE.scm             # Project state
+----
+
+== Development Workflow
+
+=== 1. Make Changes
+
+==== Modifying Ephapax Bridge
+
+Edit `ephapax/bridge.eph` or `ephapax/types.eph`:
+
+[source,haskell]
+----
+-- Add new container operation
+delete_container :: ContainerId@r -> Response@r
+delete_container id =
+  if not (vordr_container_exists id) then
+    mk_error_response ContainerNotFound "Container does not exist"
+  else
+    vordr_delete_container id
+    mk_success_response (encode_status "deleted")
+----
+
+**Note:** Ephapax compiler not yet available. Changes are design specifications.
+
+==== Modifying Zig Runtime
+
+Edit `zig/runtime.zig`:
+
+[source,zig]
+----
+export fn new_operation(ptr: u32, len: u32) u32 {
+    // Add new WASM export function
+    // Remember: No callconv(.C) for WASM32
+    return 0;
+}
+----
+
+Rebuild:
+
+[source,bash]
+----
+just build
+ls -lh zig-out/bin/selur.wasm  # Check new size
+----
+
+==== Modifying Rust Bindings
+
+Edit `src/lib.rs`:
+
+[source,rust]
+----
+impl Bridge {
+    /// New API method
+    pub fn new_method(&mut self) -> Result<()> {
+        // Implementation
+        Ok(())
+    }
+}
+----
+
+Test:
+
+[source,bash]
+----
+cargo check  # Fast compilation check
+cargo test   # Run all tests
+cargo doc    # Generate documentation
+----
+
+==== Modifying Idris2 Proofs
+
+Edit `idris/Proofs.idr` or `idris/Theorems.idr`:
+
+[source,idris]
+----
+-- Add new proof
+public export
+noDataRaces : (ops : List Operation) -> AllUnique ops
+noDataRaces [] = Unique
+noDataRaces (op :: ops) = ?prove_unique
+----
+
+Verify:
+
+[source,bash]
+----
+just verify
+# Or manually:
+cd idris && idris2 --check Proofs.idr
+----
+
+=== 2. Run Tests
+
+[source,bash]
+----
+# Quick check (no execution)
+cargo check
+
+# Unit tests
+cargo test
+
+# Specific test
+cargo test test_error_code_conversion
+
+# With output
+cargo test -- --nocapture
+
+# Ignored tests (require WASM)
+just build
+cargo test -- --ignored
+
+# All tests (normal + ignored)
+cargo test -- --include-ignored
+----
+
+=== 3. Run Examples
+
+[source,bash]
+----
+# Basic example
+cargo run --example basic
+
+# Error handling example
+cargo run --example error_handling
+
+# With release optimizations
+cargo run --release --example basic
+----
+
+=== 4. Benchmark
+
+[source,bash]
+----
+# Run all benchmarks
+cargo bench
+
+# Specific benchmark
+cargo bench wasm_ipc
+
+# Save baseline
+cargo bench -- --save-baseline baseline-name
+
+# Compare to baseline
+cargo bench -- --baseline baseline-name
+----
+
+=== 5. Update Documentation
+
+When adding new APIs:
+
+[source,rust]
+----
+/// Brief one-line description
+///
+/// Longer explanation of what this does.
+///
+/// # Arguments
+///
+/// * `param` - Description of parameter
+///
+/// # Returns
+///
+/// Description of return value
+///
+/// # Errors
+///
+/// When this function returns an error
+///
+/// # Examples
+///
+/// ```
+/// use selur::Bridge;
+///
+/// let mut bridge = Bridge::new("selur.wasm")?;
+/// let result = bridge.new_method()?;
+/// ```
+pub fn new_method(&mut self) -> Result<()> {
+    Ok(())
+}
+----
+
+Generate docs:
+
+[source,bash]
+----
+cargo doc --open
+----
+
+Update wiki if user-facing changes:
+
+- `wiki/User-Guide.adoc` - For API changes
+- `wiki/API-Reference.adoc` - For new APIs
+- `docs/API.adoc` - For detailed API docs
+
+=== 6. Commit Changes
+
+[source,bash]
+----
+# Check status
+git status
+
+# Stage changes
+git add <files>
+
+# Commit with descriptive message
+git commit -m "Add delete_container operation
+
+- Implemented delete_container in ephapax/bridge.eph
+- Added WASM export in zig/runtime.zig
+- Updated Rust bindings in src/lib.rs
+- Added tests in src/lib.rs
+- Updated API documentation
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+# Push to remote
+git push origin main
+----
+
+== Code Style
+
+=== Rust
+
+Follow Rust conventions:
+
+[source,bash]
+----
+# Format code
+cargo fmt
+
+# Lint code
+cargo clippy -- -D warnings
+
+# Fix auto-fixable issues
+cargo clippy --fix
+----
+
+**Guidelines:**
+- Use `snake_case` for functions and variables
+- Use `PascalCase` for types
+- Maximum line length: 100 characters
+- Add documentation comments for all public APIs
+- Prefer `?` over explicit error handling
+- Use `anyhow::Result` for error types
+
+=== Zig
+
+Follow Zig conventions:
+
+[source,zig]
+----
+// Good:
+const memory_size: usize = 1024 * 1024;
+
+pub fn sendRequest(ptr: u32, len: u32) u32 {
+    // snake_case for locals
+    const request_ptr = ptr;
+    return 0;
+}
+
+// Format code
+zig fmt zig/*.zig
+----
+
+**Guidelines:**
+- Use `snake_case` for functions and variables
+- Use `PascalCase` for types
+- No `callconv(.C)` for WASM32 targets
+- Prefer explicit error handling
+- Add safety checks for all memory operations
+
+=== Idris2
+
+Follow Idris2 conventions:
+
+[source,idris]
+----
+-- Good:
+public export
+noMemoryLeaks : (before : MemoryState) -> (after : MemoryState) -> Type
+noMemoryLeaks (MkMemoryState alloc_before cap_before)
+              (MkMemoryState alloc_after cap_after) =
+  (alloc_after = 0, cap_before = cap_after)
+----
+
+**Guidelines:**
+- Use `camelCase` for functions
+- Use `PascalCase` for types and constructors
+- Add `public export` for exported definitions
+- Document complex proofs with comments
+
+=== Ephapax
+
+Follow Ephapax conventions (design specification):
+
+[source,haskell]
+----
+-- Good:
+create_container :: ContainerConfig@r -> Response@r
+create_container config =
+  if config_name config == "" then
+    mk_error_response InvalidRequest "Container name required"
+  else
+    let container_id = allocate_container_id () in
+    mk_success_response (encode_container_id container_id)
+----
+
+**Guidelines:**
+- Use `snake_case` for functions
+- Use `PascalCase` for types
+- Always annotate region (`@r`)
+- Linear types must be consumed exactly once
+
+== Testing Guidelines
+
+=== Unit Tests
+
+Add tests next to code:
+
+[source,rust]
+----
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_feature() {
+        // Arrange
+        let input = create_test_input();
+
+        // Act
+        let result = process(input);
+
+        // Assert
+        assert_eq!(result, expected_output());
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid input")]
+    fn test_error_case() {
+        let invalid = create_invalid_input();
+        process(invalid);  // Should panic
+    }
+}
+----
+
+=== Integration Tests
+
+Tests that require WASM file:
+
+[source,rust]
+----
+#[test]
+#[ignore]  // Requires WASM file
+fn test_integration() {
+    let mut bridge = Bridge::new("../zig-out/bin/selur.wasm")
+        .expect("WASM file not found. Run: just build");
+
+    // Test end-to-end flow
+}
+----
+
+Run with:
+
+[source,bash]
+----
+just build
+cargo test -- --ignored
+----
+
+=== Property-Based Tests
+
+For complex logic:
+
+[source,rust]
+----
+use proptest::prelude::*;
+
+proptest! {
+    #[test]
+    fn request_roundtrip(data: Vec<u8>) {
+        // Property: Encoding then decoding should return original
+        let encoded = encode_request(&data);
+        let decoded = decode_request(&encoded)?;
+        prop_assert_eq!(data, decoded);
+    }
+}
+----
+
+=== Benchmark Tests
+
+Add to `benches/`:
+
+[source,rust]
+----
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+
+fn bench_new_operation(c: &mut Criterion) {
+    c.bench_function("new_operation", |b| {
+        b.iter(|| {
+            new_operation(black_box(input))
+        })
+    });
+}
+
+criterion_group!(benches, bench_new_operation);
+criterion_main!(benches);
+----
+
+== Debugging
+
+=== Print Debugging
+
+**Rust:**
+[source,rust]
+----
+eprintln!("Debug: {:?}", value);
+----
+
+**Zig:**
+[source,zig]
+----
+std.debug.print("Debug: {}\n", .{value});
+----
+
+**Idris2:**
+[source,idris]
+----
+debug :: Show a => a -> a
+debug x = unsafePerformIO $ do
+    printLn x
+    pure x
+----
+
+=== Interactive Debugging
+
+**Rust (GDB/LLDB):**
+[source,bash]
+----
+# Build with debug info
+cargo build
+
+# Debug with GDB
+rust-gdb target/debug/examples/basic
+
+# Or LLDB
+rust-lldb target/debug/examples/basic
+----
+
+**WASM (wabt tools):**
+[source,bash]
+----
+# Disassemble
+wasm-objdump -d zig-out/bin/selur.wasm > selur.wast
+
+# View exports
+wasm-objdump -x zig-out/bin/selur.wasm | grep export
+
+# Validate
+wasm-validate zig-out/bin/selur.wasm
+----
+
+=== Performance Profiling
+
+**Flamegraph:**
+[source,bash]
+----
+cargo install flamegraph
+
+# Profile example
+cargo flamegraph --example basic
+
+# Opens flamegraph.svg in browser
+----
+
+**Criterion HTML reports:**
+[source,bash]
+----
+cargo bench
+
+# Open target/criterion/report/index.html
+----
+
+== Common Tasks
+
+=== Add New Container Operation
+
+1. **Define in `ephapax/bridge.eph`:**
+[source,haskell]
+----
+new_operation :: RequestType@r -> Response@r
+----
+
+2. **Add command code in `ephapax/types.eph`:**
+[source,haskell]
+----
+data Command@r
+  = ...
+  | NewOperation RequestType@r
+----
+
+3. **Implement in Zig (if needed):** Update `zig/runtime.zig`
+
+4. **Expose in Rust:** Update `src/lib.rs` if needed
+
+5. **Add tests:** `cargo test`
+
+6. **Update docs:** `docs/API.adoc`, `wiki/User-Guide.adoc`
+
+=== Add New Error Code
+
+1. **Define in Rust (`src/lib.rs`):**
+[source,rust]
+----
+#[repr(u32)]
+pub enum ErrorCode {
+    // ... existing codes ...
+    NewError = 4,
+}
+----
+
+2. **Add to Display:**
+[source,rust]
+----
+impl Display for ErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            // ...
+            ErrorCode::NewError => write!(f, "NewError"),
+        }
+    }
+}
+----
+
+3. **Update from_u32:**
+[source,rust]
+----
+impl ErrorCode {
+    pub fn from_u32(code: u32) -> Option<Self> {
+        match code {
+            // ...
+            4 => Some(ErrorCode::NewError),
+            _ => None,
+        }
+    }
+}
+----
+
+4. **Add test:**
+[source,rust]
+----
+#[test]
+fn test_new_error_code() {
+    assert_eq!(ErrorCode::from_u32(4), Some(ErrorCode::NewError));
+    assert_eq!(format!("{}", ErrorCode::NewError), "NewError");
+}
+----
+
+=== Optimize Performance
+
+1. **Profile first:**
+[source,bash]
+----
+cargo flamegraph --example basic
+----
+
+2. **Identify hotspot** in flamegraph
+
+3. **Optimize hot path:**
+   - Pre-allocate buffers
+   - Reduce allocations
+   - Use release builds
+   - Cache computations
+
+4. **Benchmark:**
+[source,bash]
+----
+# Before
+cargo bench --bench ipc_benchmark -- --save-baseline before
+
+# Make changes
+
+# After
+cargo bench --bench ipc_benchmark -- --baseline before
+----
+
+5. **Verify improvement** in criterion output
+
+=== Update Dependencies
+
+[source,bash]
+----
+# Check outdated
+cargo outdated
+
+# Update Cargo.lock
+cargo update
+
+# Update Cargo.toml (manually)
+# Then:
+cargo build
+cargo test
+
+# Verify no breakage
+----
+
+## Contribution Workflow
+
+See link:Contributing.adoc[Contributing Guide] for full details.
+
+**Quick workflow:**
+
+1. Fork repository
+2. Create feature branch (`git checkout -b feature/new-feature`)
+3. Make changes
+4. Add tests
+5. Run `cargo fmt && cargo clippy && cargo test`
+6. Commit with descriptive message
+7. Push to fork
+8. Open pull request
+
+## Getting Help
+
+**Development questions:**
+- Check link:../docs/ARCHITECTURE.adoc[Architecture docs]
+- Read link:../docs/API.adoc[API reference]
+- Search https://github.com/hyperpolymath/selur/issues[GitHub issues]
+- Ask on GitHub Discussions
+
+**Code review:**
+- Open draft PR early for feedback
+- Tag maintainers for review
+- Respond to review comments
+
+**Stuck?**
+- Open an issue describing the problem
+- Include: OS, toolchain versions, error messages
+- Maintainers typically respond within 24-48 hours

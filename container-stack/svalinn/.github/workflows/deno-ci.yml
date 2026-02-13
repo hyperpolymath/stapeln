@@ -1,0 +1,165 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Deno CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5e01c7a9f6e390e94e72eeabd981c6c0000e2e78 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Type check
+        run: deno check src/main.ts
+
+      - name: Check all TypeScript files
+        run: |
+          find src -name "*.ts" -exec deno check {} \;
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5e01c7a9f6e390e94e72eeabd981c6c0000e2e78 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Run linter
+        run: deno lint
+
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5e01c7a9f6e390e94e72eeabd981c6c0000e2e78 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Check formatting
+        run: deno fmt --check
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5e01c7a9f6e390e94e72eeabd981c6c0000e2e78 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Run tests
+        run: deno test --allow-read --allow-net --coverage=coverage/
+
+      - name: Generate coverage report
+        run: deno coverage coverage/ --lcov > coverage.lcov
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          files: ./coverage.lcov
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5e01c7a9f6e390e94e72eeabd981c6c0000e2e78 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Build standalone binary
+        run: |
+          deno compile \
+            --allow-net \
+            --allow-read \
+            --allow-env \
+            --output svalinn \
+            src/main.ts
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: svalinn-binary
+          path: svalinn
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Download Svalinn binary
+        uses: actions/download-artifact@v4
+        with:
+          name: svalinn-binary
+          path: /tmp/
+
+      - name: Make binary executable
+        run: chmod +x /tmp/svalinn
+
+      - name: Start Svalinn gateway
+        run: |
+          /tmp/svalinn &
+          SVALINN_PID=$!
+          sleep 5
+
+          # Test health endpoint
+          curl -f http://localhost:8080/health || exit 1
+
+          # Test policy evaluation
+          echo '{"image": "nginx:latest", "policy": "strict"}' | \
+            curl -X POST http://localhost:8080/evaluate \
+            -H "Content-Type: application/json" \
+            -d @- || exit 1
+
+          kill $SVALINN_PID
+
+  policy-tests:
+    name: Policy Evaluation Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5e01c7a9f6e390e94e72eeabd981c6c0000e2e78 # v2
+        with:
+          deno-version: v2.x
+
+      - name: Test strict policy
+        run: |
+          deno test --allow-read tests/policies/strict_test.ts
+
+      - name: Test standard policy
+        run: |
+          deno test --allow-read tests/policies/standard_test.ts
+
+      - name: Test permissive policy
+        run: |
+          deno test --allow-read tests/policies/permissive_test.ts
+
+      - name: Test custom policy parsing
+        run: |
+          deno test --allow-read tests/policies/custom_test.ts

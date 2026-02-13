@@ -1,0 +1,41 @@
+# Trust Store Configuration
+# Defines which keys are trusted and at what level
+
+# Trust levels:
+#   untrusted - key is known but not trusted
+#   known     - key identity verified, limited trust
+#   trusted   - fully trusted for their domain
+#   core      - project core infrastructure keys
+
+[keys.gnu-keyring]
+# GNU project signing keys (for upstream verification)
+algorithm = "pgp"
+fingerprint = "0x7F2D434B9741E8AC"
+level = "trusted"
+domain = "upstream"
+description = "GNU project release signing key"
+
+[keys.cerro-dev-2025]
+# Development signing key (MVP only - not for production)
+algorithm = "ed25519"
+public_key = "REPLACE_WITH_ACTUAL_BASE64_PUBLIC_KEY"
+level = "core"
+domain = "build"
+description = "Cerro Torre development key (MVP)"
+expires = 2026-01-01
+
+[keys.cerro-builder-01]
+# Example builder key (template)
+algorithm = "ed25519"
+public_key = "REPLACE_WITH_ACTUAL_BASE64_PUBLIC_KEY"
+level = "core"
+domain = "build"
+description = "Cerro Torre automated builder #1"
+
+# Post-quantum keys (v0.2+)
+# [keys.cerro-pq-2025]
+# algorithm = "ml-dsa-65"
+# public_key = "REPLACE_WITH_ACTUAL_BASE64_PUBLIC_KEY"
+# level = "core"
+# domain = "build"
+# description = "Cerro Torre post-quantum signing key"

@@ -1,0 +1,730 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Security Standards Mapping by Component
+:toc: left
+
+== Executive Summary
+
+This document maps the svalinn-project security standards to each component in the verified container ecosystem:
+
+- **Cerro Torre (ct)**: Container build/signing tool
+- **Svalinn**: Edge gateway (reverse proxy, TLS termination)
+- **Vörðr**: Container verification & runtime monitoring
+- **selur**: Zero-copy IPC bridge (WASM)
+- **verified-container-spec**: Protocol specification
+
+Each component has different security requirements based on its role.
+
+== Component-by-Component Analysis
+
+=== Cerro Torre (ct) - Container Build & Signing
+
+**Role:** Build, sign, and verify container bundles (.ctp files)
+
+**Security Requirements from Svalinn Spec:**
+
+[cols="2,1,3",options="header"]
+|===
+| Requirement | Priority | Rationale
+
+| **PQ Signatures (ML-DSA-87)**
+| 🔴 CRITICAL
+| Signs containers for long-term integrity (20+ year lifespan)
+
+| **Classical Signatures (Ed448)**
+| 🟡 HIGH
+| Hybrid with ML-DSA-87 for defense-in-depth
+
+| **General Hashing (SHAKE3-512)**
+| 🟡 HIGH
+| Bundle integrity, provenance, SBOM hashing
+
+| **Database Hashing (BLAKE3-512)**
+| 🟢 MEDIUM
+| Fast hashing for large files (layers, blobs)
+
+| **Formal Verification (Coq/Isabelle)**
+| ✅ DONE
+| Uses Ada/SPARK + Idris2 (R-variants) + ATS2 (X-variants)
+
+| **Fallback PQ Signature (SPHINCS+)**
+| 🟢 MEDIUM
+| Conservative backup if ML-DSA-87 breaks
+
+| ❌ Password Hashing (Argon2id)
+| N/A
+| No passwords (uses public key crypto)
+
+| ❌ PQ Key Exchange (Kyber-1024)
+| N/A
+| No encryption (signs, doesn't encrypt)
+
+| ❌ Symmetric Encryption (XChaCha20)
+| N/A
+| No encryption
+
+| ❌ KDF (HKDF-SHAKE512)
+| N/A
+| Keys loaded from files, not derived
+
+| ❌ RNG (ChaCha20-DRBG)
+| LOW
+| Uses OS RNG (sufficient for signing)
+
+| ❌ Protocol Stack (HTTP/3, IPv6)
+| 🟢 MEDIUM
+| Registry communication (HTTP/2 → HTTP/3 upgrade)
+
+| ❌ Accessibility (WCAG)
+| N/A
+| CLI tool, not a web app
+
+|===
+
+**Current Status:** 40% compliant (classical crypto done, PQ crypto stubbed)
+
+**Critical Gap:** ML-DSA-87 implementation (awaiting liboqs bindings)
+
+---
+
+=== Svalinn - Edge Gateway & Reverse Proxy
+
+**Role:** HTTP reverse proxy, TLS termination, rate limiting, API gateway
+
+**Security Requirements from Svalinn Spec:**
+
+[cols="2,1,3",options="header"]
+|===
+| Requirement | Priority | Rationale
+
+| **Protocol Stack (QUIC + HTTP/3 + IPv6)**
+| 🔴 CRITICAL
+| Core feature - HTTP/3 for 0-RTT, QUIC for multiplexing
+
+| **Symmetric Encryption (XChaCha20-Poly1305)**
+| 🔴 CRITICAL
+| TLS 1.3 cipher suite for HTTPS termination
+
+| **PQ Key Exchange (Kyber-1024)**
+| 🔴 CRITICAL
+| Post-quantum TLS handshakes (ML-KEM-1024)
+
+| **KDF (HKDF-SHAKE512)**
+| 🔴 CRITICAL
+| Session key derivation from TLS master secret
+
+| **RNG (ChaCha20-DRBG)**
+| 🔴 CRITICAL
+| Session IDs, nonces, CSRF tokens
+
+| **General Hashing (SHAKE3-512)**
+| 🟡 HIGH
+| HMAC for cookies, integrity tags
+
+| **Database Hashing (BLAKE3-512)**
+| 🟡 HIGH
+| Fast response caching, ETag generation
+
+| **Classical Signatures (Ed448)**
+| 🟢 MEDIUM
+| JWT signing for API auth (if used)
+
+| **PQ Signatures (ML-DSA-87)**
+| 🟢 MEDIUM
+| JWT signing (hybrid with Ed448)
+
+| ❌ Password Hashing (Argon2id)
+| LOW
+| Only if implementing user auth (not core feature)
+
+| ❌ Formal Verification
+| 🟢 MEDIUM
+| ReScript type safety + property tests (not SPARK-level)
+
+| ❌ Accessibility (WCAG)
+| N/A
+| Reverse proxy, not a web app
+
+|===
+
+**Current Status:** Unknown (Svalinn repo not found in current scan)
+
+**Critical Gaps:**
+- QUIC/HTTP/3 support (check if implemented)
+- PQ-TLS (Kyber-1024 KEM)
+- XChaCha20-Poly1305 cipher suite
+
+**Note:** Svalinn may delegate crypto to underlying libraries (Deno's native TLS). Need to verify:
+- Does Deno support QUIC/HTTP/3?
+- Does Deno support PQ-TLS (Kyber)?
+- Can Deno use XChaCha20-Poly1305?
+
+---
+
+=== Vörðr - Container Verification & Runtime Monitoring
+
+**Role:** Verify container attestations, monitor runtime syscalls (eBPF)
+
+**Security Requirements from Svalinn Spec:**
+
+[cols="2,1,3",options="header"]
+|===
+| Requirement | Priority | Rationale
+
+| **PQ Signatures (ML-DSA-87)**
+| 🔴 CRITICAL
+| Verify Cerro Torre bundle signatures
+
+| **Classical Signatures (Ed448)**
+| 🟡 HIGH
+| Verify hybrid signatures (Ed448 + ML-DSA-87)
+
+| **General Hashing (SHAKE3-512)**
+| 🟡 HIGH
+| Verify bundle hashes, SBOM integrity
+
+| **Database Hashing (BLAKE3-512)**
+| 🟡 HIGH
+| Policy storage, audit logs (uses Virtuoso VOS per spec?)
+
+| **Formal Verification (Idris2)**
+| ✅ DONE
+| Vörðr uses Idris2 for lifecycle proofs
+
+| **Semantic XML/GraphQL (Virtuoso + SPARQL)**
+| 🟡 HIGH
+| Policy storage with WCAG 2.3 compliance (if building UI)
+
+| ❌ Password Hashing (Argon2id)
+| N/A
+| No user auth (verifies containers, not users)
+
+| ❌ PQ Key Exchange (Kyber-1024)
+| N/A
+| No encryption
+
+| ❌ Symmetric Encryption (XChaCha20)
+| N/A
+| No encryption
+
+| ❌ KDF (HKDF-SHAKE512)
+| LOW
+| May need for session tokens if exposing API
+
+| ❌ RNG (ChaCha20-DRBG)
+| 🟢 MEDIUM
+| Nonces for audit logs, policy enforcement
+
+| ❌ Protocol Stack (HTTP/3)
+| 🟢 MEDIUM
+| If exposing API (Elixir Phoenix backend)
+
+| ❌ Accessibility (WCAG 2.3 AAA)
+| 🟢 MEDIUM
+| Only if building ReScript browser UI (per ECOSYSTEM.scm)
+
+|===
+
+**Current Status:** Unknown (Vörðr repo exists but crypto implementation unclear)
+
+**Critical Gaps:**
+- ML-DSA-87 verification (must match Cerro Torre)
+- BLAKE3-512 for fast policy lookups
+- Virtuoso VOS database (if using semantic XML/SPARQL)
+
+**Integration Point:** Vörðr calls Cerro Torre's verification libraries (Ada crypto bindings?)
+
+---
+
+=== selur - Zero-Copy IPC Bridge (WASM)
+
+**Role:** Memory-safe IPC between Svalinn and Vörðr (WASM linear memory)
+
+**Security Requirements from Svalinn Spec:**
+
+[cols="2,1,3",options="header"]
+|===
+| Requirement | Priority | Rationale
+
+| **Formal Verification (Idris2)**
+| ✅ DONE
+| Uses Idris2 proofs for memory safety (no lost requests, no leaks)
+
+| **Symmetric Encryption (XChaCha20)**
+| 🟢 MEDIUM
+| Encrypt IPC messages if crossing trust boundaries
+
+| **General Hashing (SHAKE3-512)**
+| 🟢 MEDIUM
+| HMAC for IPC message authentication
+
+| **RNG (ChaCha20-DRBG)**
+| LOW
+| Nonces for encrypted IPC (if implemented)
+
+| ❌ Signatures (Ed448, ML-DSA-87)
+| N/A
+| IPC doesn't need signatures (same trust domain)
+
+| ❌ Password Hashing
+| N/A
+| No user auth
+
+| ❌ PQ Key Exchange (Kyber)
+| N/A
+| Shared memory (not network)
+
+| ❌ KDF
+| N/A
+| No key derivation
+
+| ❌ Database Hashing
+| N/A
+| No database
+
+| ❌ Protocol Stack (HTTP/3)
+| N/A
+| WASM shared memory, not HTTP
+
+| ❌ Accessibility (WCAG)
+| N/A
+| IPC bridge, no UI
+
+|===
+
+**Current Status:** MVP complete (v1.0.0), encryption not implemented
+
+**Critical Gaps:**
+- **None** for current trust model (Svalinn + Vörðr in same process)
+- If deploying Svalinn and Vörðr on separate hosts: need XChaCha20-Poly1305 + HMAC
+
+**Note:** selur's security model assumes Svalinn and Vörðr share a trust boundary. If untrusted network between them, need to add:
+1. XChaCha20-Poly1305 for confidentiality
+2. SHAKE3-512 HMAC for authenticity
+3. ChaCha20-DRBG for nonces
+
+---
+
+=== verified-container-spec - Protocol Specification
+
+**Role:** Defines .ctp bundle format, attestation structure, verification protocol
+
+**Security Requirements from Svalinn Spec:**
+
+[cols="2,1,3",options="header"]
+|===
+| Requirement | Priority | Rationale
+
+| **PQ Signatures (ML-DSA-87)**
+| 🔴 CRITICAL
+| Spec MUST mandate ML-DSA-87 for long-term integrity
+
+| **Classical Signatures (Ed448)**
+| 🔴 CRITICAL
+| Spec MUST mandate hybrid Ed448 + ML-DSA-87
+
+| **General Hashing (SHAKE3-512)**
+| 🔴 CRITICAL
+| Spec MUST mandate SHAKE3-512 for bundle hashes
+
+| **Fallback PQ Signature (SPHINCS+)**
+| 🟡 HIGH
+| Spec SHOULD allow SPHINCS+ as optional fallback
+
+| **Database Hashing (BLAKE3-512)**
+| 🟢 MEDIUM
+| Spec MAY allow BLAKE3-512 for performance-critical paths
+
+| **User-Friendly Hash Names**
+| 🟢 MEDIUM
+| Spec SHOULD define Base32(SHAKE256) + wordlist for human-readable IDs
+
+| ❌ Symmetric Encryption
+| N/A
+| Spec is for signing, not encryption
+
+| ❌ PQ Key Exchange
+| N/A
+| Spec is for signatures, not key exchange
+
+| ❌ KDF
+| N/A
+| Spec doesn't derive keys
+
+| ❌ Password Hashing
+| N/A
+| Spec doesn't cover user auth
+
+| ❌ RNG
+| N/A
+| Implementation detail, not spec
+
+| ❌ Protocol Stack
+| N/A
+| Spec defines bundle format, not transport
+
+| ❌ Accessibility
+| N/A
+| Technical spec, not UI
+
+|===
+
+**Current Status:** Unknown (repo not found in current scan)
+
+**Critical Requirements for Spec:**
+
+```yaml
+# verified-container-spec MUST mandate:
+signature_algorithms:
+  required:
+    - CT-SIG-02  # Ed448 + ML-DSA-87 hybrid
+  optional:
+    - ML-DSA-87  # Pure PQ
+    - SPHINCS+   # Conservative fallback
+
+hash_algorithms:
+  required:
+    - SHAKE3-512  # Bundle hashes, provenance
+  optional:
+    - BLAKE3-512  # Performance-critical paths
+
+attestation_format:
+  required:
+    - in-toto     # SLSA provenance
+    - CycloneDX   # SBOM (security-focused)
+  optional:
+    - SPDX        # Alternative SBOM format
+```
+
+---
+
+== Cross-Component Integration Points
+
+=== 1. Cerro Torre → Vörðr (Signature Verification)
+
+**Data Flow:**
+```
+Cerro Torre (signs bundle with CT-SIG-02)
+    ↓
+Vörðr (verifies signature using same crypto library)
+```
+
+**Shared Requirements:**
+- ML-DSA-87 implementation (liboqs)
+- Ed448 implementation
+- SHAKE3-512 hashing
+- MUST use identical crypto library (avoid divergence)
+
+**Recommendation:** Extract crypto into shared Ada package:
+```
+cerro-crypto/           # Shared crypto library (Ada/SPARK)
+  ├── libcerro_crypto.so
+  ├── cerro_crypto.ads
+  ├── cerro_crypto.adb
+  ├── ct_pqcrypto.ads
+  └── ct_pqcrypto.adb
+```
+
+Used by:
+- Cerro Torre (Ada binary)
+- Vörðr (Ada bindings via Rust FFI)
+
+---
+
+=== 2. Svalinn → selur → Vörðr (IPC)
+
+**Data Flow:**
+```
+Svalinn (receives HTTPS request)
+    ↓
+selur (zero-copy IPC via WASM)
+    ↓
+Vörðr (verifies container, returns decision)
+    ↓
+selur (zero-copy IPC via WASM)
+    ↓
+Svalinn (returns HTTPS response)
+```
+
+**Security Boundary:**
+
+If Svalinn and Vörðr are in the same process (current design):
+- ✅ No encryption needed (shared memory)
+- ✅ Ephapax-linear prevents memory leaks
+- ✅ Idris2 proofs ensure correctness
+
+If Svalinn and Vörðr are on different hosts (future design):
+- ❌ Need XChaCha20-Poly1305 encryption
+- ❌ Need SHAKE3-512 HMAC authentication
+- ❌ Need ChaCha20-DRBG for nonces
+
+**Recommendation:** Keep co-located for now (security + performance)
+
+---
+
+=== 3. Svalinn → Internet (TLS Termination)
+
+**Data Flow:**
+```
+Client (HTTPS/QUIC request)
+    ↓
+Svalinn (TLS 1.3 termination, QUIC multiplexing)
+    ↓
+[Internal routing]
+```
+
+**Critical Requirements:**
+- QUIC/HTTP/3 support
+- PQ-TLS (Kyber-1024 + X25519 hybrid KEM)
+- XChaCha20-Poly1305 cipher suite
+- HKDF-SHAKE512 for session key derivation
+
+**Current Gap:** Deno's native TLS stack support?
+
+Check:
+1. Does Deno's `Deno.serve()` support QUIC/HTTP/3?
+2. Does Deno support PQ-TLS (via BoringSSL or OQS-OpenSSL)?
+3. Can Deno use XChaCha20-Poly1305 (non-standard cipher)?
+
+If not, may need to:
+- Wrap with nginx/Caddy (both support HTTP/3)
+- Use Rust TLS library (rustls + PQ extensions)
+- Contribute PQ-TLS support to Deno
+
+---
+
+== Summary Table: Who Needs What
+
+[cols="2,1,1,1,1,1",options="header"]
+|===
+| Security Feature | Cerro Torre | Svalinn | Vörðr | selur | Spec
+
+| **PQ Signatures (ML-DSA-87)**
+| 🔴 CRITICAL
+| 🟢 MEDIUM
+| 🔴 CRITICAL
+| N/A
+| 🔴 CRITICAL
+
+| **Classical Signatures (Ed448)**
+| 🟡 HIGH
+| 🟢 MEDIUM
+| 🟡 HIGH
+| N/A
+| 🔴 CRITICAL
+
+| **PQ Key Exchange (Kyber-1024)**
+| N/A
+| 🔴 CRITICAL
+| N/A
+| N/A
+| N/A
+
+| **Symmetric Encryption (XChaCha20)**
+| N/A
+| 🔴 CRITICAL
+| N/A
+| 🟢 MEDIUM*
+| N/A
+
+| **General Hashing (SHAKE3-512)**
+| 🟡 HIGH
+| 🟡 HIGH
+| 🟡 HIGH
+| 🟢 MEDIUM
+| 🔴 CRITICAL
+
+| **Database Hashing (BLAKE3-512)**
+| 🟢 MEDIUM
+| 🟡 HIGH
+| 🟡 HIGH
+| N/A
+| 🟢 MEDIUM
+
+| **KDF (HKDF-SHAKE512)**
+| N/A
+| 🔴 CRITICAL
+| LOW
+| N/A
+| N/A
+
+| **RNG (ChaCha20-DRBG)**
+| LOW
+| 🔴 CRITICAL
+| 🟢 MEDIUM
+| LOW
+| N/A
+
+| **Password Hashing (Argon2id)**
+| N/A
+| LOW
+| N/A
+| N/A
+| N/A
+
+| **Fallback PQ Signature (SPHINCS+)**
+| 🟢 MEDIUM
+| LOW
+| 🟢 MEDIUM
+| N/A
+| 🟡 HIGH
+
+| **HTTP/3 + IPv6**
+| 🟢 MEDIUM
+| 🔴 CRITICAL
+| 🟢 MEDIUM
+| N/A
+| N/A
+
+| **Formal Verification**
+| ✅ DONE
+| 🟢 MEDIUM
+| ✅ DONE
+| ✅ DONE
+| N/A
+
+| **Accessibility (WCAG 2.3 AAA)**
+| N/A
+| N/A
+| 🟢 MEDIUM*
+| N/A
+| N/A
+
+|===
+
+*\* Only if implementing browser UI (Vörðr has ReScript MCP adapter)*
+
+*\* Only if selur IPC crosses trust boundaries (not current design)*
+
+---
+
+== Implementation Priorities
+
+=== Phase 1: Critical Path (0-3 months)
+
+**Cerro Torre:**
+1. Implement ML-DSA-87 (link liboqs)
+2. Test CT-SIG-02 hybrid signatures
+3. Extract crypto to shared library
+
+**Svalinn:**
+1. Verify Deno supports HTTP/3 (or add nginx frontend)
+2. Add PQ-TLS support (Kyber-1024 via OQS-OpenSSL)
+3. Configure XChaCha20-Poly1305 cipher suite
+
+**Vörðr:**
+1. Link Cerro Torre's crypto library
+2. Implement ML-DSA-87 verification
+3. Test end-to-end signature verification
+
+**selur:**
+- No changes needed (current design is secure)
+
+**verified-container-spec:**
+1. Draft v1.0 spec mandating:
+   - CT-SIG-02 (Ed448 + ML-DSA-87)
+   - SHAKE3-512 hashing
+   - CycloneDX SBOM format
+
+---
+
+=== Phase 2: Upgrade Classical Crypto (3-6 months)
+
+**All components:**
+1. Upgrade Ed25519 → Ed448
+2. Upgrade SHAKE256 → SHAKE3-512
+3. Upgrade BLAKE3-256 → BLAKE3-512
+
+---
+
+=== Phase 3: Add Fallbacks (6-9 months)
+
+**Cerro Torre + Vörðr:**
+1. Add SPHINCS+ support (conservative fallback)
+
+**Svalinn:**
+1. Add ChaCha20-DRBG (deterministic RNG for testing)
+
+---
+
+=== Phase 4: Polish (9-12 months)
+
+**Cerro Torre:**
+1. User-friendly hash names (Base32 + wordlist)
+
+**Svalinn:**
+1. IPv6-only mode toggle
+
+**Vörðr:**
+1. WCAG 2.3 AAA compliance for ReScript UI (if building)
+2. Virtuoso VOS database for semantic policies
+
+---
+
+== Deviations from Svalinn-Project Spec
+
+The svalinn-project spec includes features that are **out of scope** for a container ecosystem:
+
+**Not Applicable:**
+- Password hashing (Argon2id) - No user authentication in any component
+- VM/Execution (GraalVM) - Native binaries (Ada, Rust, Zig, Elixir)
+- Semantic XML/GraphQL accessibility - Only if building Vörðr browser UI
+
+**Partially Applicable:**
+- Database hashing - Only Vörðr uses a database (policy storage)
+- Accessibility (WCAG) - Only if Vörðr builds ReScript browser UI
+
+**Fully Applicable:**
+- Crypto algorithms (signatures, hashing, KEM, symmetric, KDF, RNG)
+- Protocol stack (HTTP/3, IPv6)
+- Formal verification (Coq/Isabelle/SPARK/Idris2/ATS2)
+
+---
+
+== Recommendations
+
+=== For Cerro Torre
+1. **Prioritize ML-DSA-87** - Critical blocker for PQ resistance
+2. **Extract crypto library** - Share with Vörðr to avoid divergence
+3. **Skip out-of-scope features** - No passwords, KEM, symmetric crypto
+
+=== For Svalinn
+1. **Verify HTTP/3 support** - Check if Deno native or needs nginx
+2. **Add PQ-TLS** - Kyber-1024 KEM via OQS-OpenSSL
+3. **Test XChaCha20-Poly1305** - May need custom TLS config
+
+=== For Vörðr
+1. **Reuse Cerro Torre crypto** - Don't duplicate ML-DSA-87 implementation
+2. **Defer WCAG compliance** - Only if building browser UI
+3. **Defer Virtuoso VOS** - Use simpler DB (PostgreSQL) for MVP
+
+=== For selur
+1. **No changes needed** - Current design is secure (co-located process)
+2. **Defer encryption** - Only add if deploying across network
+3. **Keep Idris2 proofs** - Competitive advantage
+
+=== For verified-container-spec
+1. **Mandate CT-SIG-02** - Ed448 + ML-DSA-87 hybrid
+2. **Mandate SHAKE3-512** - Long-term integrity hashing
+3. **Allow SPHINCS+** - Conservative fallback
+
+---
+
+## Conclusion
+
+**Overall Ecosystem Status:**
+
+- **Cerro Torre:** 40% compliant (classical done, PQ stubbed)
+- **Svalinn:** Unknown (repo not scanned, verify HTTP/3 + PQ-TLS)
+- **Vörðr:** Unknown (verify ML-DSA-87 verification)
+- **selur:** 95% compliant (Idris2 proofs done, encryption not needed)
+- **verified-container-spec:** Not evaluated (repo not found)
+
+**Critical Path:**
+1. Cerro Torre: Implement ML-DSA-87 (2-3 months)
+2. Svalinn: Add PQ-TLS (Kyber-1024) (1-2 months)
+3. Vörðr: Link Cerro Torre crypto (1 month)
+4. Spec: Draft v1.0 with PQ requirements (1 month)
+
+**Timeline:** 6-9 months to full svalinn-project compliance across all components.
+
+**Out of Scope:** ~30% of svalinn-project spec (passwords, VM, some accessibility) doesn't apply to container tooling.

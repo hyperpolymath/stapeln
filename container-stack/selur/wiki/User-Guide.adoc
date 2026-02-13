@@ -1,0 +1,647 @@
+= User Guide
+:toc:
+:toclevels: 3
+
+Comprehensive guide to using selur for zero-copy IPC between Svalinn and Vörðr.
+
+== Overview
+
+selur is a bridge that provides zero-copy inter-process communication using:
+
+* **WASM linear memory** - Shared memory between host (Svalinn) and guest (Vörðr)
+* **Ephapax linear types** - Compile-time memory safety
+* **Idris2 formal proofs** - Mathematical correctness guarantees
+
+=== Use Cases
+
+* **Container orchestration** - Zero-copy communication between gateway and orchestrator
+* **High-performance IPC** - 7-20x faster than JSON/HTTP
+* **Safety-critical systems** - Formally verified correctness
+* **Resource-constrained environments** - Minimal memory overhead
+
+== Core Concepts
+
+=== The Bridge
+
+The `Bridge` struct is your main interface to selur:
+
+[source,rust]
+----
+pub struct Bridge {
+    // Wasmtime runtime components (hidden)
+}
+
+impl Bridge {
+    pub fn new(wasm_path: impl AsRef<Path>) -> Result<Self>;
+    pub fn send_request(&mut self, request: &[u8]) -> Result<Vec<u8>>;
+    pub fn memory_size(&mut self) -> Result<usize>;
+}
+----
+
+=== Request/Response Protocol
+
+==== Request Format
+
+[source]
+----
+Bytes:  0        1                5              5+N
+       +--------+----------------+--------------+
+       | Cmd    | Payload Length | Payload      |
+       | 1 byte | 4 bytes (LE)   | N bytes      |
+       +--------+----------------+--------------+
+----
+
+Example - CREATE_CONTAINER for "nginx:latest":
+
+[source,rust]
+----
+let mut request = Vec::new();
+request.push(0x01);                           // Command: CREATE_CONTAINER
+request.extend_from_slice(&12u32.to_le_bytes()); // Length: 12
+request.extend_from_slice(b"nginx:latest");   // Payload: "nginx:latest"
+// Result: [0x01, 0x0C, 0x00, 0x00, 0x00, 'n', 'i', 'n', 'g', 'x', ':', 'l', 'a', 't', 'e', 's', 't']
+----
+
+==== Response Format
+
+[source]
+----
+Bytes:  0        1                5              5+N
+       +--------+----------------+--------------+
+       | Status | Payload Length | Payload      |
+       | 1 byte | 4 bytes (LE)   | N bytes      |
+       +--------+----------------+--------------+
+----
+
+Example - Success with container ID:
+
+[source,rust]
+----
+let response = bridge.send_request(&request)?;
+let status = response[0];           // 0x00 = Success
+let len = u32::from_le_bytes(response[1..5].try_into()?);
+let payload = &response[5..5+len as usize];  // Container ID bytes
+----
+
+=== Command Codes
+
+[cols="1,1,3"]
+|===
+| Code | Command | Description
+
+| `0x01`
+| CREATE_CONTAINER
+| Create a new container from image reference
+
+| `0x02`
+| START_CONTAINER
+| Start an existing container by ID
+
+| `0x03`
+| STOP_CONTAINER
+| Stop a running container gracefully
+
+| `0x04`
+| INSPECT_CONTAINER
+| Get container state and configuration
+
+| `0x05`
+| DELETE_CONTAINER
+| Delete a stopped container
+
+| `0x06`
+| LIST_CONTAINERS
+| List all containers (no payload needed)
+|===
+
+=== Error Codes
+
+[cols="1,1,3"]
+|===
+| Code | Name | Description
+
+| `0x00`
+| Success
+| Operation completed successfully
+
+| `0x01`
+| InvalidRequest
+| Request format invalid or payload too large (>1MB)
+
+| `0x02`
+| ContainerNotFound
+| Container ID does not exist
+
+| `0x03`
+| PermissionDenied
+| Insufficient permissions for operation
+|===
+
+Access error codes in Rust:
+
+[source,rust]
+----
+use selur::ErrorCode;
+
+let status = ErrorCode::from_u32(response[0] as u32);
+match status {
+    Some(ErrorCode::Success) => println!("Success!"),
+    Some(ErrorCode::InvalidRequest) => eprintln!("Invalid request"),
+    Some(ErrorCode::ContainerNotFound) => eprintln!("Container not found"),
+    Some(ErrorCode::PermissionDenied) => eprintln!("Permission denied"),
+    None => eprintln!("Unknown error code"),
+}
+
+// Or use Display:
+println!("Status: {}", status.unwrap());  // Prints "Success", "InvalidRequest", etc.
+----
+
+== Common Operations
+
+=== Initialize Bridge
+
+[source,rust]
+----
+use selur::Bridge;
+use anyhow::Result;
+
+fn main() -> Result<()> {
+    let mut bridge = Bridge::new("zig-out/bin/selur.wasm")?;
+
+    // Check memory is available
+    let memory_size = bridge.memory_size()?;
+    assert!(memory_size >= 1048576);  // 1 MB minimum
+
+    Ok(())
+}
+----
+
+=== Create Container
+
+[source,rust]
+----
+fn create_container(bridge: &mut Bridge, image: &str) -> Result<Vec<u8>> {
+    let mut request = Vec::new();
+    request.push(0x01);  // CREATE_CONTAINER
+
+    let payload = image.as_bytes();
+    request.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    request.extend_from_slice(payload);
+
+    let response = bridge.send_request(&request)?;
+
+    // Check status
+    if response[0] != 0x00 {
+        anyhow::bail!("Create failed: {}",
+            ErrorCode::from_u32(response[0] as u32).unwrap());
+    }
+
+    // Extract container ID
+    let len = u32::from_le_bytes(response[1..5].try_into()?);
+    let container_id = response[5..5+len as usize].to_vec();
+
+    Ok(container_id)
+}
+
+// Usage
+let container_id = create_container(&mut bridge, "nginx:latest")?;
+println!("Created container: {:?}", String::from_utf8_lossy(&container_id));
+----
+
+=== Start Container
+
+[source,rust]
+----
+fn start_container(bridge: &mut Bridge, container_id: &[u8]) -> Result<()> {
+    let mut request = Vec::new();
+    request.push(0x02);  // START_CONTAINER
+    request.extend_from_slice(&(container_id.len() as u32).to_le_bytes());
+    request.extend_from_slice(container_id);
+
+    let response = bridge.send_request(&request)?;
+
+    match ErrorCode::from_u32(response[0] as u32) {
+        Some(ErrorCode::Success) => Ok(()),
+        Some(ErrorCode::ContainerNotFound) =>
+            anyhow::bail!("Container not found"),
+        other => anyhow::bail!("Start failed: {:?}", other),
+    }
+}
+----
+
+=== Stop Container
+
+[source,rust]
+----
+fn stop_container(bridge: &mut Bridge, container_id: &[u8]) -> Result<()> {
+    let mut request = Vec::new();
+    request.push(0x03);  // STOP_CONTAINER
+    request.extend_from_slice(&(container_id.len() as u32).to_le_bytes());
+    request.extend_from_slice(container_id);
+
+    let response = bridge.send_request(&request)?;
+
+    if response[0] == 0x00 {
+        Ok(())
+    } else {
+        anyhow::bail!("Stop failed: {}",
+            ErrorCode::from_u32(response[0] as u32).unwrap())
+    }
+}
+----
+
+=== Inspect Container
+
+[source,rust]
+----
+fn inspect_container(bridge: &mut Bridge, container_id: &[u8]) -> Result<String> {
+    let mut request = Vec::new();
+    request.push(0x04);  // INSPECT_CONTAINER
+    request.extend_from_slice(&(container_id.len() as u32).to_le_bytes());
+    request.extend_from_slice(container_id);
+
+    let response = bridge.send_request(&request)?;
+
+    if response[0] != 0x00 {
+        anyhow::bail!("Inspect failed");
+    }
+
+    // Parse state payload
+    let len = u32::from_le_bytes(response[1..5].try_into()?);
+    let state_bytes = &response[5..5+len as usize];
+
+    // State format is implementation-defined
+    // Could be JSON, MessagePack, etc.
+    let state = String::from_utf8_lossy(state_bytes).to_string();
+
+    Ok(state)
+}
+----
+
+=== List Containers
+
+[source,rust]
+----
+fn list_containers(bridge: &mut Bridge) -> Result<Vec<String>> {
+    let mut request = Vec::new();
+    request.push(0x06);  // LIST_CONTAINERS
+    request.extend_from_slice(&0u32.to_le_bytes());  // No payload
+
+    let response = bridge.send_request(&request)?;
+
+    if response[0] != 0x00 {
+        anyhow::bail!("List failed");
+    }
+
+    // Parse container list from payload
+    let len = u32::from_le_bytes(response[1..5].try_into()?);
+    let list_bytes = &response[5..5+len as usize];
+
+    // Format: newline-separated container IDs
+    let containers = String::from_utf8_lossy(list_bytes)
+        .lines()
+        .map(String::from)
+        .collect();
+
+    Ok(containers)
+}
+----
+
+== Advanced Usage
+
+=== Batch Operations
+
+For efficiency, reuse the `Bridge` instance:
+
+[source,rust]
+----
+fn batch_create(bridge: &mut Bridge, images: &[&str]) -> Result<Vec<Vec<u8>>> {
+    let mut container_ids = Vec::new();
+
+    for image in images {
+        let id = create_container(bridge, image)?;
+        container_ids.push(id);
+    }
+
+    Ok(container_ids)
+}
+
+// Usage
+let images = ["nginx:latest", "redis:alpine", "postgres:16"];
+let ids = batch_create(&mut bridge, &images)?;
+----
+
+=== Request Size Limits
+
+selur enforces a maximum request size of 1 MB (1048576 bytes):
+
+[source,rust]
+----
+const MAX_REQUEST_SIZE: usize = 1048576;
+
+fn check_request_size(payload: &[u8]) -> Result<()> {
+    let total_size = 1 + 4 + payload.len();  // cmd + len + payload
+
+    if total_size > MAX_REQUEST_SIZE {
+        anyhow::bail!("Request too large: {} bytes (max: {})",
+            total_size, MAX_REQUEST_SIZE);
+    }
+
+    Ok(())
+}
+----
+
+=== Error Handling Patterns
+
+==== Pattern 1: Match on ErrorCode
+
+[source,rust]
+----
+let response = bridge.send_request(&request)?;
+
+match ErrorCode::from_u32(response[0] as u32) {
+    Some(ErrorCode::Success) => {
+        // Handle success
+    }
+    Some(ErrorCode::InvalidRequest) => {
+        // Handle invalid request
+    }
+    Some(ErrorCode::ContainerNotFound) => {
+        // Handle not found
+    }
+    Some(ErrorCode::PermissionDenied) => {
+        // Handle permission error
+    }
+    None => {
+        // Unknown error code
+    }
+}
+----
+
+==== Pattern 2: Early Return
+
+[source,rust]
+----
+fn operation(bridge: &mut Bridge) -> Result<()> {
+    let response = bridge.send_request(&request)?;
+
+    if response[0] != 0x00 {
+        let code = ErrorCode::from_u32(response[0] as u32)
+            .unwrap_or_else(|| panic!("Unknown error: {}", response[0]));
+        anyhow::bail!("Operation failed: {}", code);
+    }
+
+    // Continue with success case
+    Ok(())
+}
+----
+
+==== Pattern 3: Custom Error Type
+
+[source,rust]
+----
+#[derive(Debug)]
+enum SelurError {
+    InvalidRequest,
+    ContainerNotFound,
+    PermissionDenied,
+    Unknown(u32),
+}
+
+impl From<u8> for SelurError {
+    fn from(code: u8) -> Self {
+        match ErrorCode::from_u32(code as u32) {
+            Some(ErrorCode::InvalidRequest) => Self::InvalidRequest,
+            Some(ErrorCode::ContainerNotFound) => Self::ContainerNotFound,
+            Some(ErrorCode::PermissionDenied) => Self::PermissionDenied,
+            _ => Self::Unknown(code as u32),
+        }
+    }
+}
+----
+
+=== Memory Management
+
+The `Bridge` manages WASM memory automatically:
+
+[source,rust]
+----
+{
+    let mut bridge = Bridge::new("selur.wasm")?;
+
+    // Memory is allocated when Bridge is created
+    println!("Memory size: {}", bridge.memory_size()?);
+
+    // Use bridge...
+    bridge.send_request(&request)?;
+
+} // Memory is automatically freed when Bridge is dropped
+----
+
+For long-running applications, consider memory monitoring:
+
+[source,rust]
+----
+loop {
+    let response = bridge.send_request(&request)?;
+
+    // Periodic memory check
+    if iterations % 1000 == 0 {
+        let mem = bridge.memory_size()?;
+        assert_eq!(mem, 1048576, "Memory leaked!");
+    }
+
+    iterations += 1;
+}
+----
+
+== Performance Tuning
+
+=== Pre-allocate Buffers
+
+[source,rust]
+----
+// Good: Pre-allocate with known capacity
+let mut request = Vec::with_capacity(1 + 4 + image.len());
+request.push(0x01);
+request.extend_from_slice(&(image.len() as u32).to_le_bytes());
+request.extend_from_slice(image.as_bytes());
+
+// Less efficient: Multiple reallocations
+let mut request = Vec::new();  // Capacity 0, will reallocate
+request.push(0x01);            // Realloc to 1
+request.extend_from_slice(...);  // Realloc to N
+----
+
+=== Minimize Allocations
+
+[source,rust]
+----
+// Reuse request buffer
+let mut request_buf = Vec::with_capacity(1024);
+
+for image in images {
+    request_buf.clear();  // Don't deallocate, just reset length
+
+    request_buf.push(0x01);
+    request_buf.extend_from_slice(&(image.len() as u32).to_le_bytes());
+    request_buf.extend_from_slice(image.as_bytes());
+
+    let response = bridge.send_request(&request_buf)?;
+    // Process response...
+}
+----
+
+=== Use Release Builds
+
+Development builds are ~10x slower:
+
+[source,bash]
+----
+# Debug build (slow)
+cargo build
+cargo run --example basic
+
+# Release build (fast)
+cargo build --release
+cargo run --release --example basic
+----
+
+=== Benchmark Your Code
+
+Use the included benchmark framework:
+
+[source,bash]
+----
+cargo bench
+
+# Output:
+# wasm_ipc/100           time: [8.2 μs 8.5 μs 8.9 μs]
+# wasm_ipc/1000          time: [12.1 μs 12.4 μs 12.8 μs]
+# wasm_ipc/10000         time: [45.3 μs 46.1 μs 47.2 μs]
+----
+
+Compare to JSON/HTTP baseline to verify speedup.
+
+== Best Practices
+
+=== 1. Validate Input
+
+Always validate before sending:
+
+[source,rust]
+----
+fn create_container_safe(bridge: &mut Bridge, image: &str) -> Result<Vec<u8>> {
+    // Validate image name
+    if image.is_empty() {
+        anyhow::bail!("Image name cannot be empty");
+    }
+
+    if image.len() > 1048000 {  // Leave room for command + length
+        anyhow::bail!("Image name too long");
+    }
+
+    // Proceed with request...
+    create_container(bridge, image)
+}
+----
+
+=== 2. Handle All Error Cases
+
+[source,rust]
+----
+match ErrorCode::from_u32(response[0] as u32) {
+    Some(ErrorCode::Success) => { /* ... */ },
+    Some(error) => {
+        log::error!("Request failed: {}", error);
+        // Take corrective action
+    },
+    None => {
+        log::error!("Unknown error code: {}", response[0]);
+        // Fail safely
+    },
+}
+----
+
+=== 3. Log Operations
+
+[source,rust]
+----
+use log::{info, error};
+
+let response = bridge.send_request(&request)?;
+
+if response[0] == 0x00 {
+    info!("Container created successfully");
+} else {
+    error!("Container creation failed: {}",
+        ErrorCode::from_u32(response[0] as u32).unwrap());
+}
+----
+
+=== 4. Use Type Safety
+
+Wrap raw operations in type-safe functions:
+
+[source,rust]
+----
+struct ContainerId(Vec<u8>);
+
+impl ContainerId {
+    fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+fn create_container_typed(bridge: &mut Bridge, image: &str)
+    -> Result<ContainerId>
+{
+    let id_bytes = create_container(bridge, image)?;
+    Ok(ContainerId(id_bytes))
+}
+
+fn start_container_typed(bridge: &mut Bridge, id: &ContainerId)
+    -> Result<()>
+{
+    start_container(bridge, id.as_bytes())
+}
+----
+
+=== 5. Test Error Paths
+
+[source,rust]
+----
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_oversized_request() {
+        let mut bridge = Bridge::new("selur.wasm").unwrap();
+        let huge_payload = vec![0u8; 2_000_000];  // 2 MB
+
+        let result = bridge.send_request(&huge_payload);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_container_not_found() {
+        let mut bridge = Bridge::new("selur.wasm").unwrap();
+        let fake_id = b"nonexistent";
+
+        let result = start_container(&mut bridge, fake_id);
+        assert!(result.is_err());
+    }
+}
+----
+
+== Troubleshooting
+
+See link:Troubleshooting.adoc[Troubleshooting Guide] for common issues and solutions.
+
+== Next Steps
+
+* link:Integration-Guide.adoc[Integration Guide] - Integrate with Svalinn/Vörðr
+* link:../docs/API.adoc[API Reference] - Complete API documentation
+* link:../docs/ARCHITECTURE.adoc[Architecture] - Understand internals
+* link:FAQ.adoc[FAQ] - Frequently asked questions

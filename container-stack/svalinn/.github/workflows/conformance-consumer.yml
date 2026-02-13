@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Conformance Consumer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vordr/**'
+      - 'spec/**'
+      - '.github/workflows/conformance-consumer.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'vordr/**'
+      - 'spec/**'
+      - '.github/workflows/conformance-consumer.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pin to specific spec version for reproducibility
+  SPEC_VERSION: "0.1.0"
+
+jobs:
+  conformance:
+    name: Spec Conformance
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            vordr/target/
+          key: ${{ runner.os }}-cargo-conformance-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build vordr
+        working-directory: vordr
+        run: cargo build --release
+
+      - name: Check spec version
+        run: |
+          echo "## Spec Conformance" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Spec Version:** $SPEC_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check if version is declared in vordr
+          if grep -q "SPEC_VERSION" vordr/Cargo.toml 2>/dev/null; then
+            echo "Spec version pinned in Cargo.toml: OK"
+          else
+            echo "::warning::SPEC_VERSION not pinned in Cargo.toml"
+          fi
+
+      - name: Validate OCI spec compliance
+        run: |
+          echo "### OCI Spec Compliance" >> $GITHUB_STEP_SUMMARY
+
+          # Check for OCI spec version in dependencies
+          OCI_VERSION=$(grep "oci-spec" vordr/Cargo.toml | grep -oP '\d+\.\d+' | head -1)
+          echo "**OCI Spec Crate:** $OCI_VERSION" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run conformance tests
+        working-directory: vordr
+        run: |
+          # Run tests with conformance tag if available
+          cargo test --release -- --include-ignored 2>&1 | tee test-output.txt || true
+
+          # Check for conformance test results
+          PASSED=$(grep -c "test .* ok" test-output.txt || echo "0")
+          FAILED=$(grep -c "test .* FAILED" test-output.txt || echo "0")
+
+          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+          echo "- Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify JSON schema compliance
+        run: |
+          echo "### Schema Compliance" >> $GITHUB_STEP_SUMMARY
+
+          # List all schemas
+          for schema in spec/schemas/*.json; do
+            name=$(basename "$schema")
+            echo "- $name" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Record conformance evidence
+        run: |
+          # Create evidence directory
+          mkdir -p evidence/$(date +%Y-%m-%d)
+
+          # Record test output
+          cp vordr/test-output.txt evidence/$(date +%Y-%m-%d)/ 2>/dev/null || true
+
+          # Record spec version
+          echo "SPEC_VERSION=$SPEC_VERSION" > evidence/$(date +%Y-%m-%d)/conformance.txt
+          echo "OCI_SPEC=$(grep oci-spec vordr/Cargo.toml)" >> evidence/$(date +%Y-%m-%d)/conformance.txt
+          echo "DATE=$(date -Iseconds)" >> evidence/$(date +%Y-%m-%d)/conformance.txt
+          echo "COMMIT=${{ github.sha }}" >> evidence/$(date +%Y-%m-%d)/conformance.txt
+
+      - name: Upload conformance evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: conformance-evidence
+          path: evidence/

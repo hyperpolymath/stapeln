@@ -1,0 +1,68 @@
+# Build outputs
+target/
+_build/
+build/
+*.o
+*.a
+*.so
+
+# Idris2
+*.ibc
+*.ttc
+build/
+
+# Rust
+Cargo.lock
+debug/
+*.rlib
+*.rmeta
+
+# Elixir
+_build/
+deps/
+*.ez
+*.beam
+erl_crash.dump
+
+# Ada
+*.ali
+*.bexch
+obj/
+
+# ReScript
+*.bs.js
+*.res.js
+lib/bs/
+.bsb.lock
+
+# Node (for ReScript tooling only)
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (should never be committed)
+*.pem
+*.key
+.env
+.env.*
+
+# Test artifacts
+coverage/
+*.profraw
+*.profdata
+
+# Documentation builds
+docs/_site/
+docs/.asciidoctor/
+
+# Crash recovery artifacts
+ai-cli-crash-capture/

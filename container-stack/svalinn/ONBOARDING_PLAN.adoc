@@ -1,0 +1,2449 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Doctor + Onboarding Implementation Plan
+:toc: preamble
+:toclevels: 3
+:icons: font
+
+This document outlines the implementation plan for five critical user experience and distribution features for the Svalinn/Vordr ecosystem.
+
+== Executive Summary
+
+[cols="1,2,1",options="header"]
+|===
+|Feature Area |Description |Priority
+
+|*1. Doctor Command*
+|One-command system validation with fix-forward guidance
+|P0 (Critical)
+
+|*2. Release Distribution*
+|Prebuilt binaries, checksums, install script
+|P0 (Critical)
+
+|*3. CLI UX Parity*
+|Consistent flags, output formats, exit codes, errors
+|P1 (High)
+
+|*4. Integration Tests*
+|README happy path CI validation
+|P0 (Critical)
+
+|*5. Config + Defaults*
+|XDG-compliant configuration with sane defaults
+|P1 (High)
+
+|*6. Compose Subset*
+|`compose up/down` with explicit subset support
+|P2 (Should)
+
+|*7. Credential Ergonomics*
+|`login/logout`, secret-service integration
+|P2 (Should)
+
+|*8. System Commands*
+|`system df/prune` with dry-run mode
+|P2 (Should)
+
+|*9. Shell Completions*
+|bash/zsh/fish completions + manpages
+|P2 (Should)
+
+|*10. Docker Interop*
+|Compatibility aliases, import/export
+|P2 (Should)
+
+|*11. Edge Shield UX*
+|Guided workflows, policy explanations
+|P3 (Could)
+
+|*12. TUI Dashboard*
+|lazydocker-like live container view
+|P3 (Could)
+
+|*13. Security Profiles*
+|strict/balanced/dev presets with diffing
+|P3 (Could)
+
+|*14. Cross-Platform Machine*
+|`vordr machine` for macOS/Windows
+|P3 (Could)
+|===
+
+== Feature 1: Doctor + Fix-Forward Onboarding
+
+=== Overview
+
+The `vordr doctor` (aliased as `svalinn doctor`) command performs comprehensive system validation and provides actionable fix-forward guidance.
+
+=== Implementation
+
+==== New File: `vordr/src/cli/doctor.rs`
+
+[source,rust]
+----
+pub struct DoctorArgs {
+    /// Show all checks, not just failures
+    #[arg(long)]
+    pub all: bool,
+
+    /// Output format (human, json)
+    #[arg(long, default_value = "human")]
+    pub format: OutputFormat,
+
+    /// Automatically fix issues where possible
+    #[arg(long)]
+    pub fix: bool,
+}
+----
+
+==== Check Categories
+
+===== 1. OCI Runtime Availability
+
+[cols="1,2,2",options="header"]
+|===
+|Check |Validation |Fix-Forward
+
+|youki binary
+|`which youki` or config path exists
+|`cargo install youki` or package manager command
+
+|runc fallback
+|`which runc` if youki missing
+|`apt/dnf install runc` based on distro detection
+
+|Runtime version
+|Minimum version requirements
+|Upgrade command with specific version
+
+|Runtime execution
+|Can spawn test container
+|Permission/capability guidance
+|===
+
+===== 2. Networking Backend (Netavark)
+
+[cols="1,2,2",options="header"]
+|===
+|Check |Validation |Fix-Forward
+
+|netavark binary
+|`which netavark`
+|`cargo install netavark` or package command
+
+|netavark version
+|Minimum version (1.0+)
+|Upgrade instructions
+
+|aardvark-dns (optional)
+|DNS resolution support
+|Install command for DNS resolution
+
+|Network namespace
+|Can create netns
+|Kernel module or permission guidance
+|===
+
+===== 3. Kernel/Cgroup/Userns Prerequisites
+
+[cols="1,2,2",options="header"]
+|===
+|Check |Validation |Fix-Forward
+
+|Kernel version
+|≥ 5.10 recommended
+|Upgrade kernel or note limitations
+
+|cgroup v2
+|`/sys/fs/cgroup/cgroup.controllers` exists
+|Mount instructions or boot param
+
+|User namespaces
+|`/proc/sys/kernel/unprivileged_userns_clone`
+|`sysctl -w kernel.unprivileged_userns_clone=1`
+
+|Overlay FS
+|Check `/proc/filesystems` for overlay
+|Kernel module loading guidance
+
+|Seccomp
+|`/proc/self/seccomp` exists
+|Kernel config guidance
+
+|Capabilities
+|CAP_SYS_ADMIN available (or rootless mode)
+|setcap or rootless setup instructions
+|===
+
+===== 4. State Database
+
+[cols="1,2,2",options="header"]
+|===
+|Check |Validation |Fix-Forward
+
+|DB directory
+|`/var/lib/vordr` exists and writable
+|`mkdir -p` with correct permissions
+
+|DB file
+|SQLite can open/create
+|Permission fix or path change
+
+|WAL mode
+|PRAGMA query succeeds
+|Fallback to DELETE mode instructions
+
+|NFS detection
+|Detect NFS mount for WAL concerns
+|Recommend DELETE journal mode
+|===
+
+===== 5. Gatekeeper (SPARK)
+
+[cols="1,2,2",options="header"]
+|===
+|Check |Validation |Fix-Forward
+
+|Gatekeeper loaded
+|FFI call succeeds
+|Build instructions or binary distribution
+
+|SPARK toolchain (optional)
+|gnatprove available
+|GNAT Community Edition install
+|===
+
+==== Output Format
+
+===== Human-Readable (default)
+
+[source,text]
+----
+VORDR SYSTEM CHECK
+==================
+
+Runtime
+  ✓ youki 0.3.0 found at /usr/local/bin/youki
+  ✓ Runtime can spawn containers
+
+Networking
+  ✓ netavark 1.9.0 found at /usr/local/bin/netavark
+  ⚠ aardvark-dns not found (DNS resolution will be limited)
+    → Install: cargo install aardvark-dns
+
+Kernel/Rootless
+  ✓ Kernel 6.1.0 (recommended: 5.10+)
+  ✓ cgroup v2 unified hierarchy
+  ✓ User namespaces enabled
+  ✗ Unprivileged user namespaces disabled
+    → Fix: sudo sysctl -w kernel.unprivileged_userns_clone=1
+    → Persist: echo 'kernel.unprivileged_userns_clone=1' | sudo tee /etc/sysctl.d/99-userns.conf
+
+State Database
+  ✓ /var/lib/vordr exists (writable)
+  ✓ Database initialized with WAL mode
+
+Gatekeeper
+  ✓ Gatekeeper v1.0.0 loaded (SPARK verification enabled)
+
+─────────────────────────────────────────
+SUMMARY: 1 error, 1 warning, 8 passed
+
+DO THIS NEXT:
+  sudo sysctl -w kernel.unprivileged_userns_clone=1
+----
+
+===== JSON Output
+
+[source,json]
+----
+{
+  "version": "0.1.0",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "checks": [
+    {
+      "category": "runtime",
+      "name": "youki_binary",
+      "status": "pass",
+      "message": "youki 0.3.0 found at /usr/local/bin/youki"
+    },
+    {
+      "category": "kernel",
+      "name": "unprivileged_userns",
+      "status": "fail",
+      "message": "Unprivileged user namespaces disabled",
+      "fix": {
+        "command": "sudo sysctl -w kernel.unprivileged_userns_clone=1",
+        "persist": "echo 'kernel.unprivileged_userns_clone=1' | sudo tee /etc/sysctl.d/99-userns.conf"
+      }
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "warnings": 1,
+    "errors": 1
+  },
+  "next_steps": [
+    "sudo sysctl -w kernel.unprivileged_userns_clone=1"
+  ]
+}
+----
+
+==== Auto-Fix Mode (`--fix`)
+
+When `--fix` is passed, automatically execute fixes where safe:
+
+* Create missing directories
+* Set file permissions
+* Initialize database
+* Download missing binaries (with confirmation)
+
+Unsafe operations (sysctl changes, kernel modules) provide copy/paste commands only.
+
+=== CLI Registration
+
+Add to `vordr/src/cli/mod.rs`:
+
+[source,rust]
+----
+pub mod doctor;
+
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    // ... existing commands ...
+
+    /// Check system prerequisites and configuration
+    Doctor(doctor::DoctorArgs),
+
+    // Alias for svalinn branding
+    #[command(hide = true)]
+    Check(doctor::DoctorArgs),
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/doctor.rs` (new) - Doctor command implementation
+* `vordr/src/cli/mod.rs` - Add Doctor command
+* `vordr/src/system/mod.rs` (new) - System detection utilities
+* `vordr/src/system/distro.rs` (new) - Linux distro detection
+* `vordr/src/system/kernel.rs` (new) - Kernel feature detection
+* `vordr/src/system/runtime.rs` (new) - OCI runtime detection
+
+== Feature 2: Release-Grade Distribution
+
+=== Overview
+
+Provide prebuilt binaries, checksums, signatures, and installation scripts for easy adoption.
+
+=== Binary Distribution
+
+==== Platforms
+
+[cols="1,1,1",options="header"]
+|===
+|Platform |Target |Notes
+
+|Linux x86_64
+|`x86_64-unknown-linux-gnu`
+|Primary target, glibc 2.31+
+
+|Linux x86_64 (musl)
+|`x86_64-unknown-linux-musl`
+|Static binary, maximum compatibility
+
+|Linux aarch64
+|`aarch64-unknown-linux-gnu`
+|ARM64 servers, Raspberry Pi 4+
+
+|Linux aarch64 (musl)
+|`aarch64-unknown-linux-musl`
+|Static ARM64 binary
+|===
+
+==== Build Matrix (GitHub Actions)
+
+[source,yaml]
+----
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            name: vordr-linux-x86_64
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-22.04
+            name: vordr-linux-x86_64-musl
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04
+            name: vordr-linux-aarch64
+            cross: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-22.04
+            name: vordr-linux-aarch64-musl
+            cross: true
+----
+
+=== Security Artifacts
+
+==== Checksums
+
+[source,text]
+----
+# SHA256SUMS
+a1b2c3d4...  vordr-linux-x86_64
+e5f6g7h8...  vordr-linux-x86_64-musl
+i9j0k1l2...  vordr-linux-aarch64
+m3n4o5p6...  vordr-linux-aarch64-musl
+----
+
+==== GPG Signatures
+
+* Sign checksums file with project key
+* Publish public key in repository and keyservers
+* Document verification steps
+
+==== SLSA Provenance (Future)
+
+* Generate SLSA attestations for supply chain security
+* Publish to Sigstore transparency log
+
+=== Install Script
+
+[source,bash]
+----
+#!/usr/bin/env bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Vordr Quick Install Script
+# Usage: curl -fsSL https://get.vordr.dev | bash
+
+set -euo pipefail
+
+VERSION="${VORDR_VERSION:-latest}"
+INSTALL_DIR="${VORDR_INSTALL_DIR:-/usr/local/bin}"
+
+detect_platform() {
+    local arch
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64)  echo "x86_64" ;;
+        aarch64) echo "aarch64" ;;
+        arm64)   echo "aarch64" ;;
+        *)       echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+    esac
+}
+
+detect_variant() {
+    # Prefer musl for maximum compatibility
+    if ldd --version 2>&1 | grep -q musl; then
+        echo "musl"
+    elif [ -f /etc/alpine-release ]; then
+        echo "musl"
+    else
+        echo "gnu"
+    fi
+}
+
+main() {
+    local platform variant binary_name url
+    platform=$(detect_platform)
+    variant=$(detect_variant)
+
+    if [ "$variant" = "musl" ]; then
+        binary_name="vordr-linux-${platform}-musl"
+    else
+        binary_name="vordr-linux-${platform}"
+    fi
+
+    echo "Installing Vordr ($platform, $variant)..."
+
+    if [ "$VERSION" = "latest" ]; then
+        url="https://github.com/hyperpolymath/svalinn/releases/latest/download/${binary_name}"
+    else
+        url="https://github.com/hyperpolymath/svalinn/releases/download/${VERSION}/${binary_name}"
+    fi
+
+    # Download binary
+    curl -fsSL "$url" -o /tmp/vordr
+
+    # Verify checksum
+    curl -fsSL "${url}.sha256" -o /tmp/vordr.sha256
+    echo "$(cat /tmp/vordr.sha256)  /tmp/vordr" | sha256sum -c -
+
+    # Install
+    sudo install -m 755 /tmp/vordr "$INSTALL_DIR/vordr"
+
+    echo "Vordr installed to $INSTALL_DIR/vordr"
+    echo "Run 'vordr doctor' to verify your system"
+}
+
+main "$@"
+----
+
+=== Package Distribution (Future)
+
+* Guix package definition
+* Nix flake
+* AUR package
+* Homebrew formula (for macOS if supported)
+
+=== Files to Create/Modify
+
+* `.github/workflows/release.yml` (new) - Release automation
+* `scripts/install.sh` (new) - Install script
+* `scripts/checksum.sh` (new) - Checksum generation
+* `INSTALL.adoc` (new) - Installation documentation
+
+== Feature 3: CLI UX Parity
+
+=== Overview
+
+Ensure the core container loop (`pull`, `run`, `ps`, `exec`, `stop`, `rm`) is pleasant with consistent output, flags, and errors.
+
+=== Output Formatting
+
+==== Table Output (Default)
+
+[source,text]
+----
+$ vordr ps
+CONTAINER ID   IMAGE          COMMAND     STATUS         PORTS                   NAMES
+a1b2c3d4e5f6   alpine:3.18    /bin/sh     Up 2 hours     0.0.0.0:8080->80/tcp    web-server
+g7h8i9j0k1l2   redis:7        redis-ser   Up 30 min                              cache
+----
+
+==== JSON Output (`--json`)
+
+[source,json]
+----
+$ vordr ps --json
+[
+  {
+    "id": "a1b2c3d4e5f6",
+    "image": "alpine:3.18",
+    "command": "/bin/sh",
+    "status": "running",
+    "created": "2025-01-15T08:30:00Z",
+    "ports": [{"host": 8080, "container": 80, "protocol": "tcp"}],
+    "names": ["web-server"]
+  }
+]
+----
+
+==== Stable Schema Contract
+
+Document JSON schema version and maintain backwards compatibility:
+
+[source,json]
+----
+{
+  "$schema": "https://vordr.dev/schemas/ps-v1.json",
+  "version": 1,
+  "containers": [...]
+}
+----
+
+=== Consistent Flags
+
+==== Global Flags
+
+[cols="1,2,1",options="header"]
+|===
+|Flag |Description |Default
+
+|`--json`
+|Output in JSON format
+|false
+
+|`--quiet`, `-q`
+|Only show IDs
+|false
+
+|`--verbose`, `-v`
+|Enable verbose output
+|false
+
+|`--debug`
+|Enable debug output (includes tracing)
+|false
+|===
+
+==== Container Flags (Standardized)
+
+[cols="1,2",options="header"]
+|===
+|Flag |Description
+
+|`--name NAME`
+|Container name
+
+|`-i, --interactive`
+|Keep STDIN open
+
+|`-t, --tty`
+|Allocate pseudo-TTY
+
+|`--rm`
+|Remove container on exit
+
+|`-d, --detach`
+|Run in background
+
+|`-p, --publish HOST:CONTAINER`
+|Publish port
+
+|`-v, --volume HOST:CONTAINER`
+|Mount volume
+
+|`-e, --env KEY=VALUE`
+|Set environment variable
+
+|`--entrypoint CMD`
+|Override entrypoint
+
+|`-w, --workdir DIR`
+|Working directory
+|===
+
+=== Exit Codes
+
+[cols="1,2",options="header"]
+|===
+|Code |Meaning
+
+|0
+|Success
+
+|1
+|General error
+
+|125
+|Container engine failure
+
+|126
+|Command cannot execute
+
+|127
+|Command not found (in container)
+
+|128+N
+|Container killed by signal N
+
+|137
+|Container killed (SIGKILL)
+
+|143
+|Container terminated (SIGTERM)
+|===
+
+=== Helpful Error Messages
+
+==== Runtime Not Found
+
+[source,text]
+----
+Error: Container runtime not found
+
+Looking for: youki, runc
+Searched: /usr/local/bin, /usr/bin, $PATH
+
+To fix:
+  1. Install youki:  cargo install youki
+  2. Or install runc: sudo apt install runc
+  3. Or specify path: vordr --runtime /path/to/runtime run ...
+
+Run 'vordr doctor' for full system check
+----
+
+==== Netavark Misconfigured
+
+[source,text]
+----
+Error: Network setup failed
+
+Netavark returned error: bridge device 'vordr0' creation failed
+
+Possible causes:
+  - Network namespace permissions (try as root or with newuidmap)
+  - Missing kernel module: bridge (run: sudo modprobe bridge)
+  - Conflicting bridge name (check: ip link show)
+
+To debug:
+  vordr network ls --json | jq
+  netavark --debug ...
+
+Run 'vordr doctor' for full system check
+----
+
+==== Permission Denied
+
+[source,text]
+----
+Error: Permission denied creating container
+
+Path: /var/lib/vordr/containers/a1b2c3d4
+User: myuser (uid=1000)
+Required: Write access to /var/lib/vordr
+
+To fix:
+  1. Run as root: sudo vordr run ...
+  2. Or set up rootless mode:
+     mkdir -p ~/.local/share/vordr
+     vordr --root ~/.local/share/vordr run ...
+  3. Or fix permissions:
+     sudo chown -R 1000:1000 /var/lib/vordr
+
+Run 'vordr doctor' for full system check
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/output/mod.rs` (new) - Output formatting module
+* `vordr/src/output/table.rs` (new) - Table formatter
+* `vordr/src/output/json.rs` (new) - JSON formatter
+* `vordr/src/errors/mod.rs` (new) - Error types with context
+* `vordr/src/errors/hints.rs` (new) - Error hints/suggestions
+* Modify all CLI commands to use consistent output
+
+== Feature 4: Integration Tests
+
+=== Overview
+
+CI validation of the README quick-start flow on clean runners.
+
+=== Test Categories
+
+==== Happy Path Tests
+
+[source,rust]
+----
+// tests/integration/happy_path.rs
+
+#[tokio::test]
+async fn test_readme_quick_start() {
+    // Pull image
+    let output = Command::new("vordr")
+        .args(["pull", "alpine:latest"])
+        .output()
+        .expect("pull should succeed");
+    assert!(output.status.success());
+
+    // Run container
+    let output = Command::new("vordr")
+        .args(["run", "--name", "test-container", "-d", "alpine:latest", "sleep", "300"])
+        .output()
+        .expect("run should succeed");
+    assert!(output.status.success());
+
+    // List containers
+    let output = Command::new("vordr")
+        .args(["ps"])
+        .output()
+        .expect("ps should succeed");
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("test-container"));
+
+    // Exec in container
+    let output = Command::new("vordr")
+        .args(["exec", "test-container", "echo", "hello"])
+        .output()
+        .expect("exec should succeed");
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("hello"));
+
+    // Stop container
+    let output = Command::new("vordr")
+        .args(["stop", "test-container"])
+        .output()
+        .expect("stop should succeed");
+    assert!(output.status.success());
+
+    // Remove container
+    let output = Command::new("vordr")
+        .args(["rm", "test-container"])
+        .output()
+        .expect("rm should succeed");
+    assert!(output.status.success());
+}
+----
+
+==== Networking Tests
+
+[source,rust]
+----
+#[tokio::test]
+async fn test_container_networking() {
+    // Create network
+    Command::new("vordr")
+        .args(["network", "create", "test-net"])
+        .assert()
+        .success();
+
+    // Run container on network
+    Command::new("vordr")
+        .args(["run", "--name", "net-test", "--network", "test-net", "-d", "alpine", "sleep", "60"])
+        .assert()
+        .success();
+
+    // Verify IP assignment
+    let output = Command::new("vordr")
+        .args(["inspect", "net-test", "--format", "{{.NetworkSettings.IPAddress}}"])
+        .output()
+        .unwrap();
+    let ip = String::from_utf8_lossy(&output.stdout);
+    assert!(ip.starts_with("10.") || ip.starts_with("172."));
+
+    // Cleanup
+    Command::new("vordr").args(["rm", "-f", "net-test"]).ok();
+    Command::new("vordr").args(["network", "rm", "test-net"]).ok();
+}
+----
+
+==== Registry Auth Tests
+
+[source,rust]
+----
+#[tokio::test]
+async fn test_private_registry_auth() {
+    // Set credentials (via config file in test fixture)
+    std::env::set_var("VORDR_CONFIG", "tests/fixtures/auth-config.toml");
+
+    // Pull from private registry (using test registry)
+    let output = Command::new("vordr")
+        .args(["pull", "localhost:5000/private-image:latest"])
+        .output()
+        .unwrap();
+
+    // Should succeed with valid auth
+    assert!(output.status.success());
+}
+----
+
+=== CI Configuration
+
+[source,yaml]
+----
+# .github/workflows/integration.yml
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install dependencies
+        run: |
+          # Install youki
+          cargo install youki
+
+          # Install netavark
+          cargo install netavark
+
+          # Enable user namespaces
+          sudo sysctl -w kernel.unprivileged_userns_clone=1
+
+      - name: Build Vordr
+        run: just build-vordr-quick
+
+      - name: Run doctor check
+        run: ./target/release/vordr doctor
+
+      - name: Run integration tests
+        run: cargo test --test integration -- --test-threads=1
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: /var/lib/vordr/
+----
+
+=== Files to Create/Modify
+
+* `vordr/tests/integration/mod.rs` (new) - Integration test module
+* `vordr/tests/integration/happy_path.rs` (new) - README flow tests
+* `vordr/tests/integration/networking.rs` (new) - Network tests
+* `vordr/tests/integration/registry.rs` (new) - Registry auth tests
+* `vordr/tests/integration/lifecycle.rs` (new) - Container lifecycle tests
+* `vordr/tests/fixtures/` (new) - Test fixtures directory
+* `.github/workflows/integration.yml` (new) - CI workflow
+
+== Feature 5: Stable Config + Sane Defaults
+
+=== Overview
+
+XDG-compliant configuration with clear state management and config commands.
+
+=== Directory Structure
+
+==== XDG Base Directory Compliance
+
+[cols="1,1,2",options="header"]
+|===
+|XDG Variable |Default Path |Vordr Usage
+
+|`XDG_CONFIG_HOME`
+|`~/.config`
+|`~/.config/vordr/config.toml`
+
+|`XDG_DATA_HOME`
+|`~/.local/share`
+|`~/.local/share/vordr/` (containers, images)
+
+|`XDG_STATE_HOME`
+|`~/.local/state`
+|`~/.local/state/vordr/` (logs, db)
+
+|`XDG_RUNTIME_DIR`
+|`/run/user/$UID`
+|`/run/user/$UID/vordr/` (sockets, PIDs)
+|===
+
+==== System-Wide Paths (Root Mode)
+
+[cols="1,2",options="header"]
+|===
+|Path |Purpose
+
+|`/etc/vordr/config.toml`
+|System configuration
+
+|`/var/lib/vordr/`
+|Container/image storage
+
+|`/var/lib/vordr/vordr.db`
+|State database
+
+|`/var/log/vordr/`
+|System logs
+
+|`/run/vordr/`
+|Runtime sockets
+|===
+
+=== Configuration File Format
+
+[source,toml]
+----
+# /etc/vordr/config.toml or ~/.config/vordr/config.toml
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+[engine]
+# Container runtime binary (youki or runc)
+runtime = "youki"
+# Alternative: explicit path
+# runtime = "/usr/local/bin/youki"
+
+# Root directory for container state
+root = "/var/lib/vordr"
+
+# Database path
+db = "/var/lib/vordr/vordr.db"
+
+# Database journal mode (wal or delete)
+# Use "delete" for NFS mounts
+journal_mode = "wal"
+
+[runtime]
+# Default stop timeout in seconds
+stop_timeout = 10
+
+# Default cgroup driver (cgroupfs or systemd)
+cgroup_driver = "systemd"
+
+# Enable user namespace remapping
+userns = true
+
+# Default seccomp profile (path or "default")
+seccomp = "default"
+
+[network]
+# Network backend (netavark)
+driver = "netavark"
+
+# Path to netavark binary
+netavark_path = "/usr/local/bin/netavark"
+
+# Path to aardvark-dns binary (optional)
+aardvark_dns_path = "/usr/local/bin/aardvark-dns"
+
+# Default network subnet
+default_subnet = "10.89.0.0/24"
+
+# DNS servers for containers
+dns = ["1.1.1.1", "8.8.8.8"]
+
+[registry]
+# Default registry for unqualified images
+default = "docker.io"
+
+# Mirror registries (tried in order)
+mirrors = []
+
+# Credential store (file, keyring, none)
+credential_store = "file"
+
+# Insecure registries (HTTP allowed)
+insecure = []
+
+[auth]
+# Path to auth file (~/.config/vordr/auth.json)
+auth_file = ""
+
+[[registry.credentials]]
+registry = "docker.io"
+# Credentials from: auth_file, environment, or specified here
+# username = ""
+# password = ""
+
+[logging]
+# Log level (error, warn, info, debug, trace)
+level = "info"
+
+# Log format (text, json)
+format = "text"
+
+# Log output (stderr, file, syslog)
+output = "stderr"
+
+# Log file path (when output = "file")
+file = ""
+----
+
+=== Config Commands
+
+==== `vordr config show`
+
+Display current effective configuration:
+
+[source,text]
+----
+$ vordr config show
+Configuration: /etc/vordr/config.toml
+
+engine.runtime = "youki"
+engine.root = "/var/lib/vordr"
+engine.db = "/var/lib/vordr/vordr.db"
+network.driver = "netavark"
+network.default_subnet = "10.89.0.0/24"
+...
+
+Sources:
+  /etc/vordr/config.toml (system)
+  Environment variables: VORDR_RUNTIME, VORDR_ROOT
+----
+
+==== `vordr config validate`
+
+Validate configuration file syntax and values:
+
+[source,text]
+----
+$ vordr config validate
+Checking: /etc/vordr/config.toml
+
+  ✓ TOML syntax valid
+  ✓ engine.runtime: youki found at /usr/local/bin/youki
+  ✓ engine.root: /var/lib/vordr exists and writable
+  ⚠ network.aardvark_dns_path: not found (DNS resolution limited)
+  ✓ registry.default: docker.io reachable
+
+Configuration valid (1 warning)
+----
+
+==== `vordr config edit`
+
+Open config file in `$EDITOR`:
+
+[source,bash]
+----
+$ vordr config edit
+# Opens /etc/vordr/config.toml or ~/.config/vordr/config.toml in $EDITOR
+----
+
+==== `vordr config reset`
+
+Reset to defaults:
+
+[source,bash]
+----
+$ vordr config reset
+Reset configuration to defaults? [y/N] y
+Created: ~/.config/vordr/config.toml (from defaults)
+----
+
+==== `vordr config path`
+
+Show configuration file locations:
+
+[source,text]
+----
+$ vordr config path
+System config: /etc/vordr/config.toml (not found)
+User config:   ~/.config/vordr/config.toml (active)
+Data dir:      ~/.local/share/vordr
+State dir:     ~/.local/state/vordr
+Runtime dir:   /run/user/1000/vordr
+----
+
+=== State Management
+
+==== `vordr system prune`
+
+Clean up unused resources:
+
+[source,bash]
+----
+$ vordr system prune
+This will remove:
+  - All stopped containers
+  - All unused networks
+  - All unused volumes
+  - All dangling images
+
+Space to reclaim: 2.3 GB
+
+Continue? [y/N] y
+Deleted: 5 containers, 2 networks, 1 volume, 12 images
+Reclaimed: 2.3 GB
+----
+
+==== `vordr system reset`
+
+Full reset (with confirmation):
+
+[source,bash]
+----
+$ vordr system reset
+WARNING: This will delete ALL Vordr data:
+  - All containers (running and stopped)
+  - All images
+  - All networks
+  - All volumes
+  - Configuration (optional)
+
+Type 'yes' to confirm: yes
+Stopping 2 running containers...
+Removing all data from /var/lib/vordr...
+Reset complete. Run 'vordr doctor' to verify.
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/config/mod.rs` (new) - Configuration module
+* `vordr/src/config/file.rs` (new) - TOML config parsing
+* `vordr/src/config/defaults.rs` (new) - Default values
+* `vordr/src/config/xdg.rs` (new) - XDG path resolution
+* `vordr/src/cli/config.rs` (new) - Config subcommands
+* `vordr/src/cli/system.rs` (new) - System subcommands
+* `vordr/src/cli/mod.rs` - Add Config and System commands
+* `config/vordr.example.toml` (new) - Example config file
+
+== Feature 6: Compose Subset
+
+=== Overview
+
+Provide a supported subset of Docker Compose functionality with explicit incompatibility reporting.
+
+=== Scope: Supported Subset
+
+Rather than full compose compatibility, Vordr supports a well-defined subset:
+
+==== Supported Keys
+
+[cols="1,2",options="header"]
+|===
+|Key |Notes
+
+|`version`
+|Ignored (always v3+ semantics)
+
+|`services`
+|Container definitions
+
+|`services.<name>.image`
+|Required
+
+|`services.<name>.command`
+|Override entrypoint
+
+|`services.<name>.ports`
+|Port mappings (`HOST:CONTAINER`)
+
+|`services.<name>.volumes`
+|Volume mounts
+
+|`services.<name>.environment`
+|Environment variables
+
+|`services.<name>.env_file`
+|Load from file
+
+|`services.<name>.depends_on`
+|Simple ordering (not health-based)
+
+|`services.<name>.networks`
+|Network attachment
+
+|`services.<name>.restart`
+|`no`, `always`, `on-failure`
+
+|`networks`
+|Network definitions
+
+|`volumes`
+|Named volume definitions
+|===
+
+==== Explicitly Unsupported
+
+[cols="1,2",options="header"]
+|===
+|Key |Alternative
+
+|`build`
+|Use `vordr build` or external tool
+
+|`deploy`
+|Orchestration layer (Svalinn)
+
+|`configs`
+|Use volume mounts
+
+|`secrets`
+|Use environment or files
+
+|`healthcheck`
+|Phase 2 feature
+
+|`profiles`
+|Future consideration
+|===
+
+=== Commands
+
+==== `vordr compose up`
+
+[source,text]
+----
+$ vordr compose up
+Using: ./compose.yaml
+
+Creating network vordr_default...
+Creating volume vordr_data...
+Creating container web (nginx:alpine)... done
+Creating container api (app:latest)... done
+Creating container db (postgres:15)... done
+
+Services started: 3
+----
+
+==== `vordr compose down`
+
+[source,text]
+----
+$ vordr compose down
+Stopping container db... done
+Stopping container api... done
+Stopping container web... done
+Removing containers... done
+
+Remove networks? [y/N] y
+Removing network vordr_default... done
+
+Remove volumes? [y/N] n
+Volumes retained.
+----
+
+==== `vordr compose ps`
+
+[source,text]
+----
+$ vordr compose ps
+NAME    IMAGE           STATUS      PORTS
+web     nginx:alpine    running     0.0.0.0:80->80/tcp
+api     app:latest      running     0.0.0.0:3000->3000/tcp
+db      postgres:15     running     5432/tcp
+----
+
+==== Incompatibility Reporting
+
+[source,text]
+----
+$ vordr compose up
+Using: ./compose.yaml
+
+WARNING: Unsupported compose keys detected:
+  services.api.build     → Use 'vordr build' first, then reference image
+  services.api.deploy    → Deploy config ignored (use Svalinn for orchestration)
+  services.db.healthcheck → Health checks not yet supported (coming in v0.3)
+
+Continue with supported keys? [Y/n] y
+...
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/compose.rs
+
+#[derive(Parser, Debug)]
+pub struct ComposeArgs {
+    /// Path to compose file
+    #[arg(short, long, default_value = "compose.yaml")]
+    pub file: PathBuf,
+
+    /// Project name (default: directory name)
+    #[arg(short, long)]
+    pub project_name: Option<String>,
+
+    #[command(subcommand)]
+    pub command: ComposeCommands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ComposeCommands {
+    /// Start services
+    Up {
+        /// Run in background
+        #[arg(short, long)]
+        detach: bool,
+
+        /// Don't start dependencies
+        #[arg(long)]
+        no_deps: bool,
+    },
+
+    /// Stop services
+    Down {
+        /// Remove volumes
+        #[arg(short, long)]
+        volumes: bool,
+
+        /// Remove images (local|all)
+        #[arg(long)]
+        rmi: Option<String>,
+    },
+
+    /// List containers
+    Ps {
+        /// Show all (including stopped)
+        #[arg(short, long)]
+        all: bool,
+    },
+
+    /// View logs
+    Logs {
+        /// Service name
+        service: Option<String>,
+
+        /// Follow log output
+        #[arg(short, long)]
+        follow: bool,
+    },
+
+    /// Validate compose file
+    Config {
+        /// Only check for errors
+        #[arg(long)]
+        quiet: bool,
+    },
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/compose.rs` (new) - Compose commands
+* `vordr/src/compose/mod.rs` (new) - Compose parsing
+* `vordr/src/compose/parser.rs` (new) - YAML parser
+* `vordr/src/compose/validator.rs` (new) - Key validation
+
+== Feature 7: Credential Ergonomics
+
+=== Overview
+
+User-friendly registry authentication with secure credential storage.
+
+=== Commands
+
+==== `vordr login`
+
+[source,text]
+----
+$ vordr login docker.io
+Username: myuser
+Password: ********
+
+Login succeeded.
+Credentials stored in: secret-service (freedesktop.org)
+----
+
+==== `vordr login` (stdin)
+
+[source,bash]
+----
+$ echo "$TOKEN" | vordr login --username myuser --password-stdin ghcr.io
+Login succeeded.
+----
+
+==== `vordr logout`
+
+[source,text]
+----
+$ vordr logout docker.io
+Removed credentials for docker.io
+----
+
+==== `vordr auth ls`
+
+[source,text]
+----
+$ vordr auth ls
+REGISTRY          METHOD           EXPIRES
+docker.io         secret-service   never
+ghcr.io           file             2025-02-15
+quay.io           token            2025-01-20
+----
+
+=== Credential Storage Backends
+
+[cols="1,1,2",options="header"]
+|===
+|Backend |Platform |Notes
+
+|`secret-service`
+|Linux (GNOME/KDE)
+|D-Bus Secret Service API (recommended)
+
+|`file`
+|All
+|`~/.config/vordr/auth.json` (encrypted)
+
+|`keychain`
+|macOS
+|Keychain Access (future)
+
+|`wincred`
+|Windows
+|Windows Credential Manager (future)
+
+|`pass`
+|Linux
+|pass(1) password manager
+|===
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/auth.rs
+
+#[derive(Parser, Debug)]
+pub struct LoginArgs {
+    /// Registry URL (default: docker.io)
+    #[arg(default_value = "docker.io")]
+    pub registry: String,
+
+    /// Username
+    #[arg(short, long)]
+    pub username: Option<String>,
+
+    /// Read password from stdin
+    #[arg(long)]
+    pub password_stdin: bool,
+
+    /// Credential store (secret-service, file, pass)
+    #[arg(long, default_value = "auto")]
+    pub credential_store: String,
+}
+
+#[derive(Parser, Debug)]
+pub struct LogoutArgs {
+    /// Registry URL
+    pub registry: String,
+
+    /// Remove all credentials
+    #[arg(long)]
+    pub all: bool,
+}
+----
+
+=== Error Messages
+
+[source,text]
+----
+Error: Authentication failed for ghcr.io
+
+Registry: ghcr.io
+Method:   Bearer token (from secret-service)
+Response: 401 Unauthorized - Bad credentials
+
+Possible causes:
+  - Token expired (check: vordr auth ls)
+  - Insufficient scopes (need: read:packages)
+  - Wrong account
+
+To fix:
+  vordr logout ghcr.io
+  vordr login ghcr.io
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/auth.rs` (new) - Login/logout commands
+* `vordr/src/auth/mod.rs` (new) - Auth module
+* `vordr/src/auth/store.rs` (new) - Credential storage
+* `vordr/src/auth/secret_service.rs` (new) - D-Bus integration
+
+== Feature 8: System Commands
+
+=== Overview
+
+Disk space management and cleanup commands with safety guardrails.
+
+=== Commands
+
+==== `vordr system df`
+
+[source,text]
+----
+$ vordr system df
+TYPE            TOTAL     ACTIVE    SIZE        RECLAIMABLE
+Images          15        4         2.3 GB      1.8 GB (78%)
+Containers      8         2         156 MB      98 MB (63%)
+Volumes         5         3         892 MB      245 MB (27%)
+Build Cache     -         -         0 B         0 B
+
+Total: 3.3 GB, Reclaimable: 2.1 GB (64%)
+----
+
+==== `vordr system df` (verbose)
+
+[source,text]
+----
+$ vordr system df -v
+Images:
+REPOSITORY          TAG       SIZE        CREATED         IN USE
+alpine              3.18      7.8 MB      2 weeks ago     Yes
+nginx               1.25      187 MB      3 days ago      Yes
+redis               7         138 MB      1 week ago      No
+postgres            15        412 MB      2 weeks ago     No
+<none>              <none>    892 MB      5 days ago      No
+
+Containers:
+CONTAINER ID    IMAGE           SIZE        CREATED         STATUS
+a1b2c3d4        alpine:3.18     12 KB       2 hours ago     running
+e5f6g7h8        nginx:1.25      45 MB       1 day ago       exited
+...
+----
+
+==== `vordr system prune`
+
+[source,text]
+----
+$ vordr system prune
+This will remove:
+  - All stopped containers
+  - All unused networks
+  - All dangling images
+  - All unused build cache
+
+Space to reclaim: ~1.8 GB
+
+Continue? [y/N] y
+Deleted 4 containers
+Deleted 2 networks
+Deleted 8 images
+Reclaimed: 1.76 GB
+----
+
+==== `vordr system prune` (dry-run)
+
+[source,text]
+----
+$ vordr system prune --dry-run
+DRY RUN - No changes will be made
+
+Would remove:
+  Containers:
+    - e5f6g7h8 (nginx:1.25, exited 2 days ago)
+    - i9j0k1l2 (redis:7, exited 1 week ago)
+  Networks:
+    - old-bridge (unused)
+  Images:
+    - postgres:15 (unused)
+    - <none>:<none> (dangling, 892 MB)
+
+Estimated space: 1.76 GB
+----
+
+==== `vordr system prune --all`
+
+[source,text]
+----
+$ vordr system prune --all
+WARNING: This will remove ALL unused data:
+  - All stopped containers
+  - All unused networks
+  - ALL unused images (not just dangling)
+  - All unused volumes
+  - All build cache
+
+Space to reclaim: ~2.1 GB
+
+Continue? [y/N] y
+...
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/cli/system.rs
+
+#[derive(Parser, Debug)]
+pub struct SystemArgs {
+    #[command(subcommand)]
+    pub command: SystemCommands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SystemCommands {
+    /// Show disk usage
+    Df {
+        /// Show detailed info
+        #[arg(short, long)]
+        verbose: bool,
+
+        /// Output format
+        #[arg(long, default_value = "table")]
+        format: OutputFormat,
+    },
+
+    /// Remove unused data
+    Prune {
+        /// Remove all unused images (not just dangling)
+        #[arg(short, long)]
+        all: bool,
+
+        /// Also prune volumes
+        #[arg(long)]
+        volumes: bool,
+
+        /// Don't prompt for confirmation
+        #[arg(short, long)]
+        force: bool,
+
+        /// Show what would be deleted
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Filter (e.g., until=24h, label=unused)
+        #[arg(long)]
+        filter: Vec<String>,
+    },
+
+    /// Display system info
+    Info,
+
+    /// Reset all Vordr data
+    Reset {
+        /// Don't prompt for confirmation
+        #[arg(short, long)]
+        force: bool,
+    },
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/system.rs` (new) - System commands
+
+== Feature 9: Shell Completions + Manpages
+
+=== Overview
+
+First-class shell completion support and comprehensive help.
+
+=== Shell Completions
+
+==== Generation Command
+
+[source,text]
+----
+$ vordr completion bash > /etc/bash_completion.d/vordr
+$ vordr completion zsh > ~/.zfunc/_vordr
+$ vordr completion fish > ~/.config/fish/completions/vordr.fish
+----
+
+==== Implementation (clap derive)
+
+[source,rust]
+----
+// vordr/src/cli/completion.rs
+
+use clap::CommandFactory;
+use clap_complete::{Shell, generate};
+
+#[derive(Parser, Debug)]
+pub struct CompletionArgs {
+    /// Shell to generate completions for
+    #[arg(value_enum)]
+    pub shell: Shell,
+}
+
+pub fn execute(args: CompletionArgs) -> Result<()> {
+    let mut cmd = crate::cli::Cli::command();
+    let name = cmd.get_name().to_string();
+    generate(args.shell, &mut cmd, name, &mut std::io::stdout());
+    Ok(())
+}
+----
+
+=== Enhanced Help
+
+==== `vordr help <command>`
+
+[source,text]
+----
+$ vordr help run
+vordr run - Run a container from an image
+
+USAGE:
+    vordr run [OPTIONS] IMAGE [COMMAND] [ARGS]...
+
+EXAMPLES:
+    # Run an interactive shell
+    vordr run -it alpine /bin/sh
+
+    # Run detached with port mapping
+    vordr run -d -p 8080:80 --name web nginx
+
+    # Run with volume mount
+    vordr run -v /host/path:/container/path alpine cat /container/path/file
+
+    # Run with environment variables
+    vordr run -e DB_HOST=localhost -e DB_PORT=5432 myapp
+
+    # Run and remove on exit
+    vordr run --rm alpine echo "hello"
+
+OPTIONS:
+    -d, --detach              Run in background
+    -i, --interactive         Keep STDIN open
+    -t, --tty                 Allocate pseudo-TTY
+    --rm                      Remove container on exit
+    --name NAME               Container name
+    -p, --publish HOST:CONT   Publish port
+    -v, --volume HOST:CONT    Mount volume
+    -e, --env KEY=VALUE       Set environment variable
+    -w, --workdir DIR         Working directory
+    --entrypoint CMD          Override entrypoint
+    --network NET             Connect to network
+    --user USER               Username or UID
+    --privileged              Extended privileges
+    --restart POLICY          Restart policy
+
+SEE ALSO:
+    vordr exec      Execute command in container
+    vordr ps        List containers
+    vordr stop      Stop container
+    vordr logs      View container logs
+----
+
+=== Manpage Generation
+
+[source,rust]
+----
+// Build script or separate command
+use clap_mangen::Man;
+
+fn generate_manpages() {
+    let cmd = Cli::command();
+    let man = Man::new(cmd);
+    let mut buffer = Vec::new();
+    man.render(&mut buffer)?;
+    std::fs::write("vordr.1", buffer)?;
+}
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/completion.rs` (new) - Completion generation
+* `vordr/build.rs` - Add manpage generation
+* `Cargo.toml` - Add clap_complete, clap_mangen
+
+== Feature 10: Docker Interop
+
+=== Overview
+
+Meet users where they are with optional compatibility features.
+
+=== Docker-ish Aliases
+
+==== Alias Binary (`vordr-docker`)
+
+[source,bash]
+----
+# /usr/local/bin/vordr-docker (symlink or wrapper)
+#!/bin/sh
+exec vordr "$@"
+----
+
+==== Command Aliases
+
+[source,text]
+----
+$ vordr alias enable docker
+Enabled Docker-compatible aliases:
+  docker → vordr
+  docker-compose → vordr compose
+
+To use, add to your shell:
+  eval "$(vordr alias shell-init)"
+----
+
+==== Alias Mapping
+
+[cols="1,1,1",options="header"]
+|===
+|Docker Command |Vordr Command |Notes
+
+|`docker run`
+|`vordr run`
+|Full compatibility
+
+|`docker ps`
+|`vordr ps`
+|Same flags
+
+|`docker exec`
+|`vordr exec`
+|Same flags
+
+|`docker build`
+|`vordr build`
+|Requires buildkit/buildah
+
+|`docker-compose`
+|`vordr compose`
+|Subset only
+
+|`docker system prune`
+|`vordr system prune`
+|Same behavior
+
+|`docker login`
+|`vordr login`
+|Same behavior
+|===
+
+=== Import/Export
+
+==== `vordr save` (Export)
+
+[source,bash]
+----
+$ vordr save alpine:latest -o alpine.tar
+Exporting alpine:latest... done
+Wrote: alpine.tar (7.8 MB)
+
+$ vordr save alpine:latest | gzip > alpine.tar.gz
+----
+
+==== `vordr load` (Import)
+
+[source,bash]
+----
+$ vordr load -i alpine.tar
+Loading image from alpine.tar...
+Loaded: alpine:latest
+
+$ cat alpine.tar.gz | gunzip | vordr load
+Loaded: alpine:latest
+----
+
+=== Docker Config Import
+
+==== `vordr config import-docker`
+
+[source,text]
+----
+$ vordr config import-docker
+Found Docker config: ~/.docker/config.json
+
+Import registry credentials? [y/N] y
+  Importing: docker.io... done
+  Importing: ghcr.io... done
+
+Import insecure registries? [y/N] n
+
+Docker configuration imported.
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/cli/save.rs` (new) - Save command
+* `vordr/src/cli/load.rs` (new) - Load command
+* `vordr/src/cli/alias.rs` (new) - Alias management
+* `vordr/src/compat/mod.rs` (new) - Docker compat module
+* `vordr/src/compat/docker_config.rs` (new) - Docker config import
+
+== Implementation Order
+
+=== Phase 1: Foundation (v0.2.0)
+
+1. *Config system* - Implement XDG-compliant configuration
+2. *Error framework* - Implement helpful error messages
+3. *Output formatting* - Implement table + JSON output
+4. *Shell completions* - Add clap_complete integration
+
+=== Phase 2: Doctor + System (v0.2.0)
+
+1. *System detection* - Distro, kernel, capabilities
+2. *Doctor checks* - All check categories
+3. *Fix-forward* - Actionable guidance
+4. *System df/prune* - Disk management commands
+
+=== Phase 3: Distribution (v0.2.0)
+
+1. *Release workflow* - GitHub Actions matrix build
+2. *Install script* - curl | bash installer
+3. *Checksums/signatures* - Security artifacts
+
+=== Phase 4: Testing (v0.2.0)
+
+1. *Test infrastructure* - Integration test framework
+2. *Happy path tests* - README flow validation
+3. *CI integration* - Run tests on clean runners
+
+=== Phase 5: Auth + Compose (v0.3.0)
+
+1. *Login/logout* - Registry authentication
+2. *Credential storage* - secret-service, file, pass backends
+3. *Compose subset* - up/down/ps with supported keys
+4. *Incompatibility reporting* - Clear warnings for unsupported keys
+
+=== Phase 6: Polish + Interop (v0.3.0)
+
+1. *CLI flag consistency* - Audit and standardize
+2. *Exit codes* - Implement proper exit codes
+3. *Docker aliases* - Optional compatibility layer
+4. *Save/load* - Image import/export
+5. *Documentation* - Update README and add INSTALL.adoc
+
+== Success Criteria
+
+=== Doctor Command
+
+* [ ] `vordr doctor` runs without error on clean Ubuntu 22.04
+* [ ] Detects missing dependencies with clear fix instructions
+* [ ] JSON output parseable by automation tools
+* [ ] `--fix` mode handles safe auto-fixes
+
+=== Release Distribution
+
+* [ ] Prebuilt binaries for x86_64 and aarch64
+* [ ] SHA256 checksums for all binaries
+* [ ] Install script works on Ubuntu, Debian, Fedora, Arch
+* [ ] Binary size < 20MB (static linked)
+
+=== CLI UX
+
+* [ ] All commands support `--json`
+* [ ] Exit codes match Docker conventions
+* [ ] Error messages include "Do this next" suggestions
+* [ ] `--help` comprehensive for all commands
+
+=== Integration Tests
+
+* [ ] README quick-start passes in CI
+* [ ] Network tests pass in rootless mode
+* [ ] Tests complete in < 5 minutes
+
+=== Configuration
+
+* [ ] XDG paths used correctly
+* [ ] `config show/validate/edit` work
+* [ ] Environment variables override config file
+* [ ] Rootless mode works with user-level paths
+
+=== Compose (SHOULD)
+
+* [ ] `compose up/down` works with basic compose.yaml
+* [ ] Unsupported keys generate clear warnings
+* [ ] `compose config` validates files
+* [ ] depends_on ordering works
+
+=== Credentials (SHOULD)
+
+* [ ] `login/logout` work for docker.io
+* [ ] secret-service backend works on GNOME/KDE
+* [ ] File backend works as fallback
+* [ ] Auth errors show which registry/method
+
+=== System Commands (SHOULD)
+
+* [ ] `system df` shows disk usage
+* [ ] `system prune --dry-run` shows what would be removed
+* [ ] `system prune` prompts before deletion
+* [ ] Safe against removing active resources
+
+=== Shell Completions (SHOULD)
+
+* [ ] `completion bash/zsh/fish` generates valid scripts
+* [ ] Completions include subcommands and flags
+* [ ] Manpages generated during build
+
+=== Docker Interop (SHOULD)
+
+* [ ] `save/load` round-trip works
+* [ ] Docker config import works for registries
+* [ ] Aliases can be enabled/disabled
+
+== Feature 11: Edge Shield UX Amplifier
+
+=== Overview
+
+The Svalinn edge layer (ReScript/Deno) amplifies UX by providing guided workflows and human-readable policy explanations—not a separate tool users must learn.
+
+=== Guided Workflows
+
+==== `vordr secure-run` (Interactive Hardening)
+
+[source,text]
+----
+$ vordr secure-run nginx:latest
+Analyzing image: nginx:latest
+
+Security recommendations:
+  1. [APPLIED] Drop all capabilities except NET_BIND_SERVICE
+  2. [APPLIED] Enable read-only root filesystem
+  3. [APPLIED] Run as non-root user (uid 101)
+  4. [PROMPT]  Restrict network to bridge only?
+
+Apply recommended security settings? [Y/n] y
+
+Starting container with hardened profile...
+Container 'nginx-secure-a1b2c3' running on port 8080
+----
+
+==== `vordr harden` (Analyze Running Container)
+
+[source,text]
+----
+$ vordr harden mycontainer
+Analyzing container: mycontainer
+
+Current security posture: MEDIUM (score: 65/100)
+
+Recommendations:
+  ⚠ CAP_NET_RAW enabled but not used → Drop capability
+  ⚠ Root filesystem writable → Enable read-only
+  ✓ User namespace enabled
+  ✓ Seccomp profile active
+
+Apply hardening? [y/N] y
+Recreating container with hardened settings...
+New security score: 92/100
+----
+
+==== `vordr harden-compose`
+
+[source,text]
+----
+$ vordr harden-compose compose.yaml
+Analyzing compose file...
+
+Service 'db' (postgres:15):
+  + Add: read_only: true
+  + Add: security_opt: [no-new-privileges:true]
+  + Add: cap_drop: [ALL]
+
+Service 'web' (nginx:latest):
+  + Add: user: "nginx"
+  + Add: cap_drop: [ALL]
+  + Add: cap_add: [NET_BIND_SERVICE]
+
+Write hardened compose file? [y/N] y
+Written: compose.hardened.yaml
+
+Diff:
+  --- compose.yaml
+  +++ compose.hardened.yaml
+  @@ services.db
+  +    read_only: true
+  +    security_opt:
+  +      - no-new-privileges:true
+----
+
+=== Policy Explanations
+
+==== `vordr explain` (Why Was This Blocked?)
+
+[source,text]
+----
+$ vordr run --privileged untrusted-image
+Error: Container blocked by Gatekeeper
+
+$ vordr explain
+Last rejection: 2025-01-15T10:30:00Z
+
+Gatekeeper Policy Violation:
+  Rule:    PRIVILEGED_REQUIRES_APPROVAL
+  Reason:  --privileged grants full host access
+
+What this means:
+  Privileged containers can:
+  - Access all host devices
+  - Modify kernel parameters
+  - Escape container isolation
+
+Alternatives:
+  1. Request specific capabilities instead:
+     vordr run --cap-add SYS_ADMIN ...
+
+  2. Use a security profile that allows this:
+     vordr run --profile=dev --privileged ...
+
+  3. Explicitly approve (requires confirmation):
+     vordr run --privileged --approve-privileged ...
+----
+
+==== Interactive Policy Explorer
+
+[source,text]
+----
+$ vordr policy explain CAP_SYS_ADMIN
+
+CAP_SYS_ADMIN - System Administration
+
+Allows:
+  - Mount/unmount filesystems
+  - Set hostname
+  - Load kernel modules
+  - Configure network interfaces
+
+Risk Level: HIGH
+
+Gatekeeper Rules:
+  - Requires --privileged OR explicit --cap-add
+  - Requires user namespace when running as root
+  - Blocked in 'strict' profile
+
+Used by:
+  - Nested container runtimes
+  - System management tools
+  - Some database initialization
+----
+
+=== Implementation
+
+The edge shield connects to Vordr via Unix socket and provides:
+
+1. *Policy explanation service* - Translates Gatekeeper codes to human-readable text
+2. *Security analyzer* - Inspects container configs and suggests hardening
+3. *Workflow orchestrator* - Guides users through secure patterns
+
+=== Files to Create/Modify
+
+* `svalinn/src/PolicyExplainer.res` (new) - Policy explanation logic
+* `svalinn/src/SecurityAnalyzer.res` (new) - Container security analysis
+* `svalinn/src/HardenWorkflow.res` (new) - Hardening workflow
+* `vordr/src/cli/explain.rs` (new) - CLI bridge to edge shield
+* `vordr/src/cli/harden.rs` (new) - Harden command
+
+== Feature 12: TUI Dashboard
+
+=== Overview
+
+A lightweight terminal UI (lazydocker-inspired) for live container management without Desktop-app complexity.
+
+=== Interface
+
+[source,text]
+----
+┌─ Vordr Dashboard ───────────────────────────────────────────────────────┐
+│ [C]ontainers  [I]mages  [V]olumes  [N]etworks  [L]ogs  [H]elp  [Q]uit  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ CONTAINERS (3 running, 2 stopped)                                       │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ STATUS    NAME           IMAGE           CPU    MEM     PORTS     │  │
+│ │ ▶ running web-server     nginx:1.25      2.1%   45MB    80:80     │  │
+│ │ ▶ running api-backend    myapp:latest    15.3%  256MB   3000:3000 │  │
+│ │ ▶ running postgres-db    postgres:15     0.5%   128MB   5432      │  │
+│ │ ■ exited  old-worker     worker:v1       -      -       -         │  │
+│ │ ■ exited  test-runner    alpine:3.18     -      -       -         │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ LOGS: web-server                                                        │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ 10:30:01 [info] GET /api/health 200 2ms                           │  │
+│ │ 10:30:02 [info] GET /static/app.js 200 5ms                        │  │
+│ │ 10:30:05 [info] POST /api/login 200 45ms                          │  │
+│ │ 10:30:07 [warn] Rate limit approaching for 192.168.1.100          │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ [Enter] Exec  [S]top  [R]estart  [D]elete  [P]rune  [/] Filter         │
+└─────────────────────────────────────────────────────────────────────────┘
+----
+
+=== Features
+
+==== Live Updates
+
+* Container status changes in real-time
+* CPU/memory stats updated every second
+* Log streaming with auto-scroll
+
+==== Quick Actions
+
+[cols="1,2",options="header"]
+|===
+|Key |Action
+
+|`Enter`
+|Open shell in selected container
+
+|`s`
+|Stop container
+
+|`r`
+|Restart container
+
+|`d`
+|Delete container (with confirmation)
+
+|`l`
+|Focus logs panel
+
+|`/`
+|Filter containers by name
+
+|`p`
+|Prune stopped containers
+
+|`?`
+|Show help
+|===
+
+==== Exec Terminal
+
+[source,text]
+----
+┌─ Exec: web-server ──────────────────────────────────────────────────────┐
+│ $ ls -la /etc/nginx                                                     │
+│ total 24                                                                │
+│ drwxr-xr-x 1 root root 4096 Jan 10 10:00 .                             │
+│ drwxr-xr-x 1 root root 4096 Jan 10 10:00 ..                            │
+│ -rw-r--r-- 1 root root  643 Jan 10 10:00 nginx.conf                    │
+│ drwxr-xr-x 1 root root 4096 Jan 10 10:00 conf.d                        │
+│ $                                                                       │
+│                                                                         │
+│ [Ctrl+D] Exit  [Ctrl+C] Cancel command                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+----
+
+=== Implementation
+
+[source,rust]
+----
+// vordr/src/tui/mod.rs
+
+use ratatui::{backend::CrosstermBackend, Terminal};
+
+pub struct App {
+    containers: Vec<ContainerInfo>,
+    selected: usize,
+    logs: VecDeque<String>,
+    mode: AppMode,
+}
+
+pub enum AppMode {
+    Normal,
+    Logs,
+    Exec,
+    Filter,
+    Help,
+}
+
+pub async fn run_tui(cli: &Cli) -> Result<()> {
+    let mut terminal = setup_terminal()?;
+    let mut app = App::new(cli).await?;
+
+    loop {
+        terminal.draw(|f| ui::draw(f, &app))?;
+
+        if let Event::Key(key) = event::read()? {
+            match app.handle_key(key).await? {
+                Action::Quit => break,
+                Action::Refresh => app.refresh().await?,
+                Action::None => {}
+            }
+        }
+    }
+
+    restore_terminal()?;
+    Ok(())
+}
+----
+
+=== Dependencies
+
+[source,toml]
+----
+# Cargo.toml additions
+ratatui = "0.28"
+crossterm = "0.28"
+----
+
+=== Files to Create/Modify
+
+* `vordr/src/tui/mod.rs` (new) - TUI module
+* `vordr/src/tui/app.rs` (new) - Application state
+* `vordr/src/tui/ui.rs` (new) - UI rendering
+* `vordr/src/tui/events.rs` (new) - Event handling
+* `vordr/src/cli/mod.rs` - Add `tui` command
+
+== Feature 13: Security Profiles
+
+=== Overview
+
+Predefined security profiles that bundle appropriate settings for different use cases, with explicit diffing to show what changes.
+
+=== Profiles
+
+==== `strict` - Maximum Security
+
+[source,toml]
+----
+[profile.strict]
+description = "Maximum security for production workloads"
+
+[profile.strict.capabilities]
+drop = ["ALL"]
+add = []  # Must be explicitly requested per-container
+
+[profile.strict.security]
+privileged = false
+no_new_privileges = true
+read_only_rootfs = true
+user_namespace = true
+
+[profile.strict.seccomp]
+profile = "strict"  # Custom restrictive profile
+
+[profile.strict.network]
+mode = "none"  # Must explicitly enable
+
+[profile.strict.resources]
+pids_limit = 100
+memory_limit = "512M"
+----
+
+==== `balanced` - Production Default
+
+[source,toml]
+----
+[profile.balanced]
+description = "Secure defaults with practical flexibility"
+
+[profile.balanced.capabilities]
+drop = ["ALL"]
+add = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
+
+[profile.balanced.security]
+privileged = false
+no_new_privileges = true
+read_only_rootfs = false
+user_namespace = true
+
+[profile.balanced.seccomp]
+profile = "default"
+
+[profile.balanced.network]
+mode = "bridge"
+
+[profile.balanced.resources]
+pids_limit = 500
+memory_limit = "2G"
+----
+
+==== `dev` - Development Convenience
+
+[source,toml]
+----
+[profile.dev]
+description = "Relaxed settings for development and debugging"
+
+[profile.dev.capabilities]
+drop = ["SYS_ADMIN", "NET_ADMIN"]  # Still drop dangerous ones
+add = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID", "NET_BIND_SERVICE"]
+
+[profile.dev.security]
+privileged = false  # Still blocked by default
+no_new_privileges = false  # Allow for debugging
+read_only_rootfs = false
+user_namespace = false  # Simpler for development
+
+[profile.dev.seccomp]
+profile = "unconfined"  # No seccomp restrictions
+
+[profile.dev.network]
+mode = "host"  # Allowed
+
+[profile.dev.resources]
+pids_limit = 0  # Unlimited
+memory_limit = ""  # Unlimited
+----
+
+=== CLI Usage
+
+==== Running with Profile
+
+[source,bash]
+----
+# Use strict profile
+vordr run --profile strict nginx:latest
+
+# Use dev profile for debugging
+vordr run --profile dev --cap-add SYS_PTRACE myapp:debug
+
+# Override profile settings
+vordr run --profile balanced --read-only myapp:latest
+----
+
+==== Comparing Profiles
+
+[source,text]
+----
+$ vordr profile diff strict balanced
+
+Profile Comparison: strict vs balanced
+== References
+
+* https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html[XDG Base Directory Specification]
+* https://docs.docker.com/engine/reference/commandline/cli/[Docker CLI Reference]
+* https://github.com/containers/podman[Podman - Container Engine]
+* https://rust-cli.github.io/book/[Rust CLI Book]

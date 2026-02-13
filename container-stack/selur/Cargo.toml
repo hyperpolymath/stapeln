@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+[package]
+name = "selur"
+version = "0.1.0"
+authors = ["Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"]
+edition = "2021"
+license = "PMPL-1.0-or-later"
+description = "Ephapax-linear WASM sealant - Zero-copy IPC bridge between Svalinn and Vörðr"
+homepage = "https://github.com/hyperpolymath/selur"
+repository = "https://github.com/hyperpolymath/selur"
+readme = "README.adoc"
+keywords = ["wasm", "ipc", "ephapax", "linear-types", "zero-copy"]
+categories = ["wasm", "network-programming"]
+
+[dependencies]
+wasmtime = "28.0"
+anyhow = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[lib]
+name = "selur"
+path = "src/lib.rs"
+
+[[example]]
+name = "basic"
+path = "examples/basic/main.rs"
+
+[[example]]
+name = "error_handling"
+path = "examples/error_handling/main.rs"
+
+[[bench]]
+name = "ipc_benchmark"
+harness = false

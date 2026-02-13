@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn MVP Checklist
+:toc: preamble
+:toclevels: 2
+
+This checklist scopes the MVP to a single-image CI pipeline with a policy gate
+and single-node scheduling.
+
+== MVP Targets
+
+* Single signer + single transparency log
+* Policy gate requires signer match + required predicates
+* Single-node scheduling only (local host)
+
+== Required Deliverables
+
+=== 1. Gateway API (ReScript/Deno)
+
+* [ ] `POST /verify` to validate a bundle against trust store + policy
+* [ ] `POST /run` to schedule and start a container after verification
+* [ ] JSON responses using `error-response.v1.json`
+* [ ] MVP gateway: `tools/mvp/svalinn_gateway.ts`
+
+=== 2. Gatekeeper Policy
+
+* [ ] Implement schema `spec/schemas/gatekeeper-policy.v1.json`
+* [ ] Load policy from file and enforce:
+  - required predicate types
+  - allowed signer key IDs
+  - log quorum (set to `1` for MVP)
+* [ ] MVP policy example at `spec/policy/mvp-policy.json`
+* [ ] MVP verifier helper in `tools/mvp/svalinn_gate.py`
+
+=== 3. Single-Node Scheduling
+
+* [ ] FIFO queue for pending containers
+* [ ] Local-only placement (no multi-node logic)
+* [ ] Simple status model: queued, starting, running, failed, stopped
+* [ ] MVP queue stub in `tools/mvp/svalinn_gateway.ts`
+
+=== 4. Vordr Delegation
+
+* [ ] Translate request to Vordr CLI or API
+* [ ] Capture execution metadata for audit logs
+* [ ] MVP CLI delegation from `tools/mvp/svalinn_gateway.ts`
+
+== Deferred to 1.0
+
+* Multi-log quorum enforcement (>=2)
+* Threshold signatures
+* Multi-node scheduling and service discovery
+* Authn/authz and rate limiting

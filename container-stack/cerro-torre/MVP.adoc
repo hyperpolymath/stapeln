@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: MPL-2.0-or-later
+= Cerro Torre MVP Checklist
+:toc: preamble
+:toclevels: 2
+
+This checklist scopes the MVP to producing a single verified OCI image with
+attestations suitable for CI pipelines.
+
+== MVP Targets
+
+* Single image build from a `.ctp` manifest
+* Single signer key
+* Single transparency log
+
+== Required Deliverables
+
+=== 1. Manifest Parsing
+
+* [ ] Parse minimal `.ctp` sections: `metadata`, `provenance`, `dependencies`
+* [ ] Validate required fields and hash formats
+* [ ] MVP build: `tools/mvp/ct_build.py` (minimal parser + hash check)
+
+=== 2. Build Pipeline (Golden Path)
+
+* [ ] Fetch upstream source with hash verification
+* [ ] Apply patches (if present)
+* [ ] Build with a minimal toolchain
+* [ ] Produce a rootfs directory
+* [ ] MVP pack: wrap an existing OCI image (`tools/mvp/ct_pack.py`)
+* [ ] MVP build: OCI layout output (`tools/mvp/ct_build.py`)
+
+=== 3. OCI Export
+
+* [ ] Create OCI image layout from rootfs
+* [ ] Generate OCI config JSON
+* [ ] Save to local archive or registry tag
+
+=== 4. Attestations
+
+* [ ] Generate SLSA provenance (v1 predicate)
+* [ ] Generate SPDX SBOM
+* [ ] Wrap attestations in DSSE envelopes
+* [ ] Create attestation bundle JSON
+* [ ] MVP helper: `tools/mvp/ct_mvp.py` (bootstrap until Ada core is ready)
+
+=== 5. Trust Store + Log Entry
+
+* [ ] Emit trust store with single signer key
+* [ ] Submit bundle to a single transparency log
+* [ ] Embed log inclusion proof in bundle
+* [ ] CI pipeline: `.gitlab-ci.yml` produces bundle + trust store artifacts
+
+== Deferred to 1.0
+
+* Multi-log submission and quorum
+* Threshold signatures (FROST-Ed25519)
+* Multiple importers (Fedora, Alpine, Nix)
+* Reproducible build verification at scale

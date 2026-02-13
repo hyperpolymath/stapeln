@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- Svalinn Internal Zone (for selur IPC to Vörðr) -->
+<zone>
+  <short>Svalinn Internal</short>
+  <description>Internal network zone for Svalinn-Vörðr IPC via selur WASM bridge</description>
+
+  <!-- Allow communication with Vörðr -->
+  <source address="127.0.0.1/8"/>  <!-- Loopback -->
+  <source address="10.0.0.0/8"/>   <!-- Private network -->
+  <source address="::1"/>          <!-- IPv6 loopback -->
+
+  <!-- No external services exposed on this zone -->
+
+  <!-- Allow all traffic within internal zone -->
+  <rule>
+    <accept/>
+  </rule>
+</zone>

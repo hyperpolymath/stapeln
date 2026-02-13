@@ -1,0 +1,26 @@
+{
+  "name": "svalinn-gateway",
+  "version": "0.2.0",
+  "sources": [
+    {
+      "dir": ".",
+      "subdirs": true
+    }
+  ],
+  "package-specs": [
+    {
+      "module": "esmodule",
+      "in-source": true
+    }
+  ],
+  "suffix": ".res.js",
+  "bs-dependencies": [
+    "@rescript/core"
+  ],
+  "warnings": {
+    "number": "+A-48-42"
+  },
+  "bsc-flags": [
+    "-bs-no-version-header"
+  ]
+}

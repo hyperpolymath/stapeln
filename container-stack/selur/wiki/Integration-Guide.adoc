@@ -1,0 +1,661 @@
+= Integration Guide
+:toc:
+:toclevels: 3
+
+Guide for integrating selur with Svalinn (edge gateway) and Vörðr (container orchestrator).
+
+== Overview
+
+selur provides the zero-copy IPC bridge between:
+
+* **Svalinn** - TypeScript/Deno edge gateway
+* **Vörðr** - Elixir/Rust container orchestrator
+
+----
+Svalinn (TypeScript/Deno)
+    ↓
+    | HTTP/WebSocket
+    ↓
+selur Bridge (Rust + WASM)
+    ↓
+    | Zero-copy IPC
+    ↓
+Vörðr (Elixir + Rust)
+    ↓
+    | Container operations
+    ↓
+OCI Runtime (runc, crun, etc.)
+----
+
+== Svalinn Integration
+
+=== Architecture
+
+Svalinn uses selur via Deno FFI:
+
+[source,typescript]
+----
+// Svalinn calls Rust Bridge via FFI
+const bridge = new SelurBridge("selur.wasm");
+const response = await bridge.sendRequest(request);
+
+// Bridge calls WASM module (zero-copy)
+// WASM delegates to Vörðr
+----
+
+=== Setup
+
+1. **Build selur:**
+
+[source,bash]
+----
+cd /path/to/selur
+just build
+cargo build --release
+----
+
+2. **Create Deno bindings** (TypeScript):
+
+[source,typescript]
+----
+// svalinn/src/selur_bindings.ts
+export class SelurBridge {
+    private ffi: Deno.DynamicLibrary<typeof symbols>;
+    private wasmPath: string;
+
+    constructor(wasmPath: string) {
+        this.wasmPath = wasmPath;
+
+        // Load selur Rust library via FFI
+        const symbols = {
+            bridge_new: {
+                parameters: ["buffer"],  // Path as C string
+                result: "pointer",
+            },
+            bridge_send_request: {
+                parameters: ["pointer", "buffer", "usize"],
+                result: "pointer",
+            },
+            bridge_memory_size: {
+                parameters: ["pointer"],
+                result: "usize",
+            },
+        } as const;
+
+        this.ffi = Deno.dlopen("/path/to/selur/target/release/libselur.so", symbols);
+    }
+
+    async sendRequest(request: Uint8Array): Promise<Uint8Array> {
+        // Call Rust bridge via FFI
+        // Returns response from WASM module
+    }
+}
+----
+
+3. **Use in Svalinn:**
+
+[source,typescript]
+----
+// svalinn/src/container_manager.ts
+import { SelurBridge } from "./selur_bindings.ts";
+
+export class ContainerManager {
+    private bridge: SelurBridge;
+
+    constructor() {
+        this.bridge = new SelurBridge("./selur.wasm");
+    }
+
+    async createContainer(image: string): Promise<string> {
+        // Build request
+        const request = new Uint8Array([
+            0x01,  // CREATE_CONTAINER command
+            ...this.encodeLength(image.length),
+            ...new TextEncoder().encode(image),
+        ]);
+
+        // Send via selur bridge (zero-copy)
+        const response = await this.bridge.sendRequest(request);
+
+        // Parse response
+        if (response[0] !== 0x00) {
+            throw new Error(`Container creation failed: ${response[0]}`);
+        }
+
+        const containerId = this.decodePayload(response);
+        return containerId;
+    }
+
+    private encodeLength(len: number): Uint8Array {
+        const buf = new ArrayBuffer(4);
+        new DataView(buf).setUint32(0, len, true);  // Little-endian
+        return new Uint8Array(buf);
+    }
+
+    private decodePayload(response: Uint8Array): string {
+        const len = new DataView(response.buffer).getUint32(1, true);
+        const payload = response.slice(5, 5 + len);
+        return new TextDecoder().decode(payload);
+    }
+}
+----
+
+=== Example: Svalinn HTTP Handler
+
+[source,typescript]
+----
+// svalinn/src/handlers/containers.ts
+import { ContainerManager } from "../container_manager.ts";
+
+const manager = new ContainerManager();
+
+export async function handleCreateContainer(req: Request): Promise<Response> {
+    const { image } = await req.json();
+
+    try {
+        const containerId = await manager.createContainer(image);
+
+        return new Response(JSON.stringify({
+            id: containerId,
+            status: "created",
+        }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({
+            error: error.message,
+        }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+        });
+    }
+}
+----
+
+=== Testing Svalinn Integration
+
+[source,typescript]
+----
+// svalinn/tests/selur_integration_test.ts
+import { assertEquals } from "https://deno.land/std@0.224.0/testing/asserts.ts";
+import { ContainerManager } from "../src/container_manager.ts";
+
+Deno.test("create container via selur", async () => {
+    const manager = new ContainerManager();
+
+    const containerId = await manager.createContainer("nginx:latest");
+
+    assertEquals(typeof containerId, "string");
+    assert(containerId.length > 0);
+});
+
+Deno.test("handle invalid request", async () => {
+    const manager = new ContainerManager();
+
+    await assertRejects(
+        async () => await manager.createContainer(""),
+        Error,
+        "Invalid request",
+    );
+});
+----
+
+== Vörðr Integration
+
+=== Architecture
+
+Vörðr receives requests from selur WASM module:
+
+[source]
+----
+selur WASM Module
+    ↓
+    | FFI calls
+    ↓
+Vörðr Rust NIF
+    ↓
+    | Erlang NIF
+    ↓
+Vörðr Elixir GenServer
+    ↓
+    | Container operations
+    ↓
+OCI Runtime
+----
+
+=== Setup
+
+1. **Create Rust NIF:**
+
+[source,rust]
+----
+// vordr/native/selur_nif/src/lib.rs
+use rustler::{Encoder, Env, Term};
+
+#[rustler::nif]
+fn handle_request(env: Env, request: Vec<u8>) -> Result<Vec<u8>, String> {
+    // Parse selur request
+    let command = request[0];
+    let len = u32::from_le_bytes(request[1..5].try_into()
+        .map_err(|_| "Invalid length")?);
+    let payload = &request[5..5 + len as usize];
+
+    // Dispatch based on command
+    match command {
+        0x01 => create_container(payload),
+        0x02 => start_container(payload),
+        0x03 => stop_container(payload),
+        0x04 => inspect_container(payload),
+        0x05 => delete_container(payload),
+        _ => Err(format!("Unknown command: {}", command)),
+    }
+}
+
+fn create_container(image: &[u8]) -> Result<Vec<u8>, String> {
+    let image_str = std::str::from_utf8(image)
+        .map_err(|_| "Invalid UTF-8")?;
+
+    // Call OCI runtime (runc, crun, etc.)
+    let container_id = crate::oci::create(image_str)?;
+
+    // Build response
+    let mut response = Vec::new();
+    response.push(0x00);  // Success
+    response.extend_from_slice(&(container_id.len() as u32).to_le_bytes());
+    response.extend_from_slice(container_id.as_bytes());
+
+    Ok(response)
+}
+
+rustler::init!("Elixir.Vordr.Selur.Native", [handle_request]);
+----
+
+2. **Create Elixir wrapper:**
+
+[source,elixir]
+----
+# vordr/lib/vordr/selur/native.ex
+defmodule Vordr.Selur.Native do
+  @moduledoc """
+  Rust NIF for selur integration
+  """
+
+  use Rustler, otp_app: :vordr, crate: "selur_nif"
+
+  @spec handle_request(binary()) :: {:ok, binary()} | {:error, String.t()}
+  def handle_request(_request), do: :erlang.nif_error(:nif_not_loaded)
+end
+----
+
+3. **Create Elixir bridge:**
+
+[source,elixir]
+----
+# vordr/lib/vordr/selur/bridge.ex
+defmodule Vordr.Selur.Bridge do
+  @moduledoc """
+  Elixir interface to selur bridge
+  """
+
+  alias Vordr.Selur.Native
+
+  @doc """
+  Create a container from image reference
+  """
+  def create_container(image) when is_binary(image) do
+    request = encode_create_request(image)
+
+    case Native.handle_request(request) do
+      {:ok, response} -> decode_response(response)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp encode_create_request(image) do
+    command = <<0x01>>
+    len = <<byte_size(image)::little-unsigned-integer-size(32)>>
+    command <> len <> image
+  end
+
+  defp decode_response(<<status, len::little-unsigned-integer-size(32), payload::binary>>) do
+    case status do
+      0x00 -> {:ok, binary_part(payload, 0, len)}
+      0x01 -> {:error, :invalid_request}
+      0x02 -> {:error, :not_found}
+      0x03 -> {:error, :permission_denied}
+    end
+  end
+end
+----
+
+4. **Use in Vörðr GenServer:**
+
+[source,elixir]
+----
+# vordr/lib/vordr/container/manager.ex
+defmodule Vordr.Container.Manager do
+  use GenServer
+
+  alias Vordr.Selur.Bridge
+
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  def create(image) do
+    GenServer.call(__MODULE__, {:create, image})
+  end
+
+  ## Callbacks
+
+  @impl true
+  def handle_call({:create, image}, _from, state) do
+    case Bridge.create_container(image) do
+      {:ok, container_id} ->
+        {:reply, {:ok, container_id}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+end
+----
+
+=== Testing Vörðr Integration
+
+[source,elixir]
+----
+# vordr/test/vordr/selur/bridge_test.exs
+defmodule Vordr.Selur.BridgeTest do
+  use ExUnit.Case
+
+  alias Vordr.Selur.Bridge
+
+  test "create container returns container ID" do
+    assert {:ok, container_id} = Bridge.create_container("nginx:latest")
+    assert is_binary(container_id)
+    assert byte_size(container_id) > 0
+  end
+
+  test "create container with empty image returns error" do
+    assert {:error, :invalid_request} = Bridge.create_container("")
+  end
+
+  test "start non-existent container returns error" do
+    assert {:error, :not_found} = Bridge.start_container("nonexistent")
+  end
+end
+----
+
+== End-to-End Integration
+
+=== Request Flow
+
+1. **Client sends HTTP request to Svalinn:**
+[source,bash]
+----
+curl -X POST http://svalinn.example.com/containers \
+  -H "Content-Type: application/json" \
+  -d '{"image": "nginx:latest"}'
+----
+
+2. **Svalinn creates selur request:**
+[source,typescript]
+----
+const request = encodeRequest(0x01, "nginx:latest");
+const response = await bridge.sendRequest(request);
+----
+
+3. **selur WASM processes request** (zero-copy):
+- Validates format
+- Checks size limits
+- Delegates to Vörðr
+
+4. **Vörðr receives via NIF:**
+[source,elixir]
+----
+{:ok, container_id} = Vordr.Container.Manager.create("nginx:latest")
+----
+
+5. **Vörðr calls OCI runtime:**
+[source,bash]
+----
+runc create --bundle /containers/nginx container-123
+----
+
+6. **Response flows back:**
+- Vörðr → selur WASM (zero-copy)
+- selur → Svalinn (FFI)
+- Svalinn → Client (HTTP JSON)
+
+=== Deployment
+
+**1. Build all components:**
+
+[source,bash]
+----
+# selur
+cd /path/to/selur
+just build
+cargo build --release
+
+# Svalinn
+cd /path/to/svalinn
+deno task build
+
+# Vörðr
+cd /path/to/vordr
+mix deps.get
+mix compile
+----
+
+**2. Deploy WASM module:**
+
+[source,bash]
+----
+# Copy to deployment locations
+cp selur/zig-out/bin/selur.wasm svalinn/assets/
+cp selur/zig-out/bin/selur.wasm vordr/priv/
+----
+
+**3. Deploy Rust library:**
+
+[source,bash]
+----
+# For Svalinn (Deno FFI)
+cp selur/target/release/libselur.so svalinn/lib/
+
+# For Vörðr (Elixir NIF)
+cp selur/target/release/libselur.a vordr/native/selur_nif/
+----
+
+**4. Start services:**
+
+[source,bash]
+----
+# Vörðr (backend)
+cd vordr
+mix phx.server
+
+# Svalinn (frontend)
+cd svalinn
+deno task start
+----
+
+=== Monitoring
+
+**Metrics to track:**
+
+* Request latency (Svalinn → Vörðr)
+* WASM execution time
+* Error rates
+* Memory usage
+* Container lifecycle events
+
+**Example Prometheus metrics:**
+
+[source,typescript]
+----
+// Svalinn
+export const selurRequestDuration = new Histogram({
+    name: "selur_request_duration_seconds",
+    help: "selur request duration",
+    buckets: [0.001, 0.01, 0.1, 1],
+});
+
+export const selurRequestsTotal = new Counter({
+    name: "selur_requests_total",
+    help: "Total selur requests",
+    labelNames: ["command", "status"],
+});
+----
+
+[source,elixir]
+----
+# Vörðr
+defmodule Vordr.Metrics do
+  use Prometheus.Metric
+
+  def setup do
+    Histogram.new(
+      name: :selur_request_duration_microseconds,
+      help: "selur request duration",
+      buckets: [10, 50, 100, 500, 1000]
+    )
+
+    Counter.new(
+      name: :selur_requests_total,
+      help: "Total selur requests",
+      labels: [:command, :status]
+    )
+  end
+end
+----
+
+=== Troubleshooting Integration
+
+**Common issues:**
+
+1. **FFI errors in Svalinn:**
+   - Check library path is correct
+   - Verify architecture matches (x86_64, ARM64)
+   - Check permissions on .so file
+
+2. **NIF loading errors in Vörðr:**
+   - Run `mix clean` and rebuild
+   - Check Rust toolchain version
+   - Verify `use Rustler` configuration
+
+3. **WASM module not found:**
+   - Copy selur.wasm to correct location
+   - Check file permissions
+   - Verify path in configuration
+
+4. **Performance issues:**
+   - Use release builds (not debug)
+   - Monitor with flamegraph
+   - Check for unnecessary allocations
+
+== Advanced Integration
+
+=== Custom Protocol Extensions
+
+Add custom commands to selur:
+
+1. **Define in ephapax/types.eph:**
+[source,haskell]
+----
+data Command@r
+  = ...
+  | CustomOperation Bytes@r
+----
+
+2. **Implement in Vörðr:**
+[source,elixir]
+----
+def handle_request(<<0x10, len::little-32, payload::binary>>) do
+  # Custom operation
+end
+----
+
+3. **Use from Svalinn:**
+[source,typescript]
+----
+const request = new Uint8Array([0x10, ...]);  // Custom command
+const response = await bridge.sendRequest(request);
+----
+
+=== Streaming Support (Future)
+
+For large payloads >1 MB:
+
+[source,typescript]
+----
+// Svalinn
+const stream = bridge.sendRequestStream(request);
+for await (const chunk of stream) {
+    // Process chunk
+}
+----
+
+[source,elixir]
+----
+# Vörðr
+def handle_stream(chunk, state) do
+  # Process chunk
+  {:cont, new_state}
+end
+----
+
+=== Multi-Tenant Isolation
+
+Use separate selur bridges per tenant:
+
+[source,typescript]
+----
+class TenantBridgeManager {
+    private bridges: Map<string, SelurBridge> = new Map();
+
+    getBridge(tenantId: string): SelurBridge {
+        if (!this.bridges.has(tenantId)) {
+            this.bridges.set(tenantId, new SelurBridge("selur.wasm"));
+        }
+        return this.bridges.get(tenantId)!;
+    }
+}
+----
+
+== Best Practices
+
+1. **Error Handling:**
+   - Always check response status
+   - Log errors with context
+   - Return meaningful errors to clients
+
+2. **Resource Management:**
+   - Reuse bridge instances
+   - Close connections properly
+   - Monitor memory usage
+
+3. **Security:**
+   - Validate all inputs
+   - Sanitize error messages
+   - Use TLS for Svalinn ↔ Vörðr
+
+4. **Performance:**
+   - Use release builds
+   - Pre-allocate buffers
+   - Batch requests when possible
+
+5. **Monitoring:**
+   - Track latency percentiles
+   - Alert on error rate spikes
+   - Monitor memory and CPU
+
+## Next Steps
+
+- link:User-Guide.adoc[User Guide] - selur API reference
+- link:../docs/ARCHITECTURE.adoc[Architecture] - Understand internals
+- link:Developer-Guide.adoc[Developer Guide] - Extend selur
+- link:Testing-Guide.adoc[Testing Guide] - Test your integration

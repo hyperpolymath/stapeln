@@ -1,0 +1,36 @@
+= Cerro-Torre - Citation Guide
+:toc:
+
+== BibTeX
+
+[source,bibtex]
+----
+@software{cerro-torre_2025,
+  author = {Polymath, Hyper},
+  title = {Cerro-Torre},
+  year = {2025},
+  url = {https://github.com/hyperpolymath/Cerro-Torre},
+  license = {PMPL-1.0-or-later}
+}
+----
+
+== Harvard Style
+
+Polymath, H. (2025) _Cerro-Torre_ [Computer software]. Available at: https://github.com/hyperpolymath/Cerro-Torre
+
+== OSCOLA
+
+Hyper Polymath, 'Cerro-Torre' (2025) <https://github.com/hyperpolymath/Cerro-Torre>
+
+== MLA
+
+Polymath, Hyper. "Cerro-Torre." 2025, github.com/hyperpolymath/Cerro-Torre.
+
+== APA 7
+
+Polymath, H. (2025). _Cerro-Torre_ [Computer software]. GitHub. https://github.com/hyperpolymath/Cerro-Torre
+
+== See Also
+
+* link:../CITATION.cff[CITATION.cff]
+* link:../codemeta.json[codemeta.json]

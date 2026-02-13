@@ -1,0 +1,294 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Surface Contract
+:toc: left
+:toclevels: 2
+:icons: font
+
+This document defines the stable API surfaces of Vordr/Svalinn. Changes to these surfaces require explicit migration plans and changelog entries.
+
+== Surface Categories
+
+=== Category A: CLI Interface
+
+*Stability: Stable*
+
+Changes require:
+- [ ] Changelog entry with migration notes
+- [ ] Deprecation period (minimum 2 releases)
+- [ ] `BREAKING:` prefix in commit message
+
+==== Covered Elements
+
+* Command names and subcommand structure
+* Flag names (short and long forms)
+* Positional argument order
+* Default values
+* Exit codes (see <<exit-codes>>)
+* Error message format (ERR_* codes)
+
+==== Migration Policy
+
+[source]
+----
+# Renaming a flag
+OLD: vordr run --rm
+NEW: vordr run --remove-on-exit
+
+# Migration period
+v0.3: Both work, --rm shows deprecation warning
+v0.4: --rm removed
+----
+
+=== Category B: JSON Output Schema
+
+*Stability: Stable*
+
+Changes require:
+- [ ] Schema version bump
+- [ ] Backward-compatible additions only (new fields)
+- [ ] Breaking changes require new endpoint
+
+==== Versioned Schemas
+
+Schemas live in `spec/schemas/` with version suffix:
+
+----
+spec/schemas/
+  container-info.v1.json
+  doctor-report.v1.json
+  error-response.v1.json
+----
+
+==== Schema Evolution Rules
+
+1. *Adding fields*: Always allowed
+2. *Removing fields*: Never (mark deprecated instead)
+3. *Changing field types*: Breaking, requires new version
+4. *Changing semantics*: Breaking, requires new version
+
+=== Category C: Configuration Format
+
+*Stability: Stable*
+
+The configuration file format (`~/.config/vordr/config.toml`) is stable.
+
+Changes require:
+- [ ] `vordr config migrate` command
+- [ ] Automatic migration on startup
+- [ ] Old format remains readable
+
+=== Category D: Exit Codes
+
+*Stability: Stable*
+
+[[exit-codes]]
+==== Exit Code Registry
+
+|===
+|Code |Constant |Description |Since
+
+|0
+|SUCCESS
+|Operation completed successfully
+|v0.1
+
+|1
+|ERR_GENERAL
+|General/unspecified error
+|v0.1
+
+|2
+|ERR_USAGE
+|Invalid command usage or arguments
+|v0.1
+
+|10
+|ERR_RUNTIME
+|OCI runtime error
+|v0.1
+
+|11
+|ERR_RUNTIME_NOT_FOUND
+|Runtime binary not found
+|v0.1
+
+|12
+|ERR_RUNTIME_EXEC
+|Runtime execution failed
+|v0.1
+
+|20
+|ERR_NETWORK
+|Networking error
+|v0.1
+
+|21
+|ERR_NETWORK_CONFIG
+|Invalid network configuration
+|v0.1
+
+|22
+|ERR_NETWORK_CREATE
+|Failed to create network
+|v0.1
+
+|30
+|ERR_REGISTRY
+|Registry communication error
+|v0.1
+
+|31
+|ERR_AUTH
+|Authentication failed
+|v0.1
+
+|32
+|ERR_IMAGE_NOT_FOUND
+|Image/manifest not found
+|v0.1
+
+|33
+|ERR_PULL
+|Pull operation failed
+|v0.1
+
+|40
+|ERR_STATE
+|State database error
+|v0.1
+
+|41
+|ERR_STATE_CORRUPT
+|Database corruption detected
+|v0.1
+
+|42
+|ERR_STATE_LOCKED
+|Database locked by another process
+|v0.1
+
+|50
+|ERR_POLICY
+|Policy validation error
+|v0.1
+
+|51
+|ERR_POLICY_DENIED
+|Operation denied by Gatekeeper
+|v0.1
+
+|60
+|ERR_CONFIG
+|Configuration error
+|v0.1
+
+|61
+|ERR_CONFIG_PARSE
+|Failed to parse config file
+|v0.1
+
+|62
+|ERR_CONFIG_INVALID
+|Invalid configuration value
+|v0.1
+
+|70
+|ERR_CONTAINER
+|Container operation error
+|v0.1
+
+|71
+|ERR_CONTAINER_NOT_FOUND
+|Container does not exist
+|v0.1
+
+|72
+|ERR_CONTAINER_RUNNING
+|Container already running
+|v0.1
+
+|73
+|ERR_CONTAINER_STOPPED
+|Container already stopped
+|v0.1
+|===
+
+=== Category E: Error IDs
+
+*Stability: Stable*
+
+Error messages include machine-readable IDs:
+
+----
+Error [ERR_IMAGE_NOT_FOUND]: Image 'nonexistent:latest' not found
+
+Registry: docker.io
+Image:    nonexistent:latest
+Response: 404 Not Found
+
+To fix:
+  - Check image name spelling
+  - Verify registry access: vordr login docker.io
+  - Search for available tags: vordr image search nonexistent
+----
+
+== Seam Definitions
+
+=== Seam S: Verified Container Spec (Consumer)
+
+Vordr consumes the Verified Container Spec for security policy definitions.
+
+*Pinned Version:* `SPEC_VERSION` in `vordr/Cargo.toml`
+
+*CI Check:* `conformance-consumer` job validates against spec test vectors.
+
+=== Seam C: Cerro-Torre Integration (Producer)
+
+Svalinn produces OCI bundles compatible with Cerro-Torre.
+
+*Interface:* OCI Image Spec v1.0+, OCI Runtime Spec v1.0+
+
+== Change Process
+
+=== For Surface Changes
+
+1. Open issue with `surface-change` label
+2. Document current behavior
+3. Propose new behavior with rationale
+4. Include migration plan
+5. Update this document
+6. Update changelog with `BREAKING:` or `DEPRECATED:` prefix
+
+=== PR Template Checklist
+
+When modifying surfaces:
+
+----
+## Surface Impact
+
+- [ ] No surface changes
+- [ ] CLI flag/command changes (Category A)
+- [ ] JSON output changes (Category B)
+- [ ] Config format changes (Category C)
+- [ ] Exit code changes (Category D)
+- [ ] Error ID changes (Category E)
+
+## If Surface Changes
+
+- [ ] Updated docs/surface-contract.adoc
+- [ ] Added changelog entry
+- [ ] Migration plan documented
+- [ ] Deprecation warnings added (if applicable)
+- [ ] Schema version bumped (if applicable)
+----
+
+== Version History
+
+|===
+|Version |Date |Changes
+
+|1.0
+|2025-01-15
+|Initial surface contract
+
+|===

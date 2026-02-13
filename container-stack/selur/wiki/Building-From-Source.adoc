@@ -1,0 +1,617 @@
+= Building From Source
+:toc:
+:toclevels: 3
+
+Detailed instructions for building selur from source on all platforms.
+
+== Prerequisites
+
+=== Linux
+
+[source,bash]
+----
+# Fedora/RHEL
+sudo dnf install git rust cargo zig just
+
+# Ubuntu/Debian
+sudo apt install git rustc cargo zig just
+
+# Arch
+sudo pacman -S git rust zig just
+
+# Idris2 (optional)
+# Build from source: https://github.com/idris-lang/Idris2
+----
+
+=== macOS
+
+[source,bash]
+----
+# Install Homebrew if not present
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install tools
+brew install git rust zig just
+
+# Idris2 (optional)
+brew install idris2
+----
+
+=== Windows
+
+**Option 1: Chocolatey**
+
+[source,powershell]
+----
+# Install Chocolatey: https://chocolatey.org/install
+
+choco install git rust zig just
+----
+
+**Option 2: Manual**
+
+1. **Git:** https://git-scm.com/download/win
+2. **Rust:** https://rustup.rs/
+3. **Zig:** https://ziglang.org/download/
+4. **Just:** https://github.com/casey/just/releases
+
+Add to PATH after installation.
+
+== Clone Repository
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/selur.git
+cd selur
+
+# Verify you're on main branch
+git branch
+----
+
+== Build Steps
+
+=== 1. Build WASM Module
+
+[source,bash]
+----
+# Using Just (recommended)
+just build
+
+# Or manually with Zig
+cd zig
+zig build -Doptimize=ReleaseFast wasm
+cd ..
+
+# Verify output
+ls -lh zig-out/bin/selur.wasm
+# Should be ~527KB
+----
+
+**Output:**
+----
+-rw-r--r-- 1 user user 527K Jan 25 16:00 zig-out/bin/selur.wasm
+----
+
+**Optimization levels:**
+
+- `ReleaseFast` - Best performance (default, ~527KB)
+- `ReleaseSmall` - Smallest size (~400KB)
+- `ReleaseSafe` - Safety checks enabled (~550KB)
+- `Debug` - Debug symbols (~1.2MB)
+
+Change in `zig/build.zig`:
+
+[source,zig]
+----
+const optimize = b.standardOptimizeOption(.{
+    .preferred_optimize_mode = .ReleaseSmall,  // Change here
+});
+----
+
+=== 2. Build Rust Bindings
+
+[source,bash]
+----
+# Debug build (fast compilation, slow runtime)
+cargo build
+
+# Release build (slow compilation, fast runtime)
+cargo build --release
+
+# Check without building
+cargo check
+----
+
+**Output:**
+----
+   Compiling selur v0.1.0 (/path/to/selur)
+    Finished dev [unoptimized + debuginfo] target(s) in 2.36s
+----
+
+=== 3. Run Tests
+
+[source,bash]
+----
+# Unit tests
+cargo test
+
+# Tests that require WASM (must build first)
+just build
+cargo test -- --ignored
+
+# All tests
+cargo test -- --include-ignored
+----
+
+Expected output:
+----
+running 4 tests
+test tests::test_error_code_conversion ... ok
+test tests::test_error_code_display ... ok
+test tests::test_bridge_load ... ignored
+test tests::test_send_request ... ignored
+
+test result: ok. 2 passed; 0 failed; 2 ignored
+----
+
+=== 4. Verify Formal Proofs (Optional)
+
+Requires Idris2 installed.
+
+[source,bash]
+----
+# Using Just
+just verify
+
+# Or manually
+cd idris
+idris2 --check Proofs.idr
+idris2 --check Theorems.idr
+cd ..
+----
+
+Expected output:
+----
+1/1: Building Selur.Proofs (idris/Proofs.idr)
+1/1: Building Selur.Theorems (idris/Theorems.idr)
+----
+
+=== 5. Build Examples
+
+[source,bash]
+----
+# Build all examples
+cargo build --examples
+
+# Run specific example
+cargo run --example basic
+cargo run --example error_handling
+----
+
+=== 6. Build Documentation
+
+[source,bash]
+----
+# Generate Rust API docs
+cargo doc --no-deps --open
+
+# This opens target/doc/selur/index.html in browser
+----
+
+=== 7. Run Benchmarks
+
+[source,bash]
+----
+# All benchmarks
+cargo bench
+
+# Specific benchmark
+cargo bench ipc_benchmark
+
+# Save baseline for comparison
+cargo bench -- --save-baseline my-baseline
+----
+
+== Complete Build Script
+
+Save as `build-all.sh`:
+
+[source,bash]
+----
+#!/bin/bash
+set -e
+
+echo "=== Building selur from source ==="
+
+echo "[1/6] Building WASM module..."
+just build
+
+echo "[2/6] Building Rust bindings..."
+cargo build --release
+
+echo "[3/6] Running tests..."
+cargo test --release
+
+echo "[4/6] Verifying formal proofs..."
+if command -v idris2 &> /dev/null; then
+    just verify
+else
+    echo "Idris2 not found, skipping proof verification"
+fi
+
+echo "[5/6] Building examples..."
+cargo build --release --examples
+
+echo "[6/6] Running benchmarks..."
+cargo bench
+
+echo ""
+echo "✓ Build complete!"
+echo ""
+echo "WASM module: zig-out/bin/selur.wasm"
+echo "Rust library: target/release/libselur.rlib"
+echo "Examples: target/release/examples/"
+echo ""
+echo "Next steps:"
+echo "  cargo run --release --example basic"
+echo "  cargo doc --open"
+----
+
+Make executable and run:
+
+[source,bash]
+----
+chmod +x build-all.sh
+./build-all.sh
+----
+
+== Build Configurations
+
+=== Debug Build (Development)
+
+[source,bash]
+----
+# WASM debug build
+cd zig && zig build -Doptimize=Debug wasm && cd ..
+
+# Rust debug build
+cargo build
+
+# Characteristics:
+# - Fast compilation (~2s)
+# - Slow runtime (~10x slower)
+# - Debug symbols included
+# - Assertions enabled
+# - Larger binary size
+----
+
+=== Release Build (Production)
+
+[source,bash]
+----
+# WASM release build
+cd zig && zig build -Doptimize=ReleaseFast wasm && cd ..
+
+# Rust release build
+cargo build --release
+
+# Characteristics:
+# - Slow compilation (~30s)
+# - Fast runtime
+# - Optimizations enabled
+# - Smaller binary size
+# - No debug symbols
+----
+
+=== Size-Optimized Build
+
+[source,bash]
+----
+# WASM: Edit zig/build.zig
+# Change: .preferred_optimize_mode = .ReleaseSmall
+
+# Rust: Add to Cargo.toml
+[profile.release]
+opt-level = "z"      # Optimize for size
+lto = true           # Link-time optimization
+codegen-units = 1    # Single codegen unit
+strip = true         # Strip symbols
+
+cargo build --release
+----
+
+=== Static Build (Single Binary)
+
+[source,bash]
+----
+# Linux: Static linking
+RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
+
+# macOS: Bundled binary (not fully static)
+cargo build --release
+
+# Windows: Static by default
+cargo build --release
+----
+
+== Cross-Compilation
+
+=== Linux → Windows
+
+[source,bash]
+----
+# Install target
+rustup target add x86_64-pc-windows-gnu
+
+# Install mingw
+sudo apt install mingw-w64
+
+# Build
+cargo build --release --target x86_64-pc-windows-gnu
+----
+
+=== macOS → Linux
+
+[source,bash]
+----
+# Install cross-compilation toolchain
+brew tap SergioBenitez/osxct
+brew install x86_64-unknown-linux-gnu
+
+# Add target
+rustup target add x86_64-unknown-linux-gnu
+
+# Build
+cargo build --release --target x86_64-unknown-linux-gnu
+----
+
+=== Build for ARM64
+
+[source,bash]
+----
+# Add ARM64 target
+rustup target add aarch64-unknown-linux-gnu
+
+# Install cross-compiler (Linux)
+sudo apt install gcc-aarch64-linux-gnu
+
+# Build
+cargo build --release --target aarch64-unknown-linux-gnu
+----
+
+**Note:** WASM module is architecture-independent - build once, run anywhere.
+
+== Build Customization
+
+=== Custom WASM Memory Size
+
+Edit `zig/runtime.zig`:
+
+[source,zig]
+----
+const LINEAR_MEMORY_SIZE: usize = 2 * 1024 * 1024;  // 2 MB instead of 1 MB
+----
+
+Rebuild:
+
+[source,bash]
+----
+cd zig && zig build wasm && cd ..
+----
+
+=== Custom Request Size Limit
+
+Edit `ephapax/bridge.eph`:
+
+[source,haskell]
+----
+MAX_REQUEST_SIZE :: Int
+MAX_REQUEST_SIZE = 2048576  -- 2 MB instead of 1 MB
+----
+
+Rebuild everything:
+
+[source,bash]
+----
+just build
+cargo build
+----
+
+=== Enable Additional Logging
+
+Edit `Cargo.toml`:
+
+[source,toml]
+----
+[dependencies]
+env_logger = "0.10"
+log = "0.4"
+----
+
+Add to `src/lib.rs`:
+
+[source,rust]
+----
+use log::{debug, info};
+
+impl Bridge {
+    pub fn send_request(&mut self, request: &[u8]) -> Result<Vec<u8>> {
+        debug!("Sending request: {} bytes", request.len());
+        // ... existing code ...
+        info!("Request completed successfully");
+    }
+}
+----
+
+Rebuild and run with logging:
+
+[source,bash]
+----
+cargo build
+RUST_LOG=debug cargo run --example basic
+----
+
+== Troubleshooting
+
+=== Build Failures
+
+**Zig build fails:**
+
+[source,bash]
+----
+# Clean and rebuild
+rm -rf zig-out zig-cache
+cd zig && zig build wasm && cd ..
+----
+
+**Cargo build fails:**
+
+[source,bash]
+----
+# Clean and rebuild
+cargo clean
+cargo build
+----
+
+**Dependency issues:**
+
+[source,bash]
+----
+# Update dependencies
+cargo update
+
+# Or start fresh
+rm Cargo.lock
+cargo build
+----
+
+=== Platform-Specific Issues
+
+**macOS: "xcrun: error"**
+
+[source,bash]
+----
+# Install Xcode Command Line Tools
+xcode-select --install
+----
+
+**Linux: "linker cc not found"**
+
+[source,bash]
+----
+# Install build-essential
+sudo apt install build-essential
+----
+
+**Windows: "link.exe not found"**
+
+Install Visual Studio Build Tools:
+https://visualstudio.microsoft.com/downloads/
+
+=== Performance Issues
+
+**Slow builds?**
+
+[source,toml]
+----
+# Add to .cargo/config.toml
+[build]
+jobs = 8  # Use 8 parallel jobs
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"  # Faster linker
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]  # Even faster
+----
+
+**Large binaries?**
+
+[source,bash]
+----
+# Strip symbols
+strip target/release/libselur.so
+
+# Or enable stripping in Cargo.toml
+[profile.release]
+strip = true
+----
+
+== Verification
+
+Verify your build is correct:
+
+[source,bash]
+----
+# Check WASM validity
+wasm-validate zig-out/bin/selur.wasm
+
+# Check Rust compilation
+cargo check --all-targets
+
+# Check tests pass
+cargo test --release
+
+# Check examples run
+cargo run --release --example basic
+
+# Check benchmarks compile
+cargo bench --no-run
+----
+
+All should succeed without errors.
+
+== Distribution
+
+=== Creating a Release Build
+
+[source,bash]
+----
+#!/bin/bash
+# release.sh - Create distributable release
+
+VERSION="1.0.0"
+
+# Clean previous builds
+cargo clean
+rm -rf zig-out
+
+# Build WASM
+just build
+
+# Build Rust (release mode, stripped)
+cargo build --release
+
+# Create distribution directory
+mkdir -p dist/selur-$VERSION
+cp target/release/libselur.rlib dist/selur-$VERSION/
+cp zig-out/bin/selur.wasm dist/selur-$VERSION/
+cp README.adoc LICENSE dist/selur-$VERSION/
+
+# Create tarball
+cd dist
+tar czf selur-$VERSION.tar.gz selur-$VERSION/
+cd ..
+
+echo "Release created: dist/selur-$VERSION.tar.gz"
+----
+
+=== Publishing to crates.io
+
+[source,bash]
+----
+# Update version in Cargo.toml
+# Commit changes
+git commit -am "Release v1.0.0"
+git tag v1.0.0
+
+# Publish
+cargo publish
+
+# Push tags
+git push origin v1.0.0
+----
+
+== Next Steps
+
+- link:Testing-Guide.adoc[Testing Guide] - Learn how to test your changes
+- link:Developer-Guide.adoc[Developer Guide] - Development workflow
+- link:Contributing.adoc[Contributing] - Submit your changes

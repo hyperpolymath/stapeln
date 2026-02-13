@@ -1,0 +1,70 @@
+{
+  "$schema": "../schemas/edge-policy.v1.json",
+  "version": "1.0",
+  "name": "slsa-level4",
+  "description": "Maximum SLSA Level 4 compliance policy for critical infrastructure",
+  "registries": {
+    "allow": ["ghcr.io"],
+    "deny": ["docker.io", "*.amazonaws.com"],
+    "requireSignature": true,
+    "allowedSigners": [
+      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    ]
+  },
+  "images": {
+    "allowPatterns": ["ghcr.io/hyperpolymath/verified-*"],
+    "denyPatterns": ["*:latest", "*:dev", "*:test", "*-alpha", "*-beta"],
+    "requireSbom": true,
+    "maxAgeDays": 30,
+    "maxVulnerabilities": {
+      "critical": 0,
+      "high": 0,
+      "medium": 5
+    }
+  },
+  "resources": {
+    "maxMemoryMb": 1024,
+    "maxCpuCores": 1.0,
+    "maxContainers": 10,
+    "maxStorageGb": 5
+  },
+  "security": {
+    "allowPrivileged": false,
+    "allowHostNetwork": false,
+    "allowHostPid": false,
+    "allowHostIpc": false,
+    "readOnlyRoot": true,
+    "dropCapabilities": ["ALL"],
+    "addCapabilities": [],
+    "seccompProfile": "RuntimeDefault",
+    "apparmorProfile": "runtime/default"
+  },
+  "network": {
+    "allowEgress": false,
+    "allowIngress": false,
+    "deniedPorts": [22, 23, 3389, 5432, 3306, 27017]
+  },
+  "verification": {
+    "signatureAlgorithms": ["ed25519", "ml-dsa-87"],
+    "transparencyLogs": {
+      "required": ["rekor", "sigstore", "ct-tlog"],
+      "quorum": 2
+    },
+    "sbomRequired": true,
+    "sbomFormats": ["spdx"],
+    "provenanceLevel": 4,
+    "maxSignatureAgeDays": 14,
+    "keyTrustLevel": "fulcio-verified",
+    "allowedKeyIds": [
+      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+    ],
+    "requiredPredicates": [
+      "https://slsa.dev/provenance/v1",
+      "https://spdx.dev/Document",
+      "https://in-toto.io/attestation/vulns/v0.1",
+      "https://in-toto.io/attestation/scai/attribute-report/v0.2"
+    ]
+  },
+  "notes": "SLSA Level 4 policy for critical infrastructure. Requires hermetic, reproducible builds with two-person review and hardware-secured signing keys verified through Fulcio."
+}

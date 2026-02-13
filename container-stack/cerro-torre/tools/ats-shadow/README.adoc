@@ -1,0 +1,90 @@
+= ATS Shadow Verifier (Non-authoritative)
+:status: draft
+:audience: maintainers, CI
+
+== Purpose
+
+This tool provides non-authoritative checks over canonical manifest bytes produced by the SPARK core.
+
+It MUST NOT be required for runtime correctness.
+It MAY be used in CI to detect drift or implementation bugs.
+
+== What it checks (default)
+
+* LF-only line endings (no CR)
+* file ends with exactly one LF
+* no TAB characters
+* no trailing whitespace at end of lines
+* best-effort key ordering at the same indentation level for lines that look like `key: ...`
+
+== Optional checks
+
+* Digest coupling: compares sha256 of canonical bytes to digest found in summary.json
+  Requires `sha256sum` on PATH.
+
+* Idempotence: runs an external canonicalizer and compares bytes.
+  Requires a command like: `ct canonicalize <file>`.
+
+== Usage
+
+Build (example using ats2-postiats):
+
+  patscc -O2 -DATS_MEMALLOC_LIBC -o ct-shadow main.dats
+
+Run:
+
+  ./ct-shadow canonical.ctp
+
+With digest check:
+
+  ./ct-shadow --summary summary.json --check-digest canonical.ctp
+
+With idempotence check:
+
+  ./ct-shadow --canon-cmd "ct canonicalize" --check-idempotence canonical.ctp
+
+Exit code:
+* 0 pass
+* 1 fail
+
+== Design Rationale
+
+This verifier is intentionally:
+
+* **Non-authoritative**: The SPARK core is the source of truth. This tool detects drift.
+* **Minimal**: ~300 lines of ATS2, no external dependencies except libc.
+* **Safe to remove**: If ATS2 tooling becomes unavailable, delete this directory.
+
+The language choice (ATS2) provides:
+
+* Dependent types for array bounds checking
+* Linear types for resource safety
+* Different implementation = different bugs (diversity)
+
+== CI Integration
+
+[source,yaml]
+----
+shadow-verify:
+  stage: test
+  script:
+    - patscc -O2 -DATS_MEMALLOC_LIBC -o ct-shadow tools/ats-shadow/main.dats
+    - ./ct-shadow --summary dist/summary.json --check-digest dist/canonical.ctp
+    - ./ct-shadow --canon-cmd "cerro canonicalize" --check-idempotence dist/canonical.ctp
+  allow_failure: true  # Non-authoritative
+----
+
+== Summary.json Schema
+
+The `summary.json` format is defined in `spec/summary-schema.json` (JSON Schema draft 2020-12).
+
+Key fields used by this tool:
+
+* `manifest.canonical_bytes_sha256` — SHA-256 of canonicalized .ctp bytes (for `--check-digest`)
+
+See `manifests/examples/ct-minbase.summary.json` for a complete example.
+
+== Maintenance
+
+If key ordering rules change, update `is_key_char` and `parse_key_colon` functions.
+If summary.json schema changes, update `extract_json_string_field` calls.

@@ -1,0 +1,62 @@
+{
+  "$schema": "../schemas/edge-policy.v1.json",
+  "version": "1.0",
+  "name": "hardware-key-only",
+  "description": "Policy requiring hardware-backed signing keys (HSM/Yubikey)",
+  "registries": {
+    "allow": ["ghcr.io"],
+    "deny": [],
+    "requireSignature": true,
+    "allowedSigners": [
+      "sha256:aabbccdd0011223344556677889900aabbccdd0011223344556677889900aabb",
+      "sha256:1122334455667788990011223344556677889900aabbccddeeff00112233aabb"
+    ]
+  },
+  "images": {
+    "allowPatterns": ["ghcr.io/hyperpolymath/*"],
+    "denyPatterns": ["*:latest", "*:dev", "*:test"],
+    "requireSbom": true,
+    "maxAgeDays": 45,
+    "maxVulnerabilities": {
+      "critical": 0,
+      "high": 0
+    }
+  },
+  "resources": {
+    "maxMemoryMb": 2048,
+    "maxCpuCores": 2.0,
+    "maxContainers": 25,
+    "maxStorageGb": 10
+  },
+  "security": {
+    "allowPrivileged": false,
+    "allowHostNetwork": false,
+    "allowHostPid": false,
+    "allowHostIpc": false,
+    "readOnlyRoot": true,
+    "dropCapabilities": ["ALL"],
+    "addCapabilities": [],
+    "seccompProfile": "RuntimeDefault"
+  },
+  "verification": {
+    "signatureAlgorithms": ["ed25519", "ecdsa-p256"],
+    "transparencyLogs": {
+      "required": ["rekor", "sigstore"],
+      "quorum": 1
+    },
+    "sbomRequired": true,
+    "sbomFormats": ["spdx"],
+    "provenanceLevel": 3,
+    "maxSignatureAgeDays": 45,
+    "keyTrustLevel": "hardware-backed",
+    "allowedKeyIds": [
+      "sha256:aabbccdd0011223344556677889900aabbccdd0011223344556677889900aabb",
+      "sha256:1122334455667788990011223344556677889900aabbccddeeff00112233aabb"
+    ],
+    "requiredPredicates": [
+      "https://slsa.dev/provenance/v1",
+      "https://spdx.dev/Document"
+    ]
+  },
+  "notes": "High-security policy requiring hardware-backed signing keys (HSM, Yubikey, or similar). Only specified key IDs from hardware security modules are accepted. Suitable for financial services, healthcare, and government applications."
+}

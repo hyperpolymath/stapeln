@@ -1,0 +1,460 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Selur Glued Build: selur(svalinn+vordr+ct)
+:toc: left
+:toclevels: 3
+
+== Overview
+
+The **glued build** integrates the complete verified container stack: Svalinn (HTTP gateway), Vörðr (container runtime), and Cerro Torre (bundle builder/signer) into a single deployment unit.
+
+[cols="1,1,1",options="header"]
+|===
+| Variant | Size | Use Case
+
+| selur-sv
+| ~150MB
+| Runtime only (consume pre-built .ctp bundles)
+
+| selur-sv-ct
+| ~300MB
+| Complete pipeline (build → verify → run)
+|===
+
+== Architecture
+
+----
+┌─────────────────────────────────────────────────────────────────┐
+│     selur(svalinn+vordr+ct) - Complete Verified Stack          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────┐                                              │
+│  │   Svalinn    │  HTTP :8000                                  │
+│  │   Gateway    │◄────── External Requests                     │
+│  └──────┬───────┘                                              │
+│         │                                                       │
+│         │ selur IPC 0.7ms                                      │
+│         ▼                                                       │
+│  ┌──────────────┐         ┌──────────────┐                    │
+│  │    Vörðr     │◄───────►│ Cerro Torre  │                    │
+│  │   Runtime    │  calls  │   Builder    │                    │
+│  │              │         │   (ct CLI)    │                    │
+│  └──────────────┘         └──────┬───────┘                    │
+│         │                        │                             │
+│         │                        │                             │
+│         ▼                        ▼                             │
+│    Containers              .ctp Bundles                        │
+│    (Verified)              (Signed)                            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+----
+
+== Use Cases
+
+=== 1. Complete Build Pipeline
+
+[source,bash]
+----
+# Build, sign, verify, and run in one command
+podman exec selur-sv-ct selur-svct build-and-run docker.io/library/nginx:1.26
+----
+
+Internal flow:
+1. `ct pack nginx:1.26 -o nginx.ctp` (Cerro Torre)
+2. `ct sign nginx.ctp -k release-key` (Cerro Torre)
+3. `ct verify nginx.ctp --policy strict` (Cerro Torre)
+4. `vordr run nginx.ctp` (Vörðr via Svalinn)
+
+=== 2. Offline Air-Gapped Deployment
+
+[source,bash]
+----
+# Bundle everything needed for deployment
+podman exec selur-sv-ct selur-svct bundle create \
+  --images alpine:latest,nginx:1.26 \
+  --output deployment.tar.gz
+
+# Deploy on air-gapped system
+podman exec selur-sv-ct selur-svct bundle deploy deployment.tar.gz
+----
+
+=== 3. GitOps CI/CD
+
+[source,yaml]
+----
+# In .gitlab-ci.yml or GitHub Actions
+- name: Build and deploy
+  run: |
+    podman exec selur-sv-ct selur-svct build-and-run \
+      --dockerfile ./Dockerfile \
+      --registry ghcr.io/myorg/myapp:v1.0.0 \
+      --target production
+----
+
+== Building
+
+=== Prerequisites
+
+* Podman or Docker
+* Access to parent directories: `../vordr`, `../svalinn`, `../cerro-torre`
+
+=== Build Command
+
+[source,bash]
+----
+just build-sv-ct
+----
+
+This creates two tags:
+* `selur-sv-ct:1.0.0`
+* `selur-sv-ct:latest`
+
+== Usage
+
+=== Quick Start
+
+[source,bash]
+----
+# Run complete stack
+just run-sv-ct
+
+# Test health
+curl http://localhost:8000/healthz
+
+# Check Cerro Torre is available
+podman exec selur-sv-ct ct --version
+
+# Build and run nginx
+podman exec selur-sv-ct selur-svct build-and-run nginx:1.26
+
+# Stop
+just stop-sv-ct
+----
+
+=== Manual Pipeline
+
+[source,bash]
+----
+# Pack
+podman exec selur-sv-ct ct pack nginx:1.26 -o /tmp/nginx.ctp
+
+# Sign
+podman exec selur-sv-ct ct sign /tmp/nginx.ctp -k auto
+
+# Verify
+podman exec selur-sv-ct ct verify /tmp/nginx.ctp --policy strict
+
+# Run
+curl -X POST http://localhost:8000/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{"bundle": "/tmp/nginx.ctp", "verify": true}'
+----
+
+=== Offline Bundle Workflow
+
+[source,bash]
+----
+# Create bundle with multiple images
+podman exec selur-sv-ct selur-svct bundle create \
+  alpine:latest nginx:1.26 postgres:16 \
+  -o /tmp/prod.tar.gz
+
+# Transfer prod.tar.gz to air-gapped system
+scp /tmp/prod.tar.gz airgap:/tmp/
+
+# Deploy on air-gapped system
+ssh airgap 'podman exec selur-sv-ct selur-svct bundle deploy /tmp/prod.tar.gz'
+----
+
+== Commands
+
+The `selur-svct` CLI provides a unified interface for all operations.
+
+=== Build Commands
+
+[source,bash]
+----
+selur-svct pack <image> -o <bundle>    # Pack OCI image → .ctp
+selur-svct sign <bundle>               # Sign .ctp bundle
+selur-svct verify <bundle>             # Verify .ctp bundle
+----
+
+=== Runtime Commands
+
+[source,bash]
+----
+selur-svct run <bundle>                # Run verified container
+----
+
+=== Pipeline Commands
+
+[source,bash]
+----
+selur-svct build-and-run <image>       # Pack → Sign → Verify → Run
+----
+
+=== Bundle Commands
+
+[source,bash]
+----
+selur-svct bundle create <images...>   # Create offline bundle
+selur-svct bundle deploy <bundle>      # Deploy offline bundle
+----
+
+=== Diagnostics
+
+[source,bash]
+----
+selur-svct status                      # Show system status
+selur-svct doctor                      # Run comprehensive diagnostics
+----
+
+== Deployment
+
+=== Container Run
+
+[source,bash]
+----
+podman run -d \
+  -p 8000:8000 \
+  -v selur-data:/var/lib/selur-sv \
+  -v selur-trust:/etc/selur \
+  -v selur-cache:/var/cache/ct \
+  --name selur-sv-ct \
+  selur-sv-ct:latest
+----
+
+=== Kubernetes
+
+[source,yaml]
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selur-sv-ct
+spec:
+  replicas: 1  # State management - do not replicate
+  template:
+    spec:
+      containers:
+      - name: selur-sv-ct
+        image: ghcr.io/hyperpolymath/selur-sv-ct:latest
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/selur-sv
+        - name: trust
+          mountPath: /etc/selur
+        - name: cache
+          mountPath: /var/cache/ct
+----
+
+=== CI/CD Example
+
+[source,yaml]
+----
+# .gitlab-ci.yml
+deploy:
+  image: ghcr.io/hyperpolymath/selur-sv-ct:latest
+  script:
+    - selur-svct build-and-run $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+    - selur-svct verify /tmp/app.ctp --policy strict
+----
+
+== Performance
+
+[cols="1,1,1,1",options="header"]
+|===
+| Deployment | Components | Size | Startup
+
+| Separate (3 containers)
+| svalinn, vordr, ct
+| 450MB
+| 15s
+
+| Welded (sv)
+| svalinn+vordr
+| 150MB
+| 3s
+
+| Glued (sv+ct)
+| svalinn+vordr+ct
+| 300MB
+| 5s
+|===
+
+**Latency:** 0.7ms (welded/glued) vs 2.3ms (separate containers)
+
+== Monitoring
+
+=== Health Check
+
+[source,bash]
+----
+curl http://localhost:8000/healthz
+----
+
+Expected response:
+[source,json]
+----
+{
+  "status": "healthy",
+  "svalinn": "running",
+  "vordr": "connected",
+  "selur_ipc": "active",
+  "cerro_torre": "available"
+}
+----
+
+=== Status Command
+
+[source,bash]
+----
+podman exec selur-sv-ct selur-svct status
+----
+
+Output:
+----
+🔍 System Status
+================
+✅ Svalinn: Running
+✅ Vörðr: Connected
+✅ Cerro Torre: ct 2.0.0
+----
+
+=== Diagnostics
+
+[source,bash]
+----
+podman exec selur-sv-ct selur-svct doctor
+----
+
+Runs comprehensive checks on all components.
+
+== Troubleshooting
+
+=== ct Command Not Found
+
+Check if Cerro Torre is included in the image:
+
+[source,bash]
+----
+podman exec selur-sv-ct which ct
+podman exec selur-sv-ct ct --version
+----
+
+=== Bundle Creation Fails
+
+Check available disk space in `/tmp`:
+
+[source,bash]
+----
+podman exec selur-sv-ct df -h /tmp
+----
+
+=== Verification Fails
+
+Check trust store configuration:
+
+[source,bash]
+----
+podman exec selur-sv-ct ls -la /etc/selur/trust-store
+----
+
+=== Logs
+
+[source,bash]
+----
+# Container logs
+podman logs selur-sv-ct
+
+# Svalinn logs
+podman exec selur-sv-ct journalctl -u svalinn
+
+# Vörðr logs
+podman exec selur-sv-ct journalctl -u vordr
+----
+
+== Recommended Deployment Strategy
+
+[cols="1,1,1",options="header"]
+|===
+| Environment | Variant | Rationale
+
+| Development
+| Separate containers
+| Easier debugging, independent logs
+
+| Staging
+| selur-sv
+| Runtime testing, performance validation
+
+| Production
+| selur-sv-ct
+| Complete pipeline, self-contained
+
+| Air-Gapped
+| selur-sv-ct + bundles
+| Offline deployment capability
+|===
+
+== Examples
+
+=== Example 1: Quick Start
+
+[source,bash]
+----
+# Deploy complete stack
+podman run -d -p 8000:8000 --name selur-sv-ct selur-sv-ct:latest
+
+# Build and run nginx
+podman exec selur-sv-ct selur-svct build-and-run nginx:latest
+
+# Check running containers
+curl http://localhost:8000/v1/containers
+----
+
+=== Example 2: Offline Deployment
+
+[source,bash]
+----
+# On internet-connected system
+podman run --rm -v $PWD:/workspace selur-sv-ct:latest \
+  selur-svct bundle create alpine nginx postgres -o /workspace/prod.tar.gz
+
+# Transfer to air-gapped system
+# ... physical transfer ...
+
+# On air-gapped system
+podman run -d -p 8000:8000 -v $PWD:/workspace --name selur-sv-ct selur-sv-ct:latest
+podman exec selur-sv-ct selur-svct bundle deploy /workspace/prod.tar.gz
+----
+
+=== Example 3: CI/CD Pipeline
+
+[source,bash]
+----
+# In CI/CD pipeline
+podman run --rm \
+  -v $CI_PROJECT_DIR:/workspace \
+  -e REGISTRY_AUTH_FILE=/workspace/.docker/config.json \
+  selur-sv-ct:latest \
+  selur-svct pack /workspace/Dockerfile -o /workspace/app.ctp
+
+podman run --rm -v $CI_PROJECT_DIR:/workspace selur-sv-ct:latest \
+  selur-svct sign /workspace/app.ctp -k $SIGNING_KEY
+
+podman run --rm -v $CI_PROJECT_DIR:/workspace selur-sv-ct:latest \
+  selur-svct verify /workspace/app.ctp --policy strict
+----
+
+== Publishing
+
+[source,bash]
+----
+just publish-sv-ct
+----
+
+Pushes to:
+* `ghcr.io/hyperpolymath/selur-sv-ct:1.0.0`
+* `ghcr.io/hyperpolymath/selur-sv-ct:latest`

@@ -1,0 +1,24 @@
+{
+  "name": "selur-svalinn-bindings",
+  "version": "1.0.0",
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "package-specs": [
+    {
+      "module": "es6",
+      "in-source": true
+    }
+  ],
+  "suffix": ".res.js",
+  "bs-dependencies": [],
+  "bsc-flags": [
+    "-open RescriptCore"
+  ],
+  "warnings": {
+    "error": "+101+5+6"
+  }
+}

@@ -1,0 +1,164 @@
+= Cerro Torre / Svalinn Integration
+:status: draft
+:audience: maintainers, implementers
+:spec-repo: https://github.com/hyperpolymath/verified-container-spec
+
+== 1. Overview
+
+This document describes how Cerro Torre integrates with Svalinn/Vordr. For the shared protocol specifications, see the link:{spec-repo}[Verified Container Spec] repository.
+
+Both projects implement the *Verified Container Protocol* as independent *Protocol Peers* - like HTTP servers and browsers implementing the HTTP spec.
+
+== 2. Shared Protocol
+
+Both projects implement these shared specifications:
+
+[cols="2,3"]
+|===
+| Specification | Purpose
+
+| link:{spec-repo}/blob/main/spec/attestation-bundle.adoc[Attestation Bundle]
+| Package format for in-toto statements with log proofs
+
+| link:{spec-repo}/blob/main/spec/trust-store.adoc[Trust Store]
+| Key distribution with threshold groups and log operators
+
+| link:{spec-repo}/blob/main/spec/verification-protocol.adoc[Verification Protocol]
+| Step-by-step verification procedure
+
+| link:{spec-repo}/blob/main/spec/transparency-log.adoc[Transparency Log]
+| Federated log requirements (2-of-3 quorum)
+|===
+
+== 3. Role Division
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          CERRO TORRE                                     │
+│                         (PRODUCER Role)                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  INPUTS                        OUTPUTS                                   │
+│  ├── Debian .dsc               ├── OCI Image                            │
+│  ├── Fedora SRPM         ───►  ├── Attestation Bundle                   │
+│  ├── Alpine APKBUILD           ├── SELinux Policy (CIL)                 │
+│  └── .ctp Manifest             └── Transparency Log Entry               │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                        ┌────────────┴────────────┐
+                        │  VERIFIED CONTAINER     │
+                        │      PROTOCOL           │
+                        └────────────┬────────────┘
+                                     │
+┌────────────────────────────────────┴────────────────────────────────────┐
+│                            SVALINN                                       │
+│                         (CONSUMER Role)                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  INPUTS                        OPERATIONS                                │
+│  ├── OCI Image                 ├── Vordr: Container lifecycle           │
+│  ├── Attestation Bundle  ───►  ├── Gatekeeper: Policy validation        │
+│  └── Trust Store               └── Svalinn Edge: Orchestration          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+== 4. Cerro Torre Producer Responsibilities
+
+As a *Producer*, Cerro Torre implements:
+
+=== 4.1 Bundle Generation
+
+* Create in-toto statements with SLSA provenance
+* Include SPDX SBOM attestations
+* Wrap in DSSE envelopes with Ed25519 signatures
+* Obtain threshold signatures (FROST-Ed25519)
+
+=== 4.2 Log Submission
+
+* Submit attestations to ≥2 transparency log operators
+* Include log proofs in bundle
+* Verify Signed Entry Timestamps
+
+=== 4.3 OCI Distribution
+
+* Attach bundle via OCI Referrers API
+* Content-address all artefacts
+
+== 5. Independence Principles
+
+=== 5.1 Standalone Operation
+
+Both projects MUST function correctly without the other:
+
+* *Cerro Torre standalone*: Produces verified images consumable by any OCI-compatible runtime
+* *Svalinn standalone*: Runs any OCI-compliant image with its security policies
+
+=== 5.2 No Shared State
+
+* No shared databases, caches, or runtime state
+* No IPC, sockets, or direct communication channels
+* Each project maintains its own trust store (content may overlap)
+
+=== 5.3 No Code Dependencies
+
+* No shared libraries or modules
+* No FFI calls between projects
+* Only shared specifications (Verified Container Spec repo)
+
+== 6. Cerro Torre-Specific Extensions
+
+Beyond the shared protocol, Cerro Torre provides:
+
+=== 6.1 SELinux Policy (Optional)
+
+*Format*: CIL (Common Intermediate Language)
+
+Per-container SELinux policies generated from build analysis. Consumers may apply these.
+
+=== 6.2 Upstream Provenance
+
+Custom predicate type for Debian/Fedora/Alpine source tracking:
+
+```json
+{
+  "predicateType": "https://cerro-torre.org/attestation/v1/upstream-provenance",
+  "predicate": {
+    "source": "debian",
+    "package": "nginx",
+    "version": "1.26.0-1",
+    "importedAt": "2024-12-28T00:00:00Z"
+  }
+}
+```
+
+== 7. Implementation Checklist
+
+=== 7.1 Must Implement (Shared Protocol)
+
+* [ ] Attestation bundle generation per shared spec
+* [ ] Trust store format per shared spec
+* [ ] Transparency log submission (2+ operators)
+* [ ] FROST-Ed25519 threshold signing
+* [ ] OCI Referrers API attachment
+
+=== 7.2 Should Implement (Cerro Torre Specific)
+
+* [ ] SELinux CIL policy generation
+* [ ] Upstream provenance attestation
+* [ ] SBOM generation (SPDX)
+
+== 8. Non-Goals
+
+The following are explicitly *not* part of this integration:
+
+* Real-time communication between projects
+* Shared runtime or daemon processes
+* Unified configuration format
+* Merged governance or decision-making
+* Single trust root (each has independent trust)
+
+== 9. Changelog
+
+=== 0.2.0 (2024-12-28)
+- Refactored to reference shared Verified Container Spec
+
+=== 0.1.0-draft (2024-12-28)
+- Initial specification

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+[package]
+name = "selur_nif"
+version = "1.0.0"
+authors = ["Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"]
+edition = "2021"
+license = "PMPL-1.0-or-later"
+
+[lib]
+name = "selur_nif"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.34"
+wasmtime = "28.0"
+anyhow = "1.0"
+
+[dependencies.selur]
+path = "../../.."

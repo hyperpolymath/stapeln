@@ -1,0 +1,28 @@
+# Rust build artifacts
+/target/
+Cargo.lock
+
+# Ada/SPARK build artifacts
+/spark_core/obj/
+/spark_core/lib/
+/spark_core/.gnatprove/
+
+# SQLite database files
+*.db
+*.db-wal
+*.db-shm
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+/tmp/
+*.log

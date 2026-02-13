@@ -1,0 +1,209 @@
+= Manifest Canonicalization Rules (CTP-CANON v0)
+:status: draft-normative
+:audience: spec authors, implementers, auditors
+:keywords: canonical form, determinism, idempotence
+
+== 0. Purpose
+
+This document defines the canonical byte representation for Cerro Torre manifests (".ctp").
+
+Canonicalization produces a unique byte sequence for any valid manifest, such that semantically-equivalent manifests canonicalize to identical bytes.
+
+Canonicalization MUST be deterministic and idempotent.
+
+== 1. Terminology
+
+* *Source manifest*: any ".ctp" text accepted by the parser.
+* *Canonical manifest*: the canonical byte sequence produced by this procedure.
+* *Unicode scalar*: any Unicode code point excluding surrogate halves.
+* *LF*: U+000A line feed.
+* *ASCII control*: code points U+0000..U+001F and U+007F.
+
+== 2. Preconditions and Domain
+
+2.1 A manifest MUST parse successfully according to the manifest grammar.
+
+2.2 A manifest MUST validate successfully (all constraints satisfied) before canonicalization completes.
+
+2.3 Canonicalization MUST fail if:
+* the manifest contains invalid Unicode (including surrogate halves),
+* the manifest contains NUL (U+0000),
+* the manifest contains disallowed control characters as defined in section 4.
+
+== 3. Output Encoding and Line Endings
+
+3.1 Canonical manifests MUST be encoded as UTF-8 without BOM.
+
+3.2 Canonical manifests MUST use LF line endings (U+000A). No CR (U+000D) is permitted in output.
+
+3.3 The canonical manifest MUST end with exactly one LF.
+
+== 4. Character Policy
+
+4.1 Outside of string literals (as defined by the grammar), the canonical manifest MUST contain only ASCII characters (U+0020..U+007E) plus LF.
+
+4.2 Inside string literals:
+* All Unicode scalars are permitted except:
+  ** NUL (U+0000)
+  ** ASCII controls other than LF and TAB (U+0009)
+* If the grammar permits multi-line strings, embedded newlines MUST be represented as "\n" escape sequences in canonical output.
+
+4.3 TAB (U+0009) MUST NOT appear in canonical output. It MUST be converted to spaces by parsing+re-emission rules.
+
+NOTE: This ban ensures editors and tooling cannot introduce invisible semantic drift.
+
+== 5. Whitespace Policy
+
+5.1 Canonical output MUST NOT contain trailing whitespace on any line.
+
+5.2 Indentation MUST be exactly 2 ASCII spaces per structural nesting level.
+
+5.3 There MUST be exactly one ASCII space after ":" in key/value pairs.
+
+5.4 There MUST be no extra blank lines. Blank lines are not permitted in canonical output unless explicitly required by the grammar.
+
+== 6. Structural Ordering
+
+6.1 Map/Object key ordering:
+* All map/object keys MUST be emitted in lexicographic order by Unicode scalar value of their UTF-8 bytes.
+* Ordering MUST be bytewise on UTF-8 encoding, not locale-dependent.
+
+6.2 Arrays/Lists ordering:
+* Arrays/lists MUST preserve the order given by semantic meaning.
+* Arrays/lists MUST NOT be re-sorted unless the spec of that field explicitly defines order as insignificant and mandates sorting.
+
+6.3 Field presence:
+* Optional fields that are absent semantically MUST be omitted from canonical output.
+* Optional fields that are present with default values MUST be omitted if and only if the field specification declares the default and declares that omission is semantically equivalent.
+
+== 7. Numeric Canonicalization
+
+7.1 Integers:
+* MUST be base-10.
+* MUST NOT contain leading "+".
+* MUST NOT contain leading zeros, except the single digit "0".
+
+7.2 If the manifest language permits non-integers (decimal, float), they MUST NOT appear in canonical output.
+* Such forms MUST be rejected at validation time.
+
+NOTE: This enforces Turing-incomplete and audit-friendly constraints.
+
+== 8. Boolean and Null Canonicalization
+
+8.1 Booleans MUST be lower-case: "true" and "false".
+
+8.2 Null values MUST NOT appear in canonical output.
+* If null is representable in source syntax, it MUST be rejected at validation time.
+
+== 9. String Canonicalization
+
+9.1 String quoting:
+* Canonical output MUST use double quotes (") for all strings.
+
+9.2 Escaping:
+The following characters MUST be escaped:
+* backslash (\) as "\\"
+* double quote (") as "\""
+* LF as "\n"
+
+The following characters MUST NOT appear unescaped in canonical output:
+* U+0000
+* U+000D
+
+9.3 Unicode normalization:
+* Strings MUST be normalized to Unicode NFC.
+* If the implementation does not support normalization, it MUST reject any string that is not already NFC.
+
+NOTE: NFC prevents multiple spellings of the same user-visible string.
+
+== 10. Hash and Digest Coupling
+
+10.1 The canonical byte sequence is the sole input to manifest digests.
+
+10.2 Any manifest digest (e.g. sha256) MUST be computed over the canonical bytes exactly, including the final LF.
+
+10.3 A canonicalization implementation MUST expose the digest algorithm used and the resulting digest in machine-readable form (see /spec/summary-schema.adoc).
+
+== 11. Idempotence and Stability Requirements
+
+11.1 Idempotence:
+Canonicalizing a canonical manifest MUST reproduce identical bytes.
+
+Formally:
+canon(canon(x)) == canon(x)
+
+11.2 Stability under equivalent input:
+If two manifests are semantically equivalent under this specification, their canonical output MUST be identical.
+
+== 12. Canonicalization Procedure (Normative)
+
+Given a parsed and validated AST:
+
+1. Validate all constraints (including sections 4, 7, 8, 9).
+2. Normalize all strings according to section 9.
+3. Remove semantically-absent optional fields (section 6.3).
+4. Emit the manifest using:
+   * UTF-8, LF endings, and final LF (section 3)
+   * indentation and spacing rules (section 5)
+   * sorted object keys (section 6.1)
+   * numeric/boolean rules (sections 7 and 8)
+   * string emission rules (section 9)
+5. Output the resulting bytes as the canonical manifest.
+
+== 13. Shadow-Check Interface (ATS-Applicable)
+
+A conforming implementation SHOULD provide:
+
+* canonical bytes (opaque byte sequence)
+* a manifest summary containing at minimum:
+  ** manifest_version
+  ** digest_algorithm
+  ** digest_value (over canonical bytes)
+  ** a bounded, schema-validated summary of key fields used for attestation subjects
+
+ATS shadow checking MAY verify:
+
+* canonical bytes conform to sections 3, 5, 6.1, 7, 8, 9.1-9.2
+* digest matches section 10
+* idempotence per section 11.1
+
+== 14. Error Handling
+
+Canonicalization MUST fail with stable error codes when:
+
+* invalid Unicode / disallowed controls are present
+* numeric forms violate section 7
+* null/float forms are encountered
+* keys are duplicated (if grammar permits duplicates)
+* normalization fails or NFC requirement not met
+
+Error codes MUST be stable and referenced in the error catalog.
+
+== 15. Alignment Notes (Implementation Guidance)
+
+=== 15.1 Surface Syntax Binding
+
+This specification is intentionally format-agnostic. When binding to a specific .ctp surface syntax:
+
+* Define what constitutes a "key" token for sorting purposes
+* Specify comment handling (canonical output typically drops comments)
+* Define multi-line string canonicalization if supported
+
+=== 15.2 NFC Normalization Strategy
+
+NFC normalization eliminates ambiguity but introduces a dependency. Two approaches are conformant:
+
+1. *Full NFC*: Normalize all strings during canonicalization
+2. *NFC-only validation*: Reject any string that is not already NFC
+
+The second approach preserves determinism without requiring Unicode normalization support.
+
+=== 15.3 Golden Corpus Integration
+
+The canonical form is the authoritative representation for:
+
+* Golden test corpus entries (valid cases)
+* Digest computation for provenance chains
+* Byte-exact comparison in verification
+
+All golden corpus manifests MUST be in canonical form.

@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Gatekeeper Policy (MVP)
+:status: draft
+:audience: maintainers, implementers
+
+This document defines the minimal policy format for gating container execution
+based on Verified Container Spec attestations.
+
+== 1. Purpose
+
+The MVP policy format is intentionally small:
+
+* Require specific predicate types (SLSA provenance + SBOM)
+* Allow only specific signing keys
+* Enforce a log quorum (configurable to 1 for MVP)
+* Support strict vs permissive mode
+
+== 2. Policy Schema
+
+Schema: link:schemas/gatekeeper-policy.v1.json[gatekeeper-policy.v1.json]
+
+== 3. Fields
+
+[cols="1,1,3",options="header"]
+|===
+| Field | Required | Description
+
+| version
+| Yes
+| Schema version. Current: `1`.
+
+| requiredPredicates
+| Yes
+| Predicate types that must be present in the attestation bundle.
+
+| allowedSigners
+| Yes
+| Key IDs allowed to sign attestations (Ed25519 key IDs).
+
+| logQuorum
+| Yes
+| Minimum distinct log operators required. MVP may set this to `1`.
+
+| mode
+| No
+| `strict` rejects failures; `permissive` logs warnings and continues.
+
+| notes
+| No
+| Human-readable policy notes.
+|===
+
+== 4. Example (MVP)
+
+[source,json]
+----
+{
+  "version": 1,
+  "requiredPredicates": [
+    "https://slsa.dev/provenance/v1",
+    "https://spdx.dev/Document"
+  ],
+  "allowedSigners": [
+    "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  ],
+  "logQuorum": 1,
+  "mode": "strict",
+  "notes": "MVP policy: single signer and single transparency log."
+}
+----

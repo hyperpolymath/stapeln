@@ -1,0 +1,84 @@
+{
+  "$schema": "../spec/policy-schema.json",
+  "version": "1",
+  "description": "Enterprise policy with threshold signing, revocation, and pinning",
+
+  "default_action": "deny",
+
+  "signers": {
+    "allowed": [
+      {
+        "key_id": "cerro-official-*",
+        "required": true,
+        "comment": "Official Cerro Torre keys"
+      },
+      {
+        "key_id": "corp-security-*",
+        "comment": "Internal security team keys"
+      },
+      {
+        "key_id": "vendor-*",
+        "comment": "Approved vendor keys"
+      }
+    ],
+    "denied": [
+      {
+        "key_id": "compromised-key-2024",
+        "after": "2024-06-15",
+        "reason": "Key compromised in security incident #1234"
+      },
+      {
+        "key_id": "employee-departed-*",
+        "reason": "Former employee keys"
+      }
+    ],
+    "threshold": 2,
+    "threshold_from": ["cerro-official-*", "corp-security-*"]
+  },
+
+  "registries": {
+    "allowed": [
+      "docker.io/library/*",
+      "ghcr.io/cerro-torre/*",
+      "registry.corp.internal/*"
+    ],
+    "blocked": [
+      "*.untrusted.example",
+      "docker.io/malicious/*"
+    ]
+  },
+
+  "base_images": {
+    "allowed": [
+      "docker.io/library/alpine:3.18*",
+      "docker.io/library/alpine:3.19*",
+      "docker.io/library/debian:bookworm*",
+      "registry.corp.internal/base/*"
+    ]
+  },
+
+  "suites": {
+    "allowed": ["CT-SIG-01", "CT-SIG-02"],
+    "minimum": "CT-SIG-01"
+  },
+
+  "require_attestations": {
+    "provenance": true,
+    "sbom": true,
+    "transparency_log": false
+  },
+
+  "pin": {
+    "critical-service.ctp": {
+      "digest": "sha256:abc123def456789...",
+      "signers": ["cerro-official-2025", "corp-security-2025"],
+      "comment": "Critical production service - pinned to known-good version"
+    }
+  },
+
+  "time": {
+    "max_age_days": 365,
+    "require_timestamp": true,
+    "clock_skew_tolerance_seconds": 300
+  }
+}

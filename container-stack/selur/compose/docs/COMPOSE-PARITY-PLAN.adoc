@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= selur-compose Parity Plan (Docker/Podman Compose)
+:toc:
+:toclevels: 3
+
+== Purpose
+
+Bring `selur-compose` to functional parity with Docker/Podman Compose for real‑world stacks (including Aerie).
+
+== Guiding Principles
+
+* Prioritise end‑to‑end correctness over feature count.
+* Fail‑closed on security for production usage.
+* Feature parity must be testable via acceptance checks.
+
+== Phase A — Runs Real Stacks (MVP Parity)
+
+=== A1. Wire Svalinn /api/v2/run payloads
+
+**Goal:** `selur-compose up` uses Svalinn v2 run payload and supports ports/env/volumes/networks/secrets/healthcheck.
+
+**Work:**
+
+* Update `selur-compose` to call `/api/v2/run` (not `/api/v1/deploy`).
+* Add payload mapping for:
+  - `env` (string map)
+  - `ports` (host:container)
+  - `volumes` (host:container[:ro])
+  - `networks` (named network list)
+  - `secrets` (name or path references)
+  - `healthcheck` (interval/timeout/retries)
+
+**Acceptance:**
+
+* `selur-compose up` with ports/env/volumes/networks creates running containers.
+* Healthcheck failures stop deployment (fail‑closed).
+
+=== A2. Vörðr config mapping
+
+**Goal:** Vörðr accepts the full config payload and renders OCI config.
+
+**Work:**
+
+* Extend MCP `vordr_container_create` config to include env/ports/volumes/networks.
+* Map to OCI config (env + mounts + hostname + read‑only root).
+* Ensure network attachments are registered (netavark).
+
+**Acceptance:**
+
+* `vordr_container_create` with env/mounts produces correct OCI config.
+* Container starts with expected env variables and mounts.
+
+=== A3. Volumes + Networks lifecycle
+
+**Goal:** Create and remove volumes/networks via selur-compose.
+
+**Work:**
+
+* Add create/list/remove primitives in Vörðr MCP.
+* Wire `selur-compose up` to create networks/volumes before containers.
+* Wire `selur-compose down -v` to remove volumes (confirm prompt optional).
+
+**Acceptance:**
+
+* Volumes exist after `up`; removed after `down -v`.
+* Networks created for compose project; removed after `down`.
+
+=== A4. Secrets handling
+
+**Goal:** Bind secrets to containers without leaking.
+
+**Work:**
+
+* Implement secrets map in selur-compose (file‑backed initially).
+* Mount secrets as files; map env vars to secret file paths.
+
+**Acceptance:**
+
+* Secrets are not printed in logs.
+* Secret file exists inside container at expected path.
+
+=== A5. Healthchecks + Restart
+
+**Goal:** Compose healthcheck support + restart policies.
+
+**Work:**
+
+* Support healthcheck fields in Svalinn and Vörðr.
+* Restart policy mapped to runtime (no, on‑failure, always).
+
+**Acceptance:**
+
+* Unhealthy container is detected and reported.
+* Restart policy works for simulated crash.
+
+== Phase B — Operational Parity
+
+=== B1. `policy` command
+
+**Goal:** Check policy compliance before deployment.
+
+**Acceptance:**
+
+* `selur-compose policy` returns pass/fail + reasons.
+
+=== B2. `sbom` + `provenance`
+
+**Goal:** Show SBOM/provenance per service.
+
+**Acceptance:**
+
+* Commands return structured JSON with attestations.
+
+=== B3. `config` command
+
+**Goal:** Render merged config (toml/json).
+
+**Acceptance:**
+
+* `selur-compose config --format toml` matches source with defaults.
+
+== Phase C — Compatibility Parity
+
+=== C1. Compose YAML import
+
+**Goal:** Load `compose.yaml` and translate to `compose.toml`.
+
+**Acceptance:**
+
+* Sample docker‑compose.yml loads and deploys.
+
+=== C2. Profiles + Labels + Resource Limits
+
+**Goal:** Parity with common compose keys.
+
+**Acceptance:**
+
+* Profiles filter services correctly.
+* Resource limits are enforced.
+
+=== C3. Logging drivers + Observability
+
+**Goal:** Standard log options + metrics.
+
+**Acceptance:**
+
+* Logs follow configured driver.
+* Metrics endpoint exposes service stats.
+
+== Test Harness
+
+* Add an `examples/` stack for each phase.
+* `examples/parity/compose.toml` exercises Phase A networks/volumes/ports/healthcheck.
+* Add integration tests for `up/down/ps/logs` and healthchecks.
+* `tests/parity_stack.rs` runs the parity stack against mocked Svalinn/Vörðr endpoints.
+* Run tests in CI with a minimal mock Svalinn/Vörðr or local runtime.

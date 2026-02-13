@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Example compose file for selur-compose
+
+version = "1.0"
+
+# Web frontend service
+[services.frontend]
+image = "ghcr.io/myorg/frontend:latest.ctp"
+ports = ["3000:3000"]
+environment = { BACKEND_URL = "http://backend:8080", NODE_ENV = "production" }
+depends_on = ["backend"]
+restart = "always"
+
+# API backend service
+[services.backend]
+image = "ghcr.io/myorg/backend:latest.ctp"
+ports = ["8080:8080"]
+environment = { DATABASE_URL = "postgres://postgres:5432/myapp" }
+depends_on = ["postgres", "redis"]
+restart = "always"
+healthcheck = { test = "curl -f http://localhost:8080/health", interval = "30s" }
+deploy = { replicas = 3, strategy = "rolling" }
+
+# PostgreSQL database
+[services.postgres]
+image = "ghcr.io/hyperpolymath/postgres:16.ctp"
+ports = ["5432:5432"]
+environment = { POSTGRES_PASSWORD = "secret", POSTGRES_DB = "myapp" }
+volumes = ["pgdata:/var/lib/postgresql/data"]
+restart = "always"
+
+# Redis cache
+[services.redis]
+image = "ghcr.io/hyperpolymath/redis:7.ctp"
+ports = ["6379:6379"]
+volumes = ["redisdata:/data"]
+restart = "always"
+
+# Volumes
+[volumes.pgdata]
+driver = "local"
+
+[volumes.redisdata]
+driver = "local"
+
+# Networks
+[networks.default]
+driver = "selur"  # Use zero-copy IPC

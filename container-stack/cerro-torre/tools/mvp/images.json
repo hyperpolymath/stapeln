@@ -1,0 +1,10 @@
+{
+  "images": [
+    {
+      "name": "cerro-torre/hello",
+      "tag": "latest",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "verified": true
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+version = "1.0"
+
+[services.web]
+image = "nginx:latest.ctp"
+ports = ["8080:80"]
+volumes = ["webdata:/usr/share/nginx/html:ro"]
+networks = ["front"]
+restart = "always"
+
+[services.web.healthcheck]
+test = "curl -f http://localhost/"
+interval = "10s"
+timeout = "3s"
+retries = 3
+
+[services.redis]
+image = "redis:latest.ctp"
+ports = ["6379:6379"]
+volumes = ["redisdata:/data"]
+networks = ["back"]
+restart = "on-failure"
+
+[volumes.webdata]
+driver = "local"
+
+[volumes.redisdata]
+driver = "local"
+
+[networks.front]
+driver = "bridge"
+
+[networks.back]
+driver = "bridge"

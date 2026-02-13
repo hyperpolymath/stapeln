@@ -1,0 +1,45 @@
+@policy(id="dev-testing", version="1.0"):
+  @meta(created="2026-01-15", updated="2026-01-28"):
+    Description: Development and testing policy - relaxed requirements
+    Owner: Development Team
+    Environment: staging, development
+
+  @requires(attestation="optional", min-signatures=1):
+    Development bundles MAY skip Rekor transparency log
+    At least 1 signature recommended but not enforced
+
+    @trusted-keys:
+      - dev-signing-key
+      - test-signing-key
+
+  @requires(sbom="optional"):
+    SBOM recommended but not required for development builds
+    CVE scanning recommended (informational only)
+
+  @requires(registry-allowlist):
+    @allowed:
+      - docker.io
+      - ghcr.io
+      - localhost:5000
+      - "*"
+
+    @blocked:
+      - NONE
+
+    Rationale: Development allows any registry for testing
+
+  @requires(build-attestation="optional"):
+    Build provenance optional for dev builds
+    Local builds allowed
+
+  @audit(log="/var/log/ct/dev-policy.log"):
+    Minimal logging for development:
+    - Bundle hash
+    - Timestamp
+    - Pass/fail result
+
+  @attestation(policy-signature):
+    signed-by: dev-admin-key
+    signature: ed25519:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
+    timestamp: 2026-01-28T10:15:00Z
+@end

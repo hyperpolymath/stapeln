@@ -1,0 +1,36 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+
+This software is dual-licensed. You may choose either:
+- The MIT License (see LICENSE-MIT), OR  
+- This GNU Affero General Public License v3.0 or later
+
+The full text of the AGPL-3.0 is available at:
+https://www.gnu.org/licenses/agpl-3.0.html
+
+---
+
+SUMMARY (not a substitute for the full license):
+
+The AGPL-3.0 grants you the freedom to:
+- Use the software for any purpose
+- Study how it works and modify it
+- Distribute copies
+- Distribute modified versions
+
+With the conditions that:
+- You must provide source code when distributing
+- You must license derivatives under AGPL-3.0
+- You must provide source code to users interacting over a network
+- You must preserve copyright notices
+
+The network provision (Section 13) is the key difference from GPL-3.0:
+if you run a modified version on a server and users interact with it
+remotely, you must offer them the source code.
+
+---
+
+Additionally, contributors to this project are encouraged (but not required)
+to adopt the Palimpsest Covenant (see governance/covenant.md).

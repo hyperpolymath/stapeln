@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Schema Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'spec/schemas/**'
+      - '.github/workflows/schema-lint.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'spec/schemas/**'
+      - '.github/workflows/schema-lint.yml'
+
+jobs:
+  schema-lint:
+    name: Validate JSON Schemas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install schema validators
+        run: |
+          npm install -g ajv-cli ajv-formats
+
+      - name: Validate schema syntax
+        run: |
+          echo "Validating JSON schema files..."
+          for schema in spec/schemas/*.json; do
+            echo "Checking: $schema"
+            # Validate the schema is valid JSON
+            jq . "$schema" > /dev/null || exit 1
+            # Validate it's a valid JSON Schema
+            ajv compile -s "$schema" --strict=false -c ajv-formats || exit 1
+          done
+          echo "All schemas valid!"
+
+      - name: Check schema versioning
+        run: |
+          echo "Checking schema versioning..."
+          for schema in spec/schemas/*.json; do
+            # Extract version from filename (e.g., foo.v1.json -> v1)
+            version=$(basename "$schema" | grep -oP '\.v\d+(?=\.json$)' || echo "")
+            if [ -z "$version" ]; then
+              echo "WARNING: $schema missing version suffix (e.g., .v1.json)"
+            else
+              echo "OK: $schema has version $version"
+            fi
+          done
+
+      - name: Generate schema index
+        run: |
+          echo "## Schema Index" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Schema | Title | Version |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|---------|" >> $GITHUB_STEP_SUMMARY
+          for schema in spec/schemas/*.json; do
+            title=$(jq -r '.title // "Untitled"' "$schema")
+            version=$(basename "$schema" | grep -oP '\.v\d+(?=\.json$)' || echo "none")
+            echo "| $(basename $schema) | $title | $version |" >> $GITHUB_STEP_SUMMARY
+          done

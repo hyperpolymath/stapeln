@@ -1,0 +1,225 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.2.0)'
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            artifact: vordr-linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04
+            artifact: vordr-linux-aarch64
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-22.04
+            artifact: vordr-linux-x86_64-musl
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install musl tools
+        if: contains(matrix.target, 'musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build release binary
+        working-directory: vordr
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        run: |
+          mkdir -p dist
+          cp vordr/target/${{ matrix.target }}/release/vordr dist/${{ matrix.artifact }}
+          chmod +x dist/${{ matrix.artifact }}
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha256
+          sha512sum ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha512
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-22.04
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-sbom
+        run: cargo install cargo-sbom
+
+      - name: Generate SBOM (CycloneDX)
+        working-directory: vordr
+        run: |
+          cargo sbom --output-format cyclonedx-json > ../sbom-cyclonedx.json
+
+      - name: Generate SBOM (SPDX)
+        working-directory: vordr
+        run: |
+          cargo sbom --output-format spdx-json > ../sbom-spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v6
+        with:
+          name: sbom
+          path: |
+            sbom-cyclonedx.json
+            sbom-spdx.json
+
+  provenance:
+    name: Generate Provenance
+    runs-on: ubuntu-22.04
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Generate provenance
+        run: |
+          # Create provenance file
+          cat > provenance.json << EOF
+          {
+            "buildType": "https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/go/pkg/provenance.go",
+            "builder": {
+              "id": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            },
+            "invocation": {
+              "configSource": {
+                "uri": "git+https://github.com/${{ github.repository }}@${{ github.ref }}",
+                "digest": {
+                  "sha1": "${{ github.sha }}"
+                },
+                "entryPoint": ".github/workflows/release.yml"
+              }
+            },
+            "metadata": {
+              "buildInvocationId": "${{ github.run_id }}",
+              "buildStartedOn": "$(date -Iseconds)",
+              "completeness": {
+                "environment": true,
+                "materials": true
+              }
+            },
+            "materials": [
+              {
+                "uri": "git+https://github.com/${{ github.repository }}",
+                "digest": {
+                  "sha1": "${{ github.sha }}"
+                }
+              }
+            ]
+          }
+          EOF
+
+      - name: Upload provenance
+        uses: actions/upload-artifact@v6
+        with:
+          name: provenance
+          path: provenance.json
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-22.04
+    needs: [build, sbom, provenance]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          # Flatten artifacts
+          find artifacts -type f -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            ### Quick Install (Linux)
+            ```bash
+            curl -fsSL https://svalinn.dev/install.sh | bash
+            ```
+
+            ### Manual Install
+            1. Download the binary for your platform
+            2. Verify checksum: `sha256sum -c vordr-linux-x86_64.sha256`
+            3. Install: `sudo install vordr-linux-x86_64 /usr/local/bin/vordr`
+            4. Verify: `vordr doctor`
+
+            ## Security
+
+            - SHA-256 and SHA-512 checksums included
+            - SBOM (CycloneDX and SPDX) attached
+            - Build provenance attached
+
+            ## What's Changed
+
+            See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.

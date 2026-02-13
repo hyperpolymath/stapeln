@@ -1,0 +1,48 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- Vörðr Gatekeeper
+-- GPRbuild project file for SPARK verification and Ada compilation
+
+project Policy is
+
+   for Source_Dirs use ("src");
+   for Object_Dir use "obj";
+   for Library_Dir use "lib";
+   for Library_Name use "policy";
+   for Library_Kind use "static";
+   for Languages use ("Ada");
+
+   package Compiler is
+      for Default_Switches ("Ada") use (
+         "-gnat2022",      -- Ada 2022 standard
+         "-gnatwa",        -- All warnings
+         "-gnatyg",        -- GNAT style checks
+         "-gnatyo",        -- Check order of subprogram bodies
+         "-gnatyu",        -- Check unnecessary blank lines
+         "-gnata",         -- Assertions enabled
+         "-gnatVa",        -- All validity checks
+         "-gnateE",        -- Extra exception info
+         "-fstack-check",  -- Stack overflow checking
+         "-O2"             -- Optimization level 2
+      );
+   end Compiler;
+
+   package Prove is
+      for Proof_Switches ("Ada") use (
+         "--level=2",           -- Proof effort level (0-4)
+         "--prover=all",        -- Use all available provers
+         "--timeout=60",        -- 60 second timeout per verification condition
+         "--memlimit=2000",     -- Memory limit in MB
+         "--warnings=continue", -- Continue on warnings
+         "--report=all"         -- Report all VCs
+      );
+   end Prove;
+
+   package Builder is
+      for Default_Switches ("Ada") use ("-j0");  -- Parallel build
+   end Builder;
+
+   package Binder is
+      for Default_Switches ("Ada") use ("-Es");  -- Store traceback in exceptions
+   end Binder;
+
+end Policy;

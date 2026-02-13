@@ -1,0 +1,31 @@
+= Phase-0 MUST Alignment Record
+:status: record
+:audience: maintainers, reviewers
+
+== Purpose
+
+This document records decisions taken to satisfy Phase-0 MUST requirements.
+
+== Answers Summary
+
+* Canonical authority: written spec + single implementation
+* Audit audience: auditors, lawyers, distro maintainers, future maintainers
+* Failure tolerance: system must continue unchanged without advanced proof tooling
+* Semantic authority: spec + goldens
+* ATS role: advisory only
+* Disagreement handling: human review
+* Runtime dependency on ATS: none
+* Governance visibility of ATS: optional tooling only
+* Contributor scarcity tolerance: moderate
+* Survivability requirement: mandatory
+
+== Architectural Outcome
+
+* Ada/SPARK is the canonical core
+* ATS is a non-authoritative satellite
+* Written spec and golden corpora define meaning
+* Tooling reinforces but does not define trust
+
+== Stability Statement
+
+This record may be superseded only by an explicit governance decision.

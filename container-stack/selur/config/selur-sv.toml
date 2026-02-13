@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# selur(svalinn+vordr) configuration
+
+[svalinn]
+port = 8000
+host = "0.0.0.0"
+log_level = "info"
+
+[vordr]
+ipc_socket = "/run/selur-sv.sock"
+listen_mode = "ipc"
+state_db = "/var/lib/selur-sv/vordr.db"
+
+[selur]
+wasm_bridge = "/usr/local/lib/selur.wasm"
+shared_memory_size = "10MB"  # For zero-copy IPC
+max_message_size = "1MB"
+
+[integration]
+mode = "welded"
+startup_order = ["vordr", "selur", "svalinn"]
+health_check_interval = "5s"
+
+[performance]
+# Zero-copy IPC configuration
+use_shared_memory = true
+buffer_size = 65536
+max_connections = 1000
+
+# Latency targets
+target_p50_latency_ms = 0.5
+target_p99_latency_ms = 1.0
+
+[monitoring]
+enable_metrics = true
+metrics_port = 9090
+enable_tracing = true

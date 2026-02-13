@@ -1,0 +1,21 @@
+{
+  "name": "@vordr/lsp",
+  "version": "0.1.0",
+  "license": "PMPL-1.0-or-later",
+  "exports": {
+    ".": "./Main.res.js"
+  },
+  "tasks": {
+    "lsp": "deno run --allow-read --allow-write Main.res.js",
+    "lsp:http": "deno run --allow-net --allow-read Main.res.js --transport=http --port=8081",
+    "build": "cd .. && npx rescript build",
+    "test": "deno test --allow-read tests/*.test.js"
+  },
+  "imports": {
+    "@rescript/core/lib/es6/": "../../node_modules/@rescript/core/lib/es6/"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  }
+}

@@ -1,0 +1,175 @@
+# SPDX-License-Identifier: MPL-2.0-or-later
+name: Lifecycle State Machine Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  state-machine-conformance:
+    name: State Machine Conformance Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    strategy:
+      matrix:
+        test:
+          - create-to-running
+          - running-to-paused
+          - paused-to-running
+          - running-to-stopped
+          - rollback-one-step
+          - rollback-multiple-steps
+          - invalid-transition
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Download Vörðr components
+        uses: actions/download-artifact@v4
+        with:
+          name: vordr-bundle
+          path: /tmp/vordr/
+
+      - name: Install Elixir
+        uses: erlef/setup-beam@2f0a87e93ca409eeedb26db267e893c6b62d5c4c # v1.18
+        with:
+          elixir-version: '1.16'
+          otp-version: '26.2'
+
+      - name: Run state machine test
+        run: |
+          cd /tmp/vordr
+          export LD_LIBRARY_PATH=/tmp/vordr/lib:$LD_LIBRARY_PATH
+          mix vordr.test.lifecycle ${{ matrix.test }}
+
+  reversibility-tests:
+    name: Reversibility Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Download Vörðr components
+        uses: actions/download-artifact@v4
+        with:
+          name: vordr-bundle
+          path: /tmp/vordr/
+
+      - name: Install Elixir
+        uses: erlef/setup-beam@2f0a87e93ca409eeedb26db267e893c6b62d5c4c # v1.18
+        with:
+          elixir-version: '1.16'
+          otp-version: '26.2'
+
+      - name: Test journal creation
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.journal
+
+      - name: Test single-step rollback
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.rollback --steps=1
+
+      - name: Test multi-step rollback
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.rollback --steps=5
+
+      - name: Test checkpoint restore
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.checkpoint
+
+  policy-enforcement:
+    name: Policy Enforcement Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Download Vörðr components
+        uses: actions/download-artifact@v4
+        with:
+          name: vordr-bundle
+          path: /tmp/vordr/
+
+      - name: Install Elixir
+        uses: erlef/setup-beam@2f0a87e93ca409eeedb26db267e893c6b62d5c4c # v1.18
+        with:
+          elixir-version: '1.16'
+          otp-version: '26.2'
+
+      - name: Test signature verification policy
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.policy --type=signature
+
+      - name: Test SBOM requirement policy
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.policy --type=sbom
+
+      - name: Test transparency log policy
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.policy --type=transparency
+
+      - name: Test SLSA level policy
+        run: |
+          cd /tmp/vordr
+          mix vordr.test.policy --type=slsa
+
+  build:
+    name: Build All Components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Elixir
+        uses: erlef/setup-beam@2f0a87e93ca409eeedb26db267e893c6b62d5c4c # v1.18
+        with:
+          elixir-version: '1.16'
+          otp-version: '26.2'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat gprbuild
+
+      - name: Build Rust FFI
+        run: |
+          cd src/rust
+          cargo build --release
+
+      - name: Build Ada gatekeeper
+        run: |
+          cd src/ada
+          gprbuild -P gatekeeper.gpr -j0
+
+      - name: Build Elixir orchestrator
+        run: |
+          cd src/elixir
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix compile
+
+      - name: Package components
+        run: |
+          mkdir -p /tmp/vordr-bundle/lib
+          cp src/rust/target/release/libvordr_ffi.so /tmp/vordr-bundle/lib/
+          cp src/ada/obj/gatekeeper /tmp/vordr-bundle/
+          cp -r src/elixir /tmp/vordr-bundle/
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vordr-bundle
+          path: /tmp/vordr-bundle/

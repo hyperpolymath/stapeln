@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Mustfile for compiling Ephapax-linear to WASM32 via Zig
+
+target selur.wasm:
+    deps: ephapax/bridge.eph
+    cmd: |
+        # Compile Ephapax-linear to intermediate representation
+        ephapax compile ephapax/bridge.eph -o build/bridge.ir
+
+        # Zig compiles IR to WASM32
+        zig build-lib build/bridge.ir \
+            -target wasm32-freestanding \
+            -dynamic \
+            -O ReleaseFast \
+            -femit-bin=selur.wasm
+
+target clean:
+    cmd: |
+        rm -rf build/
+        rm -f selur.wasm
+
+target test:
+    deps: selur.wasm
+    cmd: |
+        # Test with wasmtime
+        wasmtime --invoke test_bridge selur.wasm

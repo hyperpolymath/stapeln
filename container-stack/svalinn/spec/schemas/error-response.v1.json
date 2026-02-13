@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://svalinn.dev/schemas/error-response.v1.json",
+  "title": "Error Response",
+  "description": "Structured error output for '--json' mode",
+  "type": "object",
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "$ref": "#/definitions/Error"
+    }
+  },
+  "definitions": {
+    "Error": {
+      "type": "object",
+      "required": ["code", "id", "message"],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "description": "Exit code (see surface-contract.adoc)"
+        },
+        "id": {
+          "type": "string",
+          "description": "Machine-readable error ID (ERR_*)",
+          "pattern": "^ERR_[A-Z_]+$"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "details": {
+          "type": "object",
+          "description": "Error-specific details",
+          "additionalProperties": true
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Suggested remediation steps"
+        },
+        "documentation_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to relevant documentation"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "error": {
+        "code": 32,
+        "id": "ERR_IMAGE_NOT_FOUND",
+        "message": "Image 'nonexistent:latest' not found",
+        "details": {
+          "registry": "docker.io",
+          "image": "nonexistent",
+          "tag": "latest",
+          "http_status": 404
+        },
+        "suggestions": [
+          "Check image name spelling",
+          "Verify registry access: vordr login docker.io",
+          "Search for available tags: vordr image search nonexistent"
+        ],
+        "documentation_url": "https://svalinn.dev/docs/troubleshooting#rg3"
+      }
+    }
+  ]
+}

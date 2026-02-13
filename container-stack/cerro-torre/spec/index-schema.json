@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cerro-torre.org/schemas/index/v1",
+  "title": "Cerro Torre Bundle Index",
+  "description": "Searchable index of .ctp bundles for ct search",
+  "type": "object",
+  "required": ["version", "created_at", "bundles"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1",
+      "description": "Index schema version"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this index was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this index was last updated"
+    },
+    "source_directory": {
+      "type": "string",
+      "description": "Directory that was indexed"
+    },
+    "bundle_count": {
+      "type": "integer",
+      "description": "Number of bundles in index"
+    },
+    "bundles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/BundleEntry"
+      }
+    }
+  },
+  "definitions": {
+    "BundleEntry": {
+      "type": "object",
+      "required": ["path", "name", "digest"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Relative path to bundle file"
+        },
+        "name": {
+          "type": "string",
+          "description": "Package name from manifest"
+        },
+        "version": {
+          "type": "string",
+          "description": "Package version"
+        },
+        "description": {
+          "type": "string",
+          "description": "Package description"
+        },
+        "digest": {
+          "type": "string",
+          "description": "SHA256 digest of bundle file"
+        },
+        "manifest_digest": {
+          "type": "string",
+          "description": "SHA256 of canonical manifest"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "description": "Total bundle size in bytes"
+        },
+
+        "source": {
+          "type": "object",
+          "description": "Source image information",
+          "properties": {
+            "image_ref": {
+              "type": "string",
+              "description": "Original OCI image reference"
+            },
+            "image_digest": {
+              "type": "string",
+              "description": "Source image digest"
+            },
+            "registry": {
+              "type": "string",
+              "description": "Source registry"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+
+        "signatures": {
+          "type": "array",
+          "description": "Signatures on this bundle",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key_id": {
+                "type": "string"
+              },
+              "fingerprint": {
+                "type": "string"
+              },
+              "algorithm": {
+                "type": "string"
+              },
+              "suite_id": {
+                "type": "string"
+              },
+              "signed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+
+        "attestations": {
+          "type": "object",
+          "description": "Attestations present in bundle",
+          "properties": {
+            "has_sbom": {
+              "type": "boolean"
+            },
+            "sbom_format": {
+              "type": "string",
+              "enum": ["spdx-2.3", "cyclonedx-1.4"]
+            },
+            "has_provenance": {
+              "type": "boolean"
+            },
+            "provenance_builder": {
+              "type": "string"
+            },
+            "has_transparency_proof": {
+              "type": "boolean"
+            }
+          }
+        },
+
+        "licenses": {
+          "type": "array",
+          "description": "SPDX license identifiers from SBOM",
+          "items": {
+            "type": "string"
+          }
+        },
+
+        "base_images": {
+          "type": "array",
+          "description": "Base image lineage",
+          "items": {
+            "type": "string"
+          }
+        },
+
+        "layers": {
+          "type": "object",
+          "description": "Layer summary",
+          "properties": {
+            "count": {
+              "type": "integer"
+            },
+            "total_size_bytes": {
+              "type": "integer"
+            },
+            "digests": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+
+        "config": {
+          "type": "object",
+          "description": "Container config summary",
+          "properties": {
+            "entrypoint": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "cmd": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "exposed_ports": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+
+        "indexed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this entry was indexed"
+        }
+      }
+    }
+  }
+}

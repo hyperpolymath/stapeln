@@ -1,0 +1,16 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "rescript/lib/es6/": "./node_modules/rescript/lib/es6/",
+    "hono": "npm:hono@^4.6.10",
+    "ajv": "npm:ajv@^8.12.0"
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --watch src/Main.res.js",
+    "start": "deno run --allow-net --allow-read --allow-env src/Main.res.js"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  }
+}

@@ -1,0 +1,81 @@
+@trust-store(id="production-2026", version="1.0"):
+  @meta(created="2026-01-15", updated="2026-01-28"):
+    Maintained by: Security Team
+    Contact: security@example.com
+    Next-rotation: 2027-01-01
+
+  @attestation(rekor="rekor.sigstore.dev"):
+    entry-hash: 3f8d9a2b1c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
+    log-index: 123456789
+    verified: 2026-01-28T10:30:00Z
+
+  @key(id="release-key-2026", algo="ed25519"):
+    pub: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyDataHereForReleaseKey2026
+    fingerprint: SHA256:9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a
+    created: 2026-01-01
+    expires: 2027-01-01
+    purpose: "Primary release signing for production deployments"
+    owner: "Platform Team <platform@example.com>"
+    revoked: false
+
+    @attestation(rekor="entry-hash"):
+      key-registration: 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
+      timestamp: 2026-01-01T00:00:00Z
+
+  @key(id="backup-key-2026", algo="ed25519"):
+    pub: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBackupKeyDataExampleForProductionUse
+    fingerprint: SHA256:8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5
+    created: 2026-01-01
+    expires: 2027-01-01
+    purpose: "Backup release signing key - use if primary unavailable"
+    owner: "Security Team <security@example.com>"
+    revoked: false
+
+    @attestation(rekor="entry-hash"):
+      key-registration: 2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c
+      timestamp: 2026-01-01T00:00:00Z
+
+  @key(id="emergency-key", algo="ml-dsa-65"):
+    pub: pq-ml-dsa-65 BBBBBBExamplePostQuantumKeyDataForEmergencyRotation
+    fingerprint: SHA256:7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4
+    created: 2026-01-01
+    expires: 2026-12-31
+    purpose: "Emergency key rotation - post-quantum fallback"
+    owner: "CISO <ciso@example.com>"
+    revoked: false
+    algorithm-note: "ML-DSA-65 for post-quantum security"
+
+    @attestation(rekor="entry-hash"):
+      key-registration: 3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d
+      timestamp: 2026-01-01T00:00:00Z
+
+  @key(id="old-release-key", algo="ed25519"):
+    pub: ssh-ed25519 AAAAC3OldKeyDataExampleForRotatedProductionKey
+    fingerprint: SHA256:6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3
+    created: 2025-01-01
+    expires: 2026-01-01
+    purpose: "Previous release key - ROTATED"
+    owner: "Platform Team <platform@example.com>"
+    revoked: 2026-01-15
+    revocation-reason: "Routine annual key rotation"
+    superseded-by: "release-key-2026"
+
+    @attestation(rekor="entry-hash"):
+      revocation-entry: 4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e
+      revocation-timestamp: 2026-01-15T12:00:00Z
+
+  @key(id="dev-signing-key", algo="ed25519"):
+    pub: ssh-ed25519 AAAAC3DevKeyExampleForDevelopmentAndTestingBuilds
+    fingerprint: SHA256:5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2
+    created: 2026-01-01
+    expires: 2027-01-01
+    purpose: "Development and staging builds only"
+    owner: "Dev Team <dev@example.com>"
+    revoked: false
+    environment: "development, staging"
+    not-for-production: true
+
+    @attestation(rekor="entry-hash"):
+      key-registration: 5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f
+      timestamp: 2026-01-01T00:00:00Z
+@end

@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: MPL-2.0-or-later
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  test-with-vordr:
+    name: Test with Vörðr Runtime
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Download cerro-torre CLI
+        uses: actions/download-artifact@v4
+        with:
+          name: cerro-torre-cli
+          path: /tmp/
+
+      - name: Make CLI executable
+        run: chmod +x /tmp/ct
+
+      - name: Install Elixir (for Vörðr)
+        uses: erlef/setup-beam@2f0a87e93ca409eeedb26db267e893c6b62d5c4c # v1.18
+        with:
+          elixir-version: '1.16'
+          otp-version: '26.2'
+
+      - name: Clone Vörðr
+        run: |
+          git clone https://github.com/hyperpolymath/vordr.git /tmp/vordr
+
+      - name: Build Vörðr
+        run: |
+          cd /tmp/vordr/src/elixir
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix compile
+
+      - name: Create test bundle
+        run: |
+          /tmp/ct pack nginx:latest -o /tmp/nginx.ctp
+
+      - name: Run with Vörðr
+        run: |
+          cd /tmp/vordr/src/elixir
+          mix vordr.run /tmp/nginx.ctp
+
+  test-with-svalinn:
+    name: Test with Svalinn Gateway
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Download cerro-torre CLI
+        uses: actions/download-artifact@v4
+        with:
+          name: cerro-torre-cli
+          path: /tmp/
+
+      - name: Make CLI executable
+        run: chmod +x /tmp/ct
+
+      - name: Install Deno
+        uses: denoland/setup-deno@8d8f0e2f0a907d0c5b5a9e3e1a3b8a9b9b9b9b9b # v2
+        with:
+          deno-version: v2.x
+
+      - name: Clone Svalinn
+        run: |
+          git clone https://github.com/hyperpolymath/svalinn.git /tmp/svalinn
+
+      - name: Run Svalinn gateway
+        run: |
+          cd /tmp/svalinn
+          deno task start &
+          SVALINN_PID=$!
+          sleep 5
+
+          # Test gateway endpoint
+          /tmp/ct pack nginx:latest -o /tmp/nginx.ctp
+          curl -X POST http://localhost:8080/deploy \
+            -F "bundle=@/tmp/nginx.ctp" \
+            -F "policy=strict"
+
+          kill $SVALINN_PID
+
+  build:
+    name: Build Cerro Torre
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat gprbuild
+
+      - name: Build cerro-torre
+        run: |
+          cd src
+          gprbuild -P cerro_torre.gpr -j0
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cerro-torre-cli
+          path: src/obj/ct

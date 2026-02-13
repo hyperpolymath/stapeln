@@ -1,0 +1,59 @@
+{
+  "$schema": "../schemas/edge-policy.v1.json",
+  "version": "1.0",
+  "name": "sbom-focused",
+  "description": "Policy focused on software supply chain transparency through SBOM requirements",
+  "registries": {
+    "allow": ["docker.io", "ghcr.io", "quay.io", "gcr.io", "*.ecr.aws"],
+    "deny": [],
+    "requireSignature": true
+  },
+  "images": {
+    "allowPatterns": ["*"],
+    "denyPatterns": ["*:latest", "*:nightly", "*:edge"],
+    "requireSbom": true,
+    "maxAgeDays": 120,
+    "maxVulnerabilities": {
+      "critical": 0,
+      "high": 3,
+      "medium": 20
+    }
+  },
+  "resources": {
+    "maxMemoryMb": 8192,
+    "maxCpuCores": 8.0,
+    "maxContainers": 100,
+    "maxStorageGb": 100
+  },
+  "security": {
+    "allowPrivileged": false,
+    "allowHostNetwork": false,
+    "allowHostPid": false,
+    "allowHostIpc": false,
+    "readOnlyRoot": false,
+    "dropCapabilities": ["SYS_ADMIN"],
+    "addCapabilities": []
+  },
+  "network": {
+    "allowEgress": true,
+    "allowIngress": true,
+    "deniedPorts": [22, 23, 3389]
+  },
+  "verification": {
+    "signatureAlgorithms": ["ed25519", "ecdsa-p256", "rsa-4096", "ml-dsa-65"],
+    "transparencyLogs": {
+      "required": ["rekor"],
+      "quorum": 1
+    },
+    "sbomRequired": true,
+    "sbomFormats": ["spdx", "cyclonedx"],
+    "provenanceLevel": 2,
+    "maxSignatureAgeDays": 90,
+    "keyTrustLevel": "organization",
+    "requiredPredicates": [
+      "https://spdx.dev/Document",
+      "https://cyclonedx.org/bom/v1.5"
+    ]
+  },
+  "notes": "SBOM-focused policy for organizations prioritizing software supply chain transparency. Requires SPDX or CycloneDX SBOM attestations with vulnerability limits."
+}

@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= External References
+:toc:
+
+== Overview
+
+This repository follows a **separation of concerns** architecture. Implementation code for core components lives in dedicated repositories, not duplicated here.
+
+**Do not duplicate specification or implementation content in this repository.**
+
+== External Dependencies
+
+=== Vörðr (Container Engine)
+
+[cols="1,3"]
+|===
+| Repository | https://github.com/hyperpolymath/vordr
+| Role | Formally verified OCI container runtime and verification system
+| Integration | Svalinn delegates container operations to Vörðr
+| Previous Location | `vordr/` directory (now extracted)
+|===
+
+**What moved to Vörðr:**
+
+- Rust container engine (`src/rust/`)
+- Ada/SPARK Gatekeeper (`src/ada/`)
+- Container lifecycle management
+- OCI runtime shim
+- Registry client
+- MCP server definitions
+
+**What remains in Svalinn:**
+
+- ReScript/Deno edge shield
+- Edge-specific configuration
+- Integration glue code
+
+=== verified-container-spec (Protocol)
+
+[cols="1,3"]
+|===
+| Repository | https://github.com/hyperpolymath/verified-container-spec
+| Role | Attestation and verification protocol specification
+| Integration | Both Svalinn and Vörðr conform to this spec
+|===
+
+**Reference for:**
+
+- Attestation bundle format
+- Trust store configuration
+- Verification protocol
+- Conformance requirements
+
+=== Cerro Torre (Build Verification)
+
+[cols="1,3"]
+|===
+| Repository | https://github.com/hyperpolymath/cerro-torre
+| Role | Provenance-verified container builder
+| Integration | Produces attestations that Svalinn/Vörðr verify
+|===
+
+== Conformance
+
+Svalinn's CI validates conformance against:
+
+[source,yaml]
+----
+# .github/workflows/conformance.yml
+- name: Verify spec conformance
+  run: |
+    git clone https://github.com/hyperpolymath/verified-container-spec
+    cd verified-container-spec
+    just verify-conformance --target svalinn
+----
+
+== Guidelines
+
+=== What NOT to add here
+
+- Protocol definitions (use verified-container-spec)
+- Container engine code (use vordr)
+- Build system code (use cerro-torre)
+- Duplicated glossary or specification text
+
+=== What belongs here
+
+- Edge shield implementation (ReScript/Deno)
+- Svalinn-specific configuration
+- Integration tests for the edge layer
+- Deployment manifests for edge nodes
+
+== Version Tracking
+
+[cols="1,1,1"]
+|===
+| Dependency | Pinned Version | Last Updated
+
+| vordr | main | 2025-01-15
+| verified-container-spec | v0.1.0 | 2025-01-15
+| cerro-torre | main | 2025-01-15
+|===
+
+Update these pins when upgrading dependencies.

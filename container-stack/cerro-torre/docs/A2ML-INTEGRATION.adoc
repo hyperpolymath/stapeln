@@ -1,0 +1,357 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= A2ML Integration in Cerro Torre
+:toc: left
+:toclevels: 3
+
+== Overview
+
+Cerro Torre integrates A2ML (Attested Markup Language) for **attestable, verifiable policy definitions** and **trust store manifests**.
+
+== Why A2ML for Policies?
+
+Traditional policy formats (YAML, TOML, JSON) lack:
+
+* **Attestation**: No way to verify policy hasn't been tampered with
+* **Versioning**: Hard to track policy evolution
+* **Cryptographic binding**: Policies can't reference keys/certificates verifiably
+* **Formal structure**: No checked validation of policy semantics
+
+A2ML provides:
+
+* ✅ Built-in attestation support
+* ✅ Cryptographic references (keys, hashes, signatures)
+* ✅ Checked validation (Module 0 guarantees)
+* ✅ Auditable change tracking
+
+== Use Case 1: Trust Store Manifests
+
+=== Traditional Approach (JSON)
+
+[source,json]
+----
+{
+  "keys": [
+    {
+      "id": "release-key-2026",
+      "algorithm": "ed25519",
+      "public_key": "ssh-ed25519 AAAAC3...",
+      "expires": "2027-01-01"
+    }
+  ]
+}
+----
+
+**Problems:**
+* No way to verify this manifest hasn't been modified
+* No binding to Rekor transparency log
+* No attestation of key provenance
+
+=== A2ML Approach
+
+[source,a2ml]
+----
+@trust-store(id="production-2026", version="1.0"):
+  @meta(created="2026-01-15", updated="2026-01-28"):
+    Maintained by: Security Team
+    Contact: security@example.com
+
+  @attestation(rekor="rekor.sigstore.dev"):
+    entry-hash: 3f8d9a2b1c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
+    log-index: 123456789
+    verified: 2026-01-28T10:30:00Z
+
+  @key(id="release-key-2026", algo="ed25519"):
+    pub: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyDataHere
+    expires: 2027-01-01
+    purpose: "Release signing for production deployments"
+    @attestation(rekor="entry-hash"):
+      key-registration: 1a2b3c4d5e6f...
+
+  @key(id="emergency-key", algo="ml-dsa-65"):
+    pub: pq-ml-dsa-65 BBBBBBExamplePostQuantumKeyData
+    expires: 2026-12-31
+    purpose: "Emergency key rotation - post-quantum"
+    revoked: false
+
+  @key(id="old-release-key", algo="ed25519"):
+    pub: ssh-ed25519 AAAAC3OldKeyDataExample
+    expires: 2026-01-01
+    revoked: 2026-01-15
+    reason: "Routine key rotation"
+    superseded-by: "release-key-2026"
+@end
+----
+
+**Benefits:**
+* Entire manifest can be signed and verified
+* Rekor entry binds keys to transparency log
+* Machine-parseable with guaranteed validation
+* Clear revocation and rotation tracking
+
+== Use Case 2: Policy Definitions
+
+=== Traditional Approach (YAML)
+
+[source,yaml]
+----
+policies:
+  - name: strict-prod
+    min_signatures: 2
+    require_sbom: true
+    transparency_log: true
+    allowed_registries:
+      - docker.io
+      - ghcr.io
+----
+
+**Problems:**
+* No way to attest the policy itself
+* No cryptographic binding to signing keys
+* No version tracking with attestation
+
+=== A2ML Approach
+
+[source,a2ml]
+----
+@policy(id="strict-prod", version="2.0"):
+  @meta(created="2025-12-01", updated="2026-01-28"):
+    Description: Production deployment policy with strict verification
+    Owner: Platform Team
+    Approved-by: CISO
+
+  @requires(attestation="rekor", min-signatures=2):
+    All bundles MUST have Rekor transparency log entry
+    AND at least 2 signatures from trusted keys
+
+    @trusted-keys:
+      - release-key-2026
+      - backup-key-2026
+
+  @requires(sbom="spdx"):
+    All bundles MUST include SPDX SBOM
+    SBOM MUST list all dependencies with CVE scan results
+
+  @requires(registry-allowlist):
+    @allowed:
+      - docker.io
+      - ghcr.io
+      - registry.example.com
+
+    @blocked:
+      - quay.io/untrusted/*
+
+  @audit(log="/var/log/ct/policy-decisions.log"):
+    Policy enforcement decisions logged with:
+    - Bundle hash
+    - Verification result
+    - Timestamp
+    - Signing keys used
+
+  @attestation(policy-signature):
+    signed-by: policy-admin-key
+    signature: ed25519:9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e
+    rekor-entry: f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e
+@end
+----
+
+**Benefits:**
+* Policy itself is attested (signed, in Rekor)
+* Cryptographic binding to trusted keys
+* Clear audit trail requirements
+* Machine-enforceable structure
+
+== Use Case 3: Bundle Metadata
+
+Instead of JSON metadata inside .ctp bundles, use A2ML:
+
+[source,a2ml]
+----
+@bundle(id="nginx-1.26-prod", version="1.0.0"):
+  @meta:
+    image: docker.io/library/nginx:1.26
+    created: 2026-01-28T14:30:00Z
+    builder: ct-a:2.0.0
+
+  @manifest:
+    layers: 7
+    total-size: 142857600
+    uncompressed-size: 458752000
+
+  @signatures:
+    @signature(id="1", key="release-key-2026", algo="ed25519"):
+      sig: 3f8d9a2b1c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
+      timestamp: 2026-01-28T14:35:00Z
+
+    @signature(id="2", key="backup-key-2026", algo="ml-dsa-65"):
+      sig: 7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a
+      timestamp: 2026-01-28T14:36:00Z
+
+  @attestation(rekor="rekor.sigstore.dev"):
+    entry-hash: 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
+    log-index: 987654321
+
+  @sbom(format="spdx", version="2.3"):
+    location: sbom.spdx.json
+    hash: sha256:4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c
+@end
+----
+
+== Implementation in Cerro Torre
+
+=== 1. Trust Store Loading
+
+[source,ada]
+----
+--  src/policy/cerro_policy_a2ml.ads
+package Cerro.Policy.A2ML is
+   pragma Elaborate_Body;
+
+   type Trust_Store is record
+      ID       : Bounded_String;
+      Version  : Bounded_String;
+      Keys     : Key_Vector;
+      Verified : Boolean;
+   end record;
+
+   function Load_Trust_Store (Path : String) return Trust_Store
+     with Pre  => Ada.Directories.Exists (Path),
+          Post => (if Load_Trust_Store'Result.Verified
+                   then Load_Trust_Store'Result.Keys.Length > 0);
+
+   function Verify_Trust_Store (Store : Trust_Store) return Boolean
+     with Post => (if Verify_Trust_Store'Result
+                   then Store.Verified);
+
+end Cerro.Policy.A2ML;
+----
+
+=== 2. Policy Enforcement
+
+[source,ada]
+----
+--  src/policy/cerro_policy_enforce.ads
+package Cerro.Policy.Enforce is
+
+   type Policy is record
+      ID              : Bounded_String;
+      Min_Signatures  : Positive;
+      Require_SBOM    : Boolean;
+      Require_Rekor   : Boolean;
+      Allowed_Registries : Registry_Vector;
+   end record;
+
+   function Load_Policy (Path : String) return Policy;
+
+   function Enforce_Policy
+     (Bundle : Bundle_Handle;
+      Policy : Policy_Handle) return Verification_Result
+   with Pre  => Is_Valid (Bundle) and Is_Valid (Policy),
+        Post => (if Enforce_Policy'Result = Pass
+                 then Bundle_Meets_Requirements (Bundle, Policy));
+
+end Cerro.Policy.Enforce;
+----
+
+=== 3. A2ML Parser Integration
+
+[source,ada]
+----
+--  Use existing A2ML ReScript parser via FFI or rewrite in Ada
+--  For MVP: Shell out to a2ml CLI tool
+
+function Parse_A2ML (Path : String) return Document is
+   Command : constant String := "a2ml validate " & Path;
+   Result  : constant Integer := Execute_Command (Command);
+begin
+   if Result /= 0 then
+      raise Parse_Error with "A2ML validation failed";
+   end if;
+
+   --  Parse JSON AST output from a2ml
+   return Load_A2ML_AST (Path & ".ast.json");
+end Parse_A2ML;
+----
+
+== Directory Structure
+
+[source]
+----
+cerro-torre/
+├── examples/
+│   └── policies/
+│       ├── strict-prod.a2ml         # Production policy
+│       ├── dev-testing.a2ml         # Development policy
+│       └── trust-store-2026.a2ml    # Trust store manifest
+├── src/policy/
+│   ├── cerro_policy_a2ml.ads        # A2ML integration
+│   ├── cerro_policy_a2ml.adb
+│   ├── cerro_policy_enforce.ads     # Policy enforcement
+│   └── cerro_policy_enforce.adb
+└── tests/
+    └── policy/
+        ├── test_a2ml_parser.adb
+        └── test_policy_enforce.adb
+----
+
+== Command-Line Integration
+
+[source,bash]
+----
+# Load and verify trust store
+ct trust load trust-store-2026.a2ml
+
+# List trusted keys
+ct trust list
+
+# Verify bundle against policy
+ct verify app.ctp --policy strict-prod.a2ml
+
+# Sign bundle and record in policy-compliant way
+ct sign app.ctp -k release-key-2026 --policy strict-prod.a2ml
+----
+
+== Migration Path
+
+1. **Phase 1** (v2.1): Add A2ML policy support alongside existing YAML/TOML
+2. **Phase 2** (v2.2): Prefer A2ML, deprecate YAML/TOML
+3. **Phase 3** (v2.3): A2ML-only for policies and trust stores
+
+== Benefits Summary
+
+[cols="1,1,1",options="header"]
+|===
+| Format | Traditional (YAML/JSON) | A2ML
+
+| **Attestation**
+| ❌ None
+| ✅ Built-in with Rekor binding
+
+| **Verification**
+| ❌ Ad-hoc validation
+| ✅ Checked Module 0 parser
+
+| **Versioning**
+| ❌ Manual tracking
+| ✅ Attested version history
+
+| **Crypto binding**
+| ❌ String references
+| ✅ Cryptographic references
+
+| **Audit trail**
+| ❌ External logs
+| ✅ Embedded attestations
+
+| **Tamper evidence**
+| ❌ None
+| ✅ Signature + transparency log
+|===
+
+== Next Steps
+
+1. ✅ Design complete (this document)
+2. ⬜ Implement `cerro_policy_a2ml` package
+3. ⬜ Add A2ML examples to `examples/policies/`
+4. ⬜ Integrate with `ct trust` and `ct verify` commands
+5. ⬜ Write tests for A2ML policy enforcement
+6. ⬜ Update documentation with A2ML usage

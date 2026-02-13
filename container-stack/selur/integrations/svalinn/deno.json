@@ -1,0 +1,31 @@
+{
+  "name": "@hyperpolymath/selur-svalinn",
+  "version": "1.0.0",
+  "exports": "./src/Selur.res.js",
+  "tasks": {
+    "build": "rescript build",
+    "watch": "rescript build -w",
+    "clean": "rescript clean",
+    "test": "deno test --allow-read --allow-ffi"
+  },
+  "imports": {
+    "@rescript/core": "npm:@rescript/core@^1.0.0"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "allowJs": true
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 80,
+    "indentWidth": 2,
+    "semiColons": false,
+    "singleQuote": false,
+    "proseWrap": "preserve"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

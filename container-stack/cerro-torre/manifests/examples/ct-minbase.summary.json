@@ -1,0 +1,212 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2025-12-28T21:00:00Z",
+  "manifest": {
+    "ctp_version": "1.0",
+    "kind": "container_image",
+    "name": "ct-minbase",
+    "version": "0.1.0",
+    "source_path": "manifests/examples/ct-minbase.ctp",
+    "canonical_bytes_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "subject": {
+    "kind": "container_image",
+    "name": "ct-minbase",
+    "version": "0.1.0",
+    "description": "Minimal Cerro Torre base image assembled from democratically-governed upstream (Debian) with pinned sources and verifiable inputs."
+  },
+  "inputs": {
+    "upstream": {
+      "family": "debian",
+      "suite": "bookworm",
+      "snapshot_timestamp_utc": "2025-12-20T00:00:00Z",
+      "snapshot_service": "snapshot.debian.org"
+    },
+    "sources": [
+      {
+        "id": "debian_source_bash",
+        "type": "debian_dsc",
+        "name": "bash",
+        "version": "5.2.15-2+b7",
+        "resolved_artifacts": [
+          {
+            "filename": "bash_5.2.15-2+b7.dsc",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/b/bash/bash_5.2.15-2+b7.dsc",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "filename": "bash_5.2.15.orig.tar.xz",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/b/bash/bash_5.2.15.orig.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "filename": "bash_5.2.15-2.debian.tar.xz",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/b/bash/bash_5.2.15-2.debian.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      {
+        "id": "debian_source_coreutils",
+        "type": "debian_dsc",
+        "name": "coreutils",
+        "version": "9.1-1",
+        "resolved_artifacts": [
+          {
+            "filename": "coreutils_9.1-1.dsc",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/c/coreutils/coreutils_9.1-1.dsc",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "filename": "coreutils_9.1.orig.tar.xz",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/c/coreutils/coreutils_9.1.orig.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "filename": "coreutils_9.1-1.debian.tar.xz",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/c/coreutils/coreutils_9.1-1.debian.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      {
+        "id": "debian_source_ca_certificates",
+        "type": "debian_dsc",
+        "name": "ca-certificates",
+        "version": "20230311",
+        "resolved_artifacts": [
+          {
+            "filename": "ca-certificates_20230311.dsc",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/c/ca-certificates/ca-certificates_20230311.dsc",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "filename": "ca-certificates_20230311.tar.xz",
+            "uri": "https://snapshot.debian.org/archive/debian/20251220T000000Z/pool/main/c/ca-certificates/ca-certificates_20230311.tar.xz",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    ]
+  },
+  "build_plan": {
+    "environment": {
+      "os": "linux",
+      "arch": "amd64",
+      "reproducible": true
+    },
+    "normalized_steps_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "steps": [
+      {
+        "step": "import",
+        "using": "debian",
+        "sources": [
+          "debian_source_bash",
+          "debian_source_coreutils",
+          "debian_source_ca_certificates"
+        ]
+      },
+      {
+        "step": "build_debian_source",
+        "source": "debian_source_bash",
+        "profile": "debian_rules"
+      },
+      {
+        "step": "build_debian_source",
+        "source": "debian_source_coreutils",
+        "profile": "debian_rules"
+      },
+      {
+        "step": "build_debian_source",
+        "source": "debian_source_ca_certificates",
+        "profile": "debian_rules"
+      },
+      {
+        "step": "assemble_rootfs",
+        "include_packages": [
+          {
+            "name": "bash",
+            "from_source": "debian_source_bash"
+          },
+          {
+            "name": "coreutils",
+            "from_source": "debian_source_coreutils"
+          },
+          {
+            "name": "ca-certificates",
+            "from_source": "debian_source_ca_certificates"
+          }
+        ]
+      },
+      {
+        "step": "emit_oci_image",
+        "image": {
+          "entrypoint": ["/bin/bash"],
+          "cmd": ["-lc", "echo 'hello from Cerro Torre'"],
+          "labels": {
+            "org.opencontainers.image.title": "ct-minbase",
+            "org.opencontainers.image.source": "https://github.com/hyperpolymath/cerro-torre"
+          }
+        }
+      }
+    ]
+  },
+  "outputs": {
+    "artifacts": [
+      {
+        "type": "oci_image",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "ref": "oci://cerro-torre/ct-minbase:0.1.0"
+      },
+      {
+        "type": "sbom_spdx_json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "ref": "ct-minbase.sbom.spdx.json"
+      },
+      {
+        "type": "in_toto_provenance",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "ref": "ct-minbase.provenance.jsonl"
+      }
+    ]
+  },
+  "policy": {
+    "provenance": {
+      "require_source_hashes": true,
+      "require_reproducible_build": true
+    },
+    "attestations": {
+      "emit": [
+        "in_toto",
+        "sbom_spdx_json"
+      ]
+    }
+  },
+  "security": {
+    "suite_id": "CT-SIG-01",
+    "algorithms": {
+      "hash": {
+        "id": "sha256",
+        "output_bits": 256
+      },
+      "signatures": [
+        {
+          "id": "ed25519",
+          "required": true
+        }
+      ]
+    },
+    "binding_digest": {
+      "id": "sha256",
+      "value": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "signatures": [
+    {
+      "suite_id": "CT-SIG-01",
+      "key_id": "cerro-dev-2025",
+      "algorithm": "ed25519",
+      "signature": "PLACEHOLDER_BASE64_SIGNATURE"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+-rw-r--r-- 1 root root 21996 Dec 29 23:50 /home/user/cerro-torre/src/cli/cerro_cli.adb
+-rw-r--r-- 1 root root  2885 Dec 29 23:49 /home/user/cerro-torre/src/cli/cerro_cli.ads
+-rw-r--r-- 1 root root  4611 Dec 29 23:50 /home/user/cerro-torre/src/cli/cerro_main.adb
+-rw------- 1 root root  1552 Dec 29 23:39 /home/user/cerro-torre/src/cli/ct_errors.adb
+-rw------- 1 root root  1631 Dec 29 23:39 /home/user/cerro-torre/src/cli/ct_errors.ads

@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Surface Contract Lint
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  surface-contract-lint:
+    name: Check Surface Changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for surface changes
+        id: surface-check
+        run: |
+          # Define surface files
+          SURFACE_FILES=(
+            "vordr/src/cli/mod.rs"
+            "vordr/src/cli/*.rs"
+            "spec/schemas/*.json"
+            "docs/surface-contract.adoc"
+          )
+
+          # Get changed files
+          CHANGED=$(git diff --name-only origin/main...HEAD 2>/dev/null || git diff --name-only HEAD~1)
+
+          # Check for surface file changes
+          SURFACE_CHANGED="false"
+          for pattern in "${SURFACE_FILES[@]}"; do
+            if echo "$CHANGED" | grep -q "$pattern"; then
+              SURFACE_CHANGED="true"
+              echo "Surface change detected: $pattern"
+            fi
+          done
+
+          echo "surface_changed=$SURFACE_CHANGED" >> $GITHUB_OUTPUT
+
+          # Check for CLI flag/command changes specifically
+          if echo "$CHANGED" | grep -q "vordr/src/cli/"; then
+            CLI_DIFF=$(git diff origin/main...HEAD -- vordr/src/cli/ 2>/dev/null || git diff HEAD~1 -- vordr/src/cli/)
+            if echo "$CLI_DIFF" | grep -qE '(#\[arg|#\[command|pub (struct|enum).*Args)'; then
+              echo "CLI interface changes detected!"
+              echo "cli_changed=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Check changelog entry
+        if: steps.surface-check.outputs.surface_changed == 'true'
+        run: |
+          # Check if CHANGELOG.md was updated
+          CHANGED=$(git diff --name-only origin/main...HEAD 2>/dev/null || git diff --name-only HEAD~1)
+          if ! echo "$CHANGED" | grep -q "CHANGELOG"; then
+            echo "::warning::Surface change detected but no CHANGELOG entry found"
+            echo "Please add a changelog entry for surface changes."
+          fi
+
+      - name: Check surface-change label
+        if: steps.surface-check.outputs.surface_changed == 'true'
+        run: |
+          # Check if PR has surface-change label
+          LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+          if [[ ! "$LABELS" == *"surface-change"* ]]; then
+            echo "::warning::Surface change detected but 'surface-change' label not present"
+            echo "Consider adding the 'surface-change' label to this PR."
+          fi
+
+      - name: Generate report
+        run: |
+          echo "## Surface Contract Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.surface-check.outputs.surface_changed }}" == "true" ]; then
+            echo ":warning: **Surface changes detected**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please ensure:" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] CHANGELOG updated with migration notes" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] \`surface-change\` label added" >> $GITHUB_STEP_SUMMARY
+            echo "- [ ] docs/surface-contract.adoc reviewed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo ":white_check_mark: No surface changes detected" >> $GITHUB_STEP_SUMMARY
+          fi

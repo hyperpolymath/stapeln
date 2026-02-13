@@ -1,0 +1,22 @@
+{
+  "plugins": [
+    {
+      "id": "cerro-torre",
+      "label": "Images",
+      "baseUrl": "http://localhost:8081",
+      "capabilities": ["images"],
+      "panels": [
+        {"id": "images", "label": "Images", "type": "images"}
+      ]
+    },
+    {
+      "id": "alpine",
+      "label": "Alpine Images",
+      "baseUrl": "http://localhost:8082",
+      "capabilities": ["images"],
+      "panels": [
+        {"id": "images", "label": "Images", "type": "images"}
+      ]
+    }
+  ]
+}

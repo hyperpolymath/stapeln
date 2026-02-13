@@ -1,0 +1,50 @@
+{
+  "$schema": "../schemas/edge-policy.v1.json",
+  "version": "1.0",
+  "name": "post-quantum-ready",
+  "description": "Policy requiring post-quantum cryptographic signatures for future-proofing",
+  "registries": {
+    "allow": ["ghcr.io", "quay.io"],
+    "deny": [],
+    "requireSignature": true
+  },
+  "images": {
+    "allowPatterns": ["ghcr.io/hyperpolymath/*", "quay.io/hyperpolymath/*"],
+    "denyPatterns": ["*:latest", "*:dev-*"],
+    "requireSbom": true,
+    "maxAgeDays": 60
+  },
+  "resources": {
+    "maxMemoryMb": 2048,
+    "maxCpuCores": 2.0,
+    "maxContainers": 25,
+    "maxStorageGb": 10
+  },
+  "security": {
+    "allowPrivileged": false,
+    "allowHostNetwork": false,
+    "allowHostPid": false,
+    "allowHostIpc": false,
+    "readOnlyRoot": true,
+    "dropCapabilities": ["ALL"],
+    "addCapabilities": []
+  },
+  "verification": {
+    "signatureAlgorithms": ["ml-dsa-87", "slh-dsa-shake-256f"],
+    "transparencyLogs": {
+      "required": ["rekor", "ct-tlog"],
+      "quorum": 2
+    },
+    "sbomRequired": true,
+    "sbomFormats": ["spdx", "cyclonedx"],
+    "provenanceLevel": 4,
+    "maxSignatureAgeDays": 30,
+    "keyTrustLevel": "hardware-backed",
+    "requiredPredicates": [
+      "https://slsa.dev/provenance/v1",
+      "https://spdx.dev/Document",
+      "https://in-toto.io/attestation/vulns/v0.1"
+    ]
+  },
+  "notes": "This policy requires post-quantum cryptographic algorithms (ML-DSA-87 or SLH-DSA) for all signatures. Suitable for organizations preparing for quantum computing threats."
+}

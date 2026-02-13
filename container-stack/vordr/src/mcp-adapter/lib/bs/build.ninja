@@ -1,0 +1,32 @@
+rescript = 1
+g_finger := /var/mnt/eclipse/repos/vordr/src/mcp-adapter/node_modules/@rescript/core/lib/ocaml/install.stamp
+rule astj
+  command = /var/mnt/eclipse/repos/vordr/src/mcp-adapter/node_modules/rescript/linux/bsc.exe  -warn-error +101 -bs-v 11.1.4 -uncurried  -absname -bs-ast -o $out $i
+o src/Main.ast : astj ../../src/Main.res
+rule deps
+  command = /var/mnt/eclipse/repos/vordr/src/mcp-adapter/node_modules/rescript/linux/bsb_helper.exe -hash abdc1cd996c439da0ecfa9baa5d79e88 $in
+  restat = 1
+o src/Main.d : deps src/Main.ast
+rule mij
+  command = /var/mnt/eclipse/repos/vordr/src/mcp-adapter/node_modules/rescript/linux/bsc.exe -I src -I /var/mnt/eclipse/repos/vordr/src/mcp-adapter/node_modules/@rescript/core/lib/ocaml   -warn-error +101 -uncurried -bs-package-name vordr-mcp-adapter -bs-package-output esmodule:$in_d:.res.js -bs-v $g_finger $i
+  dyndep = 1
+  restat = 1
+o src/Main.cmj src/Main.cmi ../../src/Main.res.js : mij src/Main.ast
+o src/Tools.ast : astj ../../src/Tools.res
+o src/Tools.d : deps src/Tools.ast
+o src/Tools.cmj src/Tools.cmi ../../src/Tools.res.js : mij src/Tools.ast
+o src/Types.ast : astj ../../src/Types.res
+o src/Types.d : deps src/Types.ast
+o src/Types.cmj src/Types.cmi ../../src/Types.res.js : mij src/Types.ast
+o src/Server.ast : astj ../../src/Server.res
+o src/Server.d : deps src/Server.ast
+o src/Server.cmj src/Server.cmi ../../src/Server.res.js : mij src/Server.ast
+o src/HttpMain.ast : astj ../../src/HttpMain.res
+o src/HttpMain.d : deps src/HttpMain.ast
+o src/HttpMain.cmj src/HttpMain.cmi ../../src/HttpMain.res.js : mij src/HttpMain.ast
+o src/Protocol.ast : astj ../../src/Protocol.res
+o src/Protocol.d : deps src/Protocol.ast
+o src/Protocol.cmj src/Protocol.cmi ../../src/Protocol.res.js : mij src/Protocol.ast
+o src/HttpServer.ast : astj ../../src/HttpServer.res
+o src/HttpServer.d : deps src/HttpServer.ast
+o src/HttpServer.cmj src/HttpServer.cmi ../../src/HttpServer.res.js : mij src/HttpServer.ast

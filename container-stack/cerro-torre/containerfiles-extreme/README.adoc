@@ -1,0 +1,214 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= eXtreme Security Variants (X-) - READ THIS FIRST
+:toc: left
+
+[WARNING]
+====
+**You probably don't need these builds.**
+
+X- variants are for **high-security environments** (military, financial, classified systems), not general use.
+====
+
+== What Are X- Variants?
+
+eXtreme security builds include **ATS2 linear type verification** in addition to Ada/SPARK proofs.
+
+[cols="1,3",options="header"]
+|===
+| Variant | Purpose
+
+| X-ct-i
+| eXtreme infrastructure with ATS2 shadow verifier
+
+| X-ct-a
+| eXtreme attestation with linear crypto proofs
+
+| X-ct
+| eXtreme complete with full linear type verification
+|===
+
+== When to Use X- Variants
+
+✅ **Use X- variants if:**
+
+* You're deploying to classified/military environments
+* You're building financial transaction systems
+* You need formal memory safety guarantees beyond SPARK
+* You require linear type proofs (use-once resources)
+* Your compliance requires ATS2 verification
+* You understand what "linear types" means
+
+❌ **Do NOT use X- variants if:**
+
+* You just want "the most secure build" (use standard ct-a or ct)
+* You think "extreme" means "extra features" (it doesn't - see below)
+* You're building typical web applications (use standard variants)
+* You don't know what ATS2 is
+* You just think it sounds impressive
+
+== X- is NOT Alpha/Beta
+
+**Important distinction:**
+
+* **X- variants**: Extreme *security verification* (maximum formal proofs)
+* **Alpha/Beta builds**: Unstable *features* (in `releases/` directory, not here)
+
+X- code is ultra-stable. The verification is *stronger*, not experimental.
+
+== Verification Comparison
+
+[cols="1,1,1,1,1",options="header"]
+|===
+| Variant | Ada/SPARK | Idris2 | ATS2 | Shadow Verifier
+
+| Standard (ct-*)
+| ✅
+| ❌
+| ❌
+| ❌
+
+| Research (R-ct-*)
+| ✅
+| ✅
+| ❌
+| ❌
+
+| eXtreme (X-ct-*)
+| ✅
+| ❌
+| ✅
+| ✅
+|===
+
+**Shadow Verifier:** ATS2-compiled secondary verifier that runs in parallel to catch Ada/SPARK proof gaps.
+
+== Performance Impact
+
+X- variants have **~5-10% runtime overhead** due to shadow verification:
+
+[cols="1,1,1",options="header"]
+|===
+| Operation | Standard | eXtreme
+
+| Pack bundle
+| 100ms
+| 105-110ms
+
+| Verify signature
+| 50ms
+| 52-55ms
+
+| Import package
+| 2.0s
+| 2.1-2.2s
+|===
+
+For most operations, the overhead is negligible.
+
+== Build Time
+
+Expect **4-5× longer build times** due to ATS2 verification:
+
+* ct-i: ~5 minutes
+* X-ct-i: ~20-25 minutes (includes ATS2 linear type checking)
+
+== Shadow Verifier
+
+X- variants include `ct-shadow`, an ATS2-compiled shadow verifier:
+
+[source,bash]
+----
+# Main operation with shadow verification
+ct pack nginx:latest -o nginx.ctp
+
+# Manual shadow verification
+ct-shadow --verify nginx.ctp
+----
+
+The shadow verifier runs automatically for all operations.
+
+## Compliance Use Cases
+
+X- variants are designed for:
+
+* **NIST FIPS compliance** (required for US federal systems)
+* **Common Criteria EAL6+** (high assurance operating systems)
+* **DO-178C Level A** (avionics critical software)
+* **IEC 62304 Class C** (medical device software)
+* **MISRA-C compliance** (automotive safety-critical)
+
+If your compliance doesn't require linear type proofs, use standard variants.
+
+== Still Want X- Variants?
+
+If you understand the above and need extreme security:
+
+[source,bash]
+----
+# Build all extreme variants
+just build-extreme
+
+# Build individual variants
+just build-X-ct-i   # Infrastructure
+just build-X-ct-a   # Attestation
+just build-X-ct     # Complete
+----
+
+== Need Standard Builds?
+
+Most users should use standard variants:
+
+[source,bash]
+----
+cd ../containerfiles/
+
+# Standard builds (SPARK only, production-ready)
+just build-ct-i     # Infrastructure
+just build-ct-a     # Attestation
+just build-ct       # Complete
+----
+
+See `../containerfiles/README.adoc` for standard variant documentation.
+
+== Need Research Builds?
+
+For academic research on dependent types:
+
+[source,bash]
+----
+cd ../containerfiles-research/
+
+# Research builds (Idris2 + SPARK)
+just build-R-ct-i   # Infrastructure
+just build-R-ct-a   # Attestation
+just build-R-ct     # Complete
+----
+
+See `../containerfiles-research/README.adoc` for research variant documentation.
+
+== Cost Considerations
+
+X- variants have higher operational costs:
+
+[cols="1,1,1",options="header"]
+|===
+| Metric | Standard | eXtreme
+
+| Build time
+| 5 min
+| 20-25 min
+
+| Container size
+| 80-200MB
+| 100-250MB (+20-50MB for ct-shadow)
+
+| CI/CD time
+| Fast
+| 4-5× slower
+
+| Maintenance
+| Easy
+| Requires ATS2 expertise
+|===
+
+Only use X- variants when compliance or security requirements justify the cost.

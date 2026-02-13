@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: MPL-2.0-or-later
+name: Ada/SPARK Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  gnat-build:
+    name: Build with GNAT
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat gprbuild
+
+      - name: Build cerro-torre
+        run: |
+          cd src
+          gprbuild -P cerro_torre.gpr -j0
+
+      - name: Run unit tests
+        run: |
+          cd src
+          gprbuild -P cerro_torre_test.gpr -j0
+          ./obj/test_runner
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cerro-torre-cli
+          path: src/obj/ct
+
+  spark-proofs:
+    name: SPARK Formal Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install GNAT and SPARK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat gprbuild gnatprove
+
+      - name: Run SPARK proofs
+        run: |
+          cd src
+          gnatprove -P cerro_torre.gpr --level=2 --report=all
+
+      - name: Check proof results
+        run: |
+          cd src
+          # Exit with error if any proofs failed
+          if grep -q "unproved" gnatprove/gnatprove.out 2>/dev/null; then
+            echo "ERROR: Some SPARK proofs failed"
+            exit 1
+          fi
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install GNAT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnat gprbuild
+
+      - name: Run gnatcheck
+        run: |
+          cd src
+          gnatcheck -P cerro_torre.gpr -rules -from=gnatcheck.rules

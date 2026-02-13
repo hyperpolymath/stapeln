@@ -1,0 +1,319 @@
+= Vörðr LSP Architecture
+:toc:
+:toclevels: 3
+
+== Overview
+
+Vörðr implements a full Language Server Protocol (LSP) for verified container workflows. The LSP provides IDE integration for `.ctp` bundles, Gatekeeper policies, and Dockerfiles with security awareness.
+
+== Architecture
+
+=== LSP-Style Design
+
+```
+┌─────────────────────────────────────────┐
+│           Protocol Layer                │
+│  (Language-agnostic, pure logic)        │
+│                                         │
+│  • Server.res - Request handling        │
+│  • Types.res - LSP type definitions     │
+│  • Capabilities - Features             │
+└─────────────────────────────────────────┘
+                    ↕
+┌─────────────────────────────────────────┐
+│          Transport Layer                │
+│  (Multiple transports supported)        │
+│                                         │
+│  • Stdio - LSP standard (VS Code, etc)  │
+│  • HTTP - Web clients, Svalinn          │
+│  • WebSocket - Real-time updates        │
+└─────────────────────────────────────────┘
+```
+
+=== Directory Structure
+
+```
+src/lsp/
+├── protocol/              # Core LSP logic
+│   ├── Types.res         # LSP type definitions
+│   ├── Server.res        # Request handling
+│   └── Capabilities.res  # LSP capabilities
+│
+├── transport/            # Transport implementations
+│   ├── stdio/
+│   │   └── StdioTransport.res
+│   ├── http/
+│   │   └── HttpTransport.res
+│   └── websocket/
+│       └── WebSocketTransport.res
+│
+├── Main.res              # Entry point
+├── deno.json             # Deno configuration
+└── rescript.json         # ReScript config
+
+editors/vscode/           # VS Code extension
+├── src/
+│   └── extension.ts
+├── package.json
+└── README.md
+```
+
+== LSP Features
+
+=== Text Document Synchronization
+
+**Full synchronization** of `.ctp`, `.gatekeeper.yaml`, and Dockerfile documents.
+
+[source,typescript]
+----
+textDocumentSync: Full
+----
+
+=== Diagnostics
+
+Real-time security diagnostics:
+
+* **Unsigned images** - Error-level diagnostic for images without Ed25519 signatures
+* **Invalid policies** - Syntax errors in Gatekeeper policies
+* **Malformed bundles** - Structural issues in `.ctp` files
+* **Security issues** - CVEs, vulnerabilities, policy violations
+
+=== Completion
+
+Context-aware auto-completion:
+
+* **Image names** from configured registries
+* **Image tags** for known images
+* **Policy fields** for Gatekeeper policies
+* **CTP bundle fields** with schema validation
+
+Trigger characters: `:`, `/`, `@`
+
+=== Hover
+
+Rich hover information:
+
+* **Container images**: Signature status, digest, metadata
+* **Policy fields**: Documentation, examples
+* **CTP bundles**: Bundle info, verification status
+
+=== Code Actions
+
+Quick fixes and refactorings:
+
+* **Sign image with Cerro Torre** - QuickFix for unsigned images
+* **Update to verified version** - Replace with signed alternative
+* **Fix policy violation** - Auto-fix common policy errors
+
+== Transport Protocols
+
+=== Stdio Transport (Primary)
+
+Standard LSP transport using stdin/stdout.
+
+**Usage:**
+```bash
+deno run --allow-read --allow-write src/lsp/Main.res.js
+```
+
+**Message Format:**
+```
+Content-Length: 123\r\n
+\r\n
+{"jsonrpc":"2.0","method":"initialize",...}
+```
+
+**Clients:**
+* VS Code
+* Neovim (via `nvim-lspconfig`)
+* Emacs (via `lsp-mode`)
+* Any LSP-compatible editor
+
+=== HTTP Transport
+
+RESTful LSP over HTTP for web clients.
+
+**Usage:**
+```bash
+deno run --allow-net src/lsp/Main.res.js --transport=http --port=8081
+```
+
+**Endpoint:**
+```
+POST http://localhost:8081
+Content-Type: application/json
+
+{"jsonrpc":"2.0","method":"textDocument/hover",...}
+```
+
+**Clients:**
+* Web-based editors
+* Svalinn gateway
+* Custom integrations
+
+=== WebSocket Transport (Future)
+
+Real-time bidirectional communication.
+
+**Use cases:**
+* Live diagnostics
+* Server-initiated notifications
+* Streaming container logs
+
+== VS Code Extension
+
+=== Installation
+
+1. Build the LSP:
+```bash
+cd src/lsp
+deno task build
+```
+
+2. Install dependencies:
+```bash
+cd editors/vscode
+npm install
+```
+
+3. Compile extension:
+```bash
+npm run compile
+```
+
+4. Install extension:
+```bash
+code --install-extension .
+```
+
+=== Features
+
+* Syntax highlighting for `.ctp` files
+* Real-time diagnostics
+* Auto-completion
+* Hover documentation
+* Commands: Sign, Verify, Create Bundle
+
+=== Configuration
+
+`.vscode/settings.json`:
+```json
+{
+  "vordr.lsp.enable": true,
+  "vordr.lsp.trace.server": "verbose",
+  "vordr.verification.autoVerify": true,
+  "vordr.cerroTorre.path": "cerro-pack"
+}
+```
+
+== Integration with Vörðr Ecosystem
+
+=== Cerro Torre Integration
+
+LSP uses Cerro Torre for signing operations:
+
+```
+User triggers "Sign Image" command
+  ↓
+LSP calls cerro-pack
+  ↓
+Signature embedded in .ctp bundle
+  ↓
+LSP re-validates document
+  ↓
+Diagnostics updated (error cleared)
+```
+
+=== Svalinn Integration
+
+HTTP transport enables Svalinn gateway to use LSP for policy validation:
+
+```
+Svalinn receives container create request
+  ↓
+HTTP POST to LSP: validate policy
+  ↓
+LSP returns diagnostics
+  ↓
+Svalinn allows/denies based on diagnostics
+```
+
+=== Vörðr Elixir Integration
+
+LSP can call Elixir GenServer for container operations:
+
+```rescript
+// In LSP code action handler
+let signImage = (imageName: string): unit => {
+  // Call Elixir via Rust FFI
+  VordrFFI.signImage(imageName)
+}
+```
+
+== Development
+
+=== Building
+
+```bash
+# Compile ReScript
+cd src/lsp
+npx rescript build
+
+# Run LSP (stdio)
+deno run --allow-read --allow-write Main.res.js
+
+# Run LSP (HTTP)
+deno run --allow-net Main.res.js --transport=http --port=8081
+```
+
+=== Testing
+
+```bash
+# Unit tests
+deno test --allow-read tests/*.test.js
+
+# Integration test with real editor
+code --inspect-extensions
+```
+
+=== Debugging
+
+Enable trace logging:
+```json
+{
+  "vordr.lsp.trace.server": "verbose"
+}
+```
+
+Check LSP output panel in VS Code:
+```
+View → Output → Vörðr Language Server
+```
+
+== Future Enhancements
+
+=== Additional Capabilities
+
+* **Document symbols** - Outline view for `.ctp` files
+* **Go to definition** - Navigate to image definitions
+* **Find references** - Find all uses of an image
+* **Rename** - Rename images across files
+* **Formatting** - Auto-format policies
+
+=== Syntax Tree Analysis
+
+Parse `.ctp` JSON structure into AST for:
+* Better diagnostics
+* Structural validation
+* Schema-aware completion
+
+=== Streaming Diagnostics
+
+WebSocket transport for:
+* Real-time CVE notifications
+* Live container status
+* Policy changes
+
+== License
+
+PMPL-1.0-or-later

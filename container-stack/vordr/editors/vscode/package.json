@@ -1,0 +1,112 @@
+{
+  "name": "vordr-vscode",
+  "displayName": "Vörðr Container Tools",
+  "description": "Language support for .ctp bundles, Gatekeeper policies, and verified containers",
+  "version": "0.1.0",
+  "license": "PMPL-1.0-or-later",
+  "publisher": "hyperpolymath",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hyperpolymath/vordr"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:ctp",
+    "onLanguage:gatekeeper",
+    "onLanguage:dockerfile"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ctp",
+        "aliases": ["CTP Bundle", "ctp"],
+        "extensions": [".ctp"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "gatekeeper",
+        "aliases": ["Gatekeeper Policy", "gatekeeper"],
+        "extensions": [".gatekeeper.yaml", ".gatekeeper.yml"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ctp",
+        "scopeName": "source.ctp",
+        "path": "./syntaxes/ctp.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Vörðr",
+      "properties": {
+        "vordr.lsp.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Vörðr LSP server"
+        },
+        "vordr.lsp.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server"
+        },
+        "vordr.verification.autoVerify": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically verify container images when opened"
+        },
+        "vordr.cerroTorre.path": {
+          "type": "string",
+          "default": "cerro-pack",
+          "description": "Path to Cerro Torre pack binary"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "vordr.signImage",
+        "title": "Sign Container Image",
+        "category": "Vörðr"
+      },
+      {
+        "command": "vordr.verifyImage",
+        "title": "Verify Container Image",
+        "category": "Vörðr"
+      },
+      {
+        "command": "vordr.createBundle",
+        "title": "Create CTP Bundle",
+        "category": "Vörðr"
+      },
+      {
+        "command": "vordr.validatePolicy",
+        "title": "Validate Gatekeeper Policy",
+        "category": "Vörðr"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  }
+}

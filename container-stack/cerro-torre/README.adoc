@@ -1,0 +1,423 @@
+= Cerro Torre
+
+image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[MPL-2.0-or-later,link="https://opensource.org/licenses/MPL-2.0"]
+image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
+
+== License & Philosophy
+
+This project must declare **MPL-2.0-or-later** for platform/tooling compatibility.
+
+Philosophy: **Palimpsest**. The Palimpsest-MPL (PMPL) text is provided in `license/PMPL-1.0.txt`, and the canonical source is the palimpsest-license repository.
+
+// SPDX-License-Identifier: MPL-2.0-or-later
+// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+
+:toc: preamble
+:toclevels: 3
+:icons: font
+:source-highlighter: rouge
+
+*Provenance-verified container packaging with cryptographic supply chain guarantees.*
+
+Cerro Torre is a SPARK/Ada-verified toolchain for packaging container images into cryptographically signed `.ctp` bundles. It provides complete provenance chain from source to deployment, integrating with Svalinn (gateway) and Vörðr (runtime) for verified container operations.
+
+The name references Patagonia's most technically demanding peak. Cerro Torre stands for doing things properly: fair means, complete transparency, no shortcuts.
+
+== Why Cerro Torre?
+
+The container base image landscape offers:
+
+- *Alpine*: Minimal and excellent, but limited supply chain transparency
+- *Wolfi*: Strong security focus, but governed by a VC-backed company
+
+Cerro Torre offers a third path:
+
+| Principle | What It Means |
+|-----------|---------------|
+| *Formally Verified* | Core tooling written in Ada/SPARK with machine-checked proofs |
+| *Democratically Governed* | Multi-stakeholder cooperative, no corporate parent |
+| *Radically Transparent* | Complete cryptographic provenance for every package |
+| *Format Agnostic* | Import from Debian, Fedora, Alpine — not locked to any upstream |
+| *Ethically Committed* | The Palimpsest Covenant articulates our values |
+
+== Current Status
+
+*Phase 3 - In Progress:* Ed25519 signing module ready, CLI integration next. *82% complete*
+
+**What Works (2026-01-25):**
+
+* ✅ *HTTP Client (CT_HTTP)*: Curl-based client with TLS, auth, modern protocol support, configurable debug logging
+* ✅ *Registry Client (CT_Registry)*: OCI Distribution v2, pull/push manifests, authentication
+* ✅ *CLI Framework*: `ct fetch` and `ct push` working live, `ct pack`/`ct verify` complete
+* ✅ *Transparency Logs*: Rekor API client, log entry structures, upload/get operations
+* ✅ *Cryptography*: SHA-256/512, Ed25519 verification, all tests passing
+* ✅ *Ed25519 Signing*: OpenSSL-based signing module (keygen, sign operations ready)
+* ✅ *Test Suite*: 48/48 tests passing (100%), live registry testing validated
+
+**Try It Now:**
+
+[source,bash]
+----
+# Build the project
+cd /var/home/hyper/Documents/hyperpolymath-repos/cerro-torre
+alr build
+
+# Fetch a manifest from a registry
+./bin/ct fetch localhost:5000/test/hello:v1 -o hello.ctp
+
+# Push a bundle to a registry
+./bin/ct push hello.ctp localhost:5000/test/hello:v2
+
+# Verify what works
+./bin/ct --help
+./bin/ct version
+----
+
+**Live Testing Results:**
+
+* ✅ *ct fetch*: Successfully downloads OCI manifests from Docker registries
+* ✅ *ct push*: Successfully uploads bundles to Docker registries
+* ✅ *Localhost registries*: HTTP auto-detection, port parsing fixed, round-trip verified
+* 📋 *Cloud registries*: ghcr.io and docker.io ready for testing (authentication required)
+
+**Security Status:**
+
+* TLS 1.3 with certificate verification (enabled by default)
+* DANE/TLSA for DNS-based cert auth (opportunistic)
+* HTTP/2 and HTTP/3 support via Alt-Svc
+* DNS-over-HTTPS (DoH) ready
+* ECH disabled for MVP compatibility (requires modern curl)
+
+**Immediate Next Steps:**
+
+* [x] ~~Debug ct push manifest upload~~ (DONE - working with localhost:5000)
+* [x] ~~Make HTTP debug logging configurable~~ (DONE - disabled by default)
+* [x] ~~Implement Ed25519 signing module~~ (DONE - OpenSSL wrapper ready)
+* [ ] Wire signing to CLI: `ct sign` and `ct keygen` commands
+* [ ] Test signing end-to-end (generate key → sign bundle → verify)
+* [ ] Test with GitHub Container Registry (ghcr.io) - requires authentication token
+* [ ] Test with Docker Hub (docker.io) - requires credentials
+* [ ] Submit test attestation to Rekor
+
+See link:docs/ROADMAP.md[ROADMAP.md], link:IMPLEMENTATION-STATUS.md[IMPLEMENTATION-STATUS.md], and link:SESSION-LIVE-TESTING-2026-01-25.md[latest session notes] for detailed status.
+
+== Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         IMPORTERS                                │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
+│  │ Debian  │  │ Fedora  │  │ Alpine  │  │  Nix    │   ...      │
+│  │  .dsc   │  │  SRPM   │  │APKBUILD │  │  .drv   │            │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘            │
+│       │            │            │            │                  │
+│       └────────────┴─────┬──────┴────────────┘                  │
+│                          ▼                                      │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │              CERRO TORRE MANIFEST (.ctp)                  │  │
+│  │         Declarative · Turing-Incomplete · Verifiable      │  │
+│  └─────────────────────────┬─────────────────────────────────┘  │
+│                            ▼                                    │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │              SPARK-VERIFIED BUILD CORE                    │  │
+│  │  Cryptographic Ops · Manifest Parsing · Provenance Chain  │  │
+│  └─────────────────────────┬─────────────────────────────────┘  │
+│                            ▼                                    │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                    ATTESTATIONS                           │  │
+│  │  in-toto · SBOM · Federated Transparency Logs            │  │
+│  └─────────────────────────┬─────────────────────────────────┘  │
+│                            ▼                                    │
+│                        EXPORTERS                                │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
+│  │   OCI   │  │ OSTree  │  │  .deb   │  │  .rpm   │            │
+│  │ Images  │  │ Commits │  │ Compat  │  │ Compat  │            │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+=== The Manifest Format
+
+Cerro Torre packages are defined in `.ctp` manifest files — a declarative, Turing-incomplete format designed for formal verification. Package definitions cannot contain arbitrary computation, making them analysable and provable.
+
+See [spec/manifest-format.md](spec/manifest-format.md) for the full specification.
+
+=== Import Sources
+
+*Primary: Debian* — Chosen for governance alignment. Debian is genuinely community-governed with constitutional documents, elected leadership, and no corporate owner. Building on democratic foundations matters for a democratically-governed project.
+
+*Secondary: Fedora* — For packages where Fedora's version is better maintained, and for SELinux reference policies.
+
+*Extensible*: The importer architecture allows community contribution of additional sources (Alpine, Nix, Arch, etc.).
+
+=== Security
+
+Cerro Torre provides cryptographic supply chain guarantees through formal verification and post-quantum cryptography:
+
+==== Implemented (Production Ready)
+
+- *Formal Verification*: Core crypto operations verified with Ada/SPARK proofs
+- *Ed25519 Signatures*: RFC 8032 compliant digital signatures (CT-SIG-01)
+- *Strong Hashing*: SHA-256/512 (FIPS 180-4), BLAKE3 for fast manifest hashing
+- *TLS 1.3*: Modern encrypted transport for registry operations
+- *SELinux Enforcing*: First-class SELinux support with auto-generated per-container policies
+- *Threshold Signing*: k-of-n keyholders required for releases (FROST-Ed25519)
+- *Federated Transparency*: Multiple independent log operators (Rekor integration)
+- *Reproducible Builds*: Any party can rebuild and verify packages
+
+==== In Development (Security Roadmap)
+
+- *Post-Quantum Signatures*: ML-DSA-87 implementation (Phase 1, Q3 2026) - API defined, liboqs bindings present
+- *Hybrid Signatures*: CT-SIG-02 (Ed25519 + ML-DSA-87) for quantum resistance
+- *Enhanced Algorithms*: Ed448 (Phase 1), SPHINCS+ (Phase 1), BLAKE3-512 (Phase 2)
+- *Modern Transport*: HTTP/3 and QUIC (Phase 3, Q1 2027)
+- *Post-Quantum TLS*: Kyber-1024 KEM when curl/OpenSSL support available
+
+**Current Svalinn-Project Compliance**: 40% (see link:SECURITY.md[SECURITY.md] and link:docs/MISSING-SECURITY-COMPONENTS.adoc[security audit])
+
+**Protection Against**: Supply chain tampering, unauthorized signers, quantum computer attacks (roadmap), man-in-the-middle attacks
+
+**See Also**: link:SECURITY.md[Security Policy], link:docs/ROADMAP.adoc[Security Implementation Timeline]
+
+== Licensing
+
+Cerro Torre tooling is dual-licensed under your choice of:
+
+- *Palimpsest-MPL-1.0 License* — Maximum permissiveness
+- *PMPL-1.0-or-later* — Copyleft with network provisions
+
+The *Palimpsest Covenant* travels alongside as a values commitment (not a legal requirement). Community members are encouraged to adopt it.
+
+Packages retain their upstream licenses.
+
+== Governance
+
+Cerro Torre is owned by a multi-stakeholder cooperative with:
+
+- *Maintainer Members*: Active package/infrastructure maintainers (one person, one vote on technical decisions)
+- *User Members*: Organisations and individuals using Cerro Torre in production (vote on strategic direction)
+- *Asset Lock*: If dissolved, assets go to another cooperative or charity, never to private interests
+- *Fork Protection*: Forking is explicitly encouraged; the cooperative exists to be useful, not to control
+
+See [governance/](governance/) for full documentation.
+
+== Project Structure
+
+```
+cerro-torre/
+├── spec/                    # Specifications
+│   ├── manifest-format.md   # .ctp format specification
+│   ├── provenance-chain.md  # Attestation requirements
+│   └── transparency-log.md  # Federated log protocol
+├── governance/              # Cooperative documents
+│   ├── articles.md          # Bylaws
+│   ├── covenant.md          # Palimpsest Covenant
+│   └── decisions/           # Decision records
+├── src/                     # Ada/SPARK implementation
+│   ├── core/                # SPARK-verified (crypto, parsing, verification)
+│   ├── importers/           # Debian, Fedora, etc.
+│   ├── exporters/           # OCI, OSTree, etc.
+│   ├── build/               # Build orchestration
+│   └── policy/              # SELinux generation
+├── manifests/               # Package manifests (.ctp)
+├── keys/                    # Public keys and policies
+└── docs/                    # Documentation
+```
+
+== Project Status
+
+*Phase 0: Foundations -- MVP v0.1.0-alpha*
+
+[cols="1,1,3",options="header"]
+|===
+|Component |Status |Description
+
+|*Manifest Parser*
+|Complete
+|`.ctp` TOML-like format with metadata, provenance, dependencies
+
+|*Crypto Core*
+|Complete
+|SHA-256/SHA-512 (FIPS 180-4), Ed25519 signatures (RFC 8032)
+
+|*Bundle Packing*
+|Complete
+|`ct pack` creates tar-based `.ctp` bundles
+
+|*Bundle Verification*
+|Complete
+|`ct verify` checks hashes, signatures, policy
+
+|*Trust Store*
+|Complete
+|Local key management with trust levels
+
+|*Help System*
+|Complete
+|`ct help`, `ct explain`, `ct man` with JSON output for CI/CD
+
+|*Policy Engine*
+|In Progress
+|Allow/deny rules for deployment
+
+|*Registry Operations*
+|Planned
+|`ct fetch`, `ct push` for remote registries
+|===
+
+== Building from Source
+
+=== Prerequisites
+
+- GNAT (>= 13.0) -- Ada compiler
+- Alire (recommended) or GPRbuild
+
+=== Build
+
+[source,bash]
+----
+# Using Alire (recommended)
+alr build
+
+# Or directly with GPRbuild
+gprbuild -P cerro_torre.gpr
+
+# Build modes: Development, Release, Proof
+gprbuild -P cerro_torre.gpr -XCERRO_BUILD_MODE=Release
+----
+
+The `ct` binary is placed in `bin/`.
+
+== CLI Commands
+
+[source,bash]
+----
+# Core commands
+ct pack <image> -o <file>                  # Pack OCI image into .ctp bundle
+ct verify <bundle.ctp> [--policy <file>]   # Verify bundle
+ct explain <bundle>                        # Show verification chain
+
+# Runtime integration
+ct run <bundle> [--runtime=svalinn]        # Run via Svalinn/podman/docker
+ct unpack <bundle> -o <dir>                # Extract to OCI layout
+
+# Key management
+ct keygen [--id <name>]                    # Generate signing keypair
+ct key list                                # List trusted keys
+ct key import <file.pub>                   # Import public key
+ct key trust <id> <level>                  # Set trust level
+
+# Distribution
+ct fetch <ref> -o <file>                   # Fetch from registry
+ct push <bundle> <dest>                    # Push to registry
+
+# Diagnostics
+ct doctor                                  # Check pipeline health
+ct diff <old> <new>                        # Compare bundles
+
+# Help
+ct help [command]                          # Command help
+ct version [--json]                        # Version info
+ct man <topic>                             # Man-page style docs
+----
+
+== Integration with Svalinn Ecosystem
+
+[cols="1,2,2",options="header"]
+|===
+|Component |Role |Integration
+
+|*Svalinn*
+|Edge gateway
+|Validates `.ctp` bundles before deployment
+
+|*Vörðr*
+|Container runtime (native)
+|Verifies attestations, executes containers
+
+|*verified-container-spec*
+|Protocol specification
+|Defines attestation formats and runtime integration
+
+|*nerdctl/containerd*
+|Container runtime (via plugin/shim)
+|Runs `.ctp` bundles with verification enforcement
+
+|*Podman*
+|Container runtime (via hooks)
+|Runs `.ctp` bundles with verification enforcement
+|===
+
+See the https://github.com/hyperpolymath/verified-container-spec/blob/main/spec/runtime-integration.adoc[Runtime Integration Specification] for implementation details.
+
+=== End-to-End Workflow
+
+[source,bash]
+----
+# 1. Package an image with Cerro Torre
+ct pack docker.io/library/nginx:1.26 -o nginx.ctp
+
+# 2. Verify the bundle
+ct verify nginx.ctp --policy strict.json
+
+# 3. Run with your choice of runtime:
+
+# Option A: Vörðr (native .ctp support)
+vordr run nginx.ctp --verify
+
+# Option B: nerdctl with verified-container shim
+nerdctl run nginx.ctp --verify
+
+# Option C: Podman with verification hooks
+podman run nginx.ctp --verify
+
+# Option D: Via Svalinn gateway (delegates to Vörðr)
+ct run nginx.ctp --runtime=svalinn
+----
+
+See https://github.com/hyperpolymath/verified-container-spec/blob/main/spec/runtime-integration.adoc[Runtime Integration Specification] for details on runtime support.
+
+== Project Structure
+
+----
+cerro-torre/
+├── src/
+│   ├── core/               # SPARK-verified (crypto, parsing)
+│   │   ├── cerro_crypto.adb
+│   │   ├── cerro_manifest.adb
+│   │   ├── cerro_provenance.adb
+│   │   └── cerro_trust_store.adb
+│   ├── cli/                # Command-line interface
+│   │   ├── cerro_main.adb
+│   │   └── cerro_cli.adb
+│   ├── build/              # Bundle creation/verification
+│   │   ├── cerro_pack.adb
+│   │   └── cerro_verify.adb
+│   ├── importers/          # Source format importers
+│   │   ├── debian/
+│   │   ├── fedora/
+│   │   └── alpine/
+│   ├── exporters/          # Output format exporters
+│   │   ├── oci/
+│   │   └── rpm-ostree/
+│   ├── policy/             # SELinux generation
+│   └── runtime/            # Runtime integration
+├── spec/                   # Specifications
+│   └── manifest-format.md
+├── governance/             # Cooperative documents
+├── cerro_torre.gpr         # GNAT project file
+└── README.adoc
+----
+
+== Getting Involved
+
+Read the link:governance/covenant.md[Palimpsest Covenant] first. If those values resonate, see link:CONTRIBUTING.md[CONTRIBUTING.md].
+
+== License
+
+Dual-licensed under:
+
+* Palimpsest-MPL-1.0 License
+* PMPL-1.0-or-later
+
+See link:LICENSE.txt[LICENSE.txt] for details.

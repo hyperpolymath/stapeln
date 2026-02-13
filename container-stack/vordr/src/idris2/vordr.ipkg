@@ -1,0 +1,21 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- vordr.ipkg — Idris2 package definition for Vörðr verification core
+
+package vordr
+version = 0.1.0
+authors = "hyperpolymath"
+license = "PMPL-1.0-or-later"
+brief = "Formally verified container lifecycle verification"
+
+sourcedir = "."
+
+modules = Container
+        , Verification
+        , Attestation
+        , SBOM
+        , Proofs
+
+main = Main
+executable = vordr-verify
+
+opts = "--total"

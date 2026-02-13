@@ -1,0 +1,56 @@
+name = "cerro_torre"
+description = "Supply-chain-verified Linux distribution tooling"
+version = "0.1.0-dev"
+
+authors = ["Cerro Torre Cooperative"]
+maintainers = ["cerro-torre@example.org"]
+maintainers-logins = ["cerro-torre"]
+
+licenses = "MPL-2.0"
+# Note: Actual project license is PMPL-1.0-or-later (Palimpsest-MPL),
+# which is based on MPL-2.0 with ethical use and provenance extensions.
+# Alire requires standard SPDX identifiers, so MPL-2.0 (the base license)
+# is declared here. See LICENSE file for complete PMPL-1.0-or-later terms.
+website = "https://cerro-torre.org"
+tags = ["security", "supply-chain", "linux", "containers", "provenance"]
+
+# CLI binary is named "ct" (short for Cerro Torre)
+executables = ["ct"]
+
+# Dependencies - start minimal, add as needed
+# Pin to gnatcoll 25 due to project file resolution issue in 26
+[[depends-on]]
+gnatcoll = "~25.0.0"
+
+# For TOML parsing (manifest files)
+[[depends-on]]
+ada_toml = "*"
+
+# For JSON handling (provenance, SBOM output)
+[[depends-on]]
+json = "*"
+
+# For formally verified primitives (registry parsing, digest ops, HTTP utils)
+# Version omitted - using local pin (see [[pins]] section below)
+[[depends-on]]
+proven = "*"
+
+# For HTTP client (source fetching, registry, transparency) - v0.2
+# Temporarily disabled due to dependency conflicts with gnatcoll 25
+# [[depends-on]]
+# aws = ">=24.0.0"
+
+# For cryptography (SHA256, Ed25519) - MVP
+# Uncomment when libsodium-ada binding is available
+# [[depends-on]]
+# libsodium = "*"
+
+[gpr-externals]
+CERRO_BUILD_MODE = ["Development", "Release", "Proof"]
+
+[gpr-set-externals]
+CERRO_BUILD_MODE = "Development"
+
+# Pin proven to local path (formally verified primitives)
+[[pins]]
+proven = { path = "../proven/bindings/ada" }

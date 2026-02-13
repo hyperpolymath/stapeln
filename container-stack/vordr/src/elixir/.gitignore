@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+# Dependencies
+/deps/
+
+# Build
+/_build/
+
+# Generated docs
+/doc/
+
+# Test coverage
+/cover/
+
+# Mix lock
+mix.lock
+
+# Editor
+*.swp
+*~
+.idea/
+.vscode/
+
+# OS
+.DS_Store

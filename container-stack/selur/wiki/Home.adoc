@@ -1,0 +1,71 @@
+= selur Wiki
+:toc:
+:toclevels: 2
+
+Welcome to the selur wiki! This documentation covers everything you need to know about using and developing with selur.
+
+== What is selur?
+
+selur is an Ephapax-linear WASM sealant that provides zero-copy IPC between Svalinn (edge gateway) and Vörðr (container orchestrator). It combines:
+
+* **Ephapax-linear types** - Compile-time memory safety guarantees
+* **WASM linear memory** - Zero-copy shared memory between host and guest
+* **Idris2 formal proofs** - Mathematical correctness guarantees
+
+**Performance:** 7-20x faster than JSON/HTTP (zero-copy vs 4 copies)
+
+**Security:** Triple guarantee - compile-time linear types, runtime bounds checking, formal verification
+
+== Documentation
+
+=== For Users
+
+* link:Getting-Started.adoc[Getting Started] - Install selur and run your first example
+* link:Quick-Start.adoc[Quick Start] - 5-minute tutorial
+* link:User-Guide.adoc[User Guide] - Comprehensive usage guide
+* link:Troubleshooting.adoc[Troubleshooting] - Common issues and solutions
+* link:FAQ.adoc[FAQ] - Frequently asked questions
+
+=== For Developers
+
+* link:Developer-Guide.adoc[Developer Guide] - Setup and workflow
+* link:Building-From-Source.adoc[Building From Source] - Detailed build instructions
+* link:Testing-Guide.adoc[Testing Guide] - Running and writing tests
+* link:Contributing.adoc[Contributing] - How to contribute
+* link:Integration-Guide.adoc[Integration Guide] - Integrate with Svalinn/Vörðr
+* link:../docs/API.adoc[API Reference] - Complete API documentation
+* link:../docs/ARCHITECTURE.adoc[Architecture] - Deep dive into selur architecture
+
+== Quick Links
+
+* https://github.com/hyperpolymath/selur[GitHub Repository]
+* https://github.com/hyperpolymath/selur/issues[Issue Tracker]
+* link:../README.adoc[README]
+* link:../ROADMAP.adoc[Roadmap]
+* link:../SECURITY-AUDIT-2026-01-25.md[Security Audit]
+
+== Project Status
+
+**Version:** 1.0.0 (v1.0-mvp milestone)
+
+**Completion:** 100%
+
+* ✅ Ephapax Bridge - All container operations implemented
+* ✅ Zig WASM Runtime - Compiles to selur.wasm (527KB)
+* ✅ Idris2 Proofs - All theorems verified
+* ✅ Rust Bindings - Complete API with tests
+* ✅ Documentation - API and architecture complete
+* ✅ Examples - Basic integration, error handling, benchmarks
+
+== Community
+
+* **License:** PMPL-1.0-or-later
+* **Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+* **Part of:** hyperpolymath ecosystem (Cerro Torre, Svalinn, Vörðr)
+
+== Getting Help
+
+1. Check the link:FAQ.adoc[FAQ]
+2. Search link:Troubleshooting.adoc[Troubleshooting]
+3. https://github.com/hyperpolymath/selur/issues[Open an issue]
+4. Read the link:../docs/ARCHITECTURE.adoc[Architecture docs]

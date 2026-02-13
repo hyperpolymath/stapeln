@@ -1,0 +1,7 @@
+-rw------- 1 root root  3498 Dec 28 21:51 /home/user/cerro-torre/spec/crypto-suites.json
+-rw------- 1 root root  5446 Dec 29 23:52 /home/user/cerro-torre/spec/index-schema.json
+-rw------- 1 root root  2096 Dec 28 21:51 /home/user/cerro-torre/spec/keystore-policy.json
+-rw------- 1 root root  4103 Dec 28 21:51 /home/user/cerro-torre/spec/keystore-policy.schema.json
+-rw------- 1 root root  3858 Dec 28 21:53 /home/user/cerro-torre/spec/keystore-summary.schema.json
+-rw------- 1 root root  6257 Dec 29 23:51 /home/user/cerro-torre/spec/policy-schema.json
+-rw------- 1 root root 14225 Dec 28 21:52 /home/user/cerro-torre/spec/summary-schema.json

@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn UI (MVP)
+:toc: preamble
+:toclevels: 2
+
+This is the MVP console for containers (Svalinn/Vordr) with plugin-backed
+image views (Cerro Torre, Alpine, etc.).
+
+== Quick Start
+
+[source,shell]
+----
+cd ui
+npm install
+npm run dev
+----
+
+Serve the app (any static server):
+
+[source,shell]
+----
+python3 -m http.server 5173
+----
+
+Then open http://localhost:5173/ui/index.html
+
+== Plugin Registry
+
+Edit `ui/plugins.json` to register image providers:
+
+[source,json]
+----
+{
+  "plugins": [
+    {
+      "id": "cerro-torre",
+      "label": "Images",
+      "baseUrl": "http://localhost:8081",
+      "capabilities": ["images"],
+      "panels": [
+        {"id": "images", "label": "Images", "type": "images"}
+      ]
+    }
+  ]
+}
+----
+
+== Config
+
+Set the Svalinn gateway base URL in `ui/config.json`:
+
+[source,json]
+----
+{
+  "svalinnBaseUrl": "http://localhost:8000"
+}
+----
+
+== API Expectations
+
+Svalinn API (base `config.json`):
+
+* `GET /healthz` -> `{ "status": "ok" | "degraded" }`
+* `GET /v1/containers` -> `{ "containers": [{ "id", "name", "image", "status", "policyVerdict" }] }`
+* `GET /v1/containers/<id>/inspect` -> `{ "id", "data" }`
+* `GET /v1/images` -> `{ "images": [{ "name", "tag", "digest", "verified" }] }`
+
+Schemas:
+
+* `spec/schemas/containers.v1.json`
+* `spec/schemas/images.v1.json`
+
+Plugin API (base `plugins.json` `baseUrl`):
+
+* `GET /v1/images` -> `{ "images": [{ "name", "tag", "digest", "verified" }] }`
+
+== Routes
+
+* `/containers` — Svalinn containers view
+* `/images` — Image plugin overview
+* `/images/<pluginId>` — Plugin-specific image view

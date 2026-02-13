@@ -1,0 +1,44 @@
+{
+  "$schema": "../schemas/edge-policy.v1.json",
+  "version": "1.0",
+  "name": "fresh-signatures",
+  "description": "Policy requiring very fresh signatures for rapid deployment environments",
+  "registries": {
+    "allow": ["ghcr.io", "quay.io"],
+    "deny": [],
+    "requireSignature": true
+  },
+  "images": {
+    "allowPatterns": ["*"],
+    "denyPatterns": ["*:latest"],
+    "requireSbom": false,
+    "maxAgeDays": 7
+  },
+  "resources": {
+    "maxMemoryMb": 2048,
+    "maxCpuCores": 2.0,
+    "maxContainers": 50,
+    "maxStorageGb": 20
+  },
+  "security": {
+    "allowPrivileged": false,
+    "allowHostNetwork": false,
+    "allowHostPid": false,
+    "allowHostIpc": false,
+    "readOnlyRoot": true,
+    "dropCapabilities": ["ALL"],
+    "addCapabilities": ["NET_BIND_SERVICE"]
+  },
+  "verification": {
+    "signatureAlgorithms": ["ed25519", "ecdsa-p256"],
+    "transparencyLogs": {
+      "required": ["rekor"],
+      "quorum": 1
+    },
+    "sbomRequired": false,
+    "provenanceLevel": 1,
+    "maxSignatureAgeDays": 7,
+    "keyTrustLevel": "organization"
+  },
+  "notes": "Policy for environments with rapid deployment cycles. Signatures must be no more than 7 days old to ensure containers are freshly built and signed. Suitable for CI/CD pipelines with frequent releases."
+}

@@ -1,0 +1,215 @@
+#!/bin/bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Unified CLI for selur(svalinn+vordr+ct)
+
+set -euo pipefail
+
+COMMAND="${1:-help}"
+
+case "$COMMAND" in
+  # ============================================================
+  # Build Pipeline Commands
+  # ============================================================
+  pack)
+    # Pack OCI image into .ctp bundle
+    shift
+    exec ct pack "$@"
+    ;;
+
+  sign)
+    # Sign .ctp bundle
+    shift
+    exec ct sign "$@"
+    ;;
+
+  verify)
+    # Verify .ctp bundle
+    shift
+    exec ct verify "$@"
+    ;;
+
+  # ============================================================
+  # Runtime Commands (via Svalinn → Vörðr)
+  # ============================================================
+  run)
+    # Run verified container
+    BUNDLE="$2"
+
+    # Verify first
+    ct verify "$BUNDLE" --policy strict || {
+      echo "❌ Verification failed"
+      exit 1
+    }
+
+    # Run via Svalinn gateway
+    curl -X POST http://localhost:8000/v1/run \
+      -H "Content-Type: application/json" \
+      -d "{\"bundle\": \"$BUNDLE\", \"verify\": true}"
+    ;;
+
+  # ============================================================
+  # Pipeline Commands (Combine Multiple Steps)
+  # ============================================================
+  build-and-run)
+    # Complete pipeline: pack → sign → verify → run
+    IMAGE="$2"
+    NAME="${3:-$(basename "$IMAGE" | tr ':' '-')}"
+    BUNDLE="/tmp/${NAME}.ctp"
+
+    echo "📦 Packing $IMAGE..."
+    ct pack "$IMAGE" -o "$BUNDLE"
+
+    echo "🔐 Signing bundle..."
+    ct sign "$BUNDLE" -k auto
+
+    echo "✅ Verifying bundle..."
+    ct verify "$BUNDLE" --policy strict
+
+    echo "🚀 Running verified container..."
+    curl -X POST http://localhost:8000/v1/run \
+      -H "Content-Type: application/json" \
+      -d "{\"bundle\": \"$BUNDLE\", \"verify\": true}"
+    ;;
+
+  # ============================================================
+  # Bundle Management
+  # ============================================================
+  bundle)
+    SUBCOMMAND="$2"
+    shift 2
+
+    case "$SUBCOMMAND" in
+      create)
+        # Create offline bundle with multiple images
+        OUTPUT="${1:-deployment.tar.gz}"
+        shift
+
+        echo "📦 Creating offline bundle: $OUTPUT"
+        TEMP_DIR=$(mktemp -d)
+
+        for IMAGE in "$@"; do
+          NAME=$(echo "$IMAGE" | tr '/:' '_')
+          ct pack "$IMAGE" -o "${TEMP_DIR}/${NAME}.ctp"
+        done
+
+        tar czf "$OUTPUT" -C "$TEMP_DIR" .
+        rm -rf "$TEMP_DIR"
+        echo "✅ Bundle created: $OUTPUT"
+        ;;
+
+      deploy)
+        # Deploy offline bundle
+        BUNDLE="$1"
+
+        echo "📥 Deploying bundle: $BUNDLE"
+        TEMP_DIR=$(mktemp -d)
+        tar xzf "$BUNDLE" -C "$TEMP_DIR"
+
+        for CTP in "${TEMP_DIR}"/*.ctp; do
+          echo "🚀 Deploying $(basename "$CTP")..."
+          ct verify "$CTP" --policy strict
+          curl -X POST http://localhost:8000/v1/run \
+            -H "Content-Type: application/json" \
+            -d "{\"bundle\": \"$CTP\", \"verify\": true}"
+        done
+
+        rm -rf "$TEMP_DIR"
+        echo "✅ Bundle deployed"
+        ;;
+    esac
+    ;;
+
+  # ============================================================
+  # Status and Diagnostics
+  # ============================================================
+  status)
+    echo "🔍 System Status"
+    echo "================"
+
+    # Check Svalinn
+    if curl -sf http://localhost:8000/healthz > /dev/null; then
+      echo "✅ Svalinn: Running"
+    else
+      echo "❌ Svalinn: Down"
+    fi
+
+    # Check Vörðr (via Svalinn)
+    if curl -sf http://localhost:8000/v1/containers > /dev/null; then
+      echo "✅ Vörðr: Connected"
+    else
+      echo "❌ Vörðr: Disconnected"
+    fi
+
+    # Check Cerro Torre
+    if ct --version > /dev/null 2>&1; then
+      echo "✅ Cerro Torre: $(ct --version | head -1)"
+    else
+      echo "❌ Cerro Torre: Not found"
+    fi
+    ;;
+
+  doctor)
+    # Comprehensive diagnostics
+    echo "🏥 Running diagnostics..."
+
+    # Test ct
+    ct doctor || echo "⚠️  Cerro Torre issues detected"
+
+    # Test vordr (via svalinn)
+    curl -sf http://localhost:8000/healthz || echo "⚠️  Svalinn/Vörðr issues detected"
+
+    echo "✅ Diagnostics complete"
+    ;;
+
+  # ============================================================
+  # Help
+  # ============================================================
+  help|--help|-h)
+    cat <<EOF
+selur-svct - Complete Verified Container Stack
+
+USAGE:
+  selur-svct <command> [options]
+
+BUILD COMMANDS:
+  pack <image> -o <bundle>    Pack OCI image into .ctp bundle
+  sign <bundle>               Sign .ctp bundle
+  verify <bundle>             Verify .ctp bundle
+
+RUNTIME COMMANDS:
+  run <bundle>                Run verified container
+
+PIPELINE COMMANDS:
+  build-and-run <image>       Pack → Sign → Verify → Run
+
+BUNDLE COMMANDS:
+  bundle create <images...>   Create offline deployment bundle
+  bundle deploy <bundle>      Deploy offline bundle
+
+DIAGNOSTICS:
+  status                      Show system status
+  doctor                      Run comprehensive diagnostics
+
+EXAMPLES:
+  # Quick start: build and run nginx
+  selur-svct build-and-run docker.io/library/nginx:1.26
+
+  # Manual pipeline
+  selur-svct pack nginx:1.26 -o nginx.ctp
+  selur-svct sign nginx.ctp
+  selur-svct verify nginx.ctp
+  selur-svct run nginx.ctp
+
+  # Offline deployment
+  selur-svct bundle create alpine:latest nginx:1.26 -o prod.tar.gz
+  # ... transfer prod.tar.gz to air-gapped system ...
+  selur-svct bundle deploy prod.tar.gz
+EOF
+    ;;
+
+  *)
+    echo "Unknown command: $COMMAND"
+    echo "Run 'selur-svct help' for usage"
+    exit 1
+    ;;
+esac

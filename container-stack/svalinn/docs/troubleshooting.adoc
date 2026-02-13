@@ -1,0 +1,409 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Troubleshooting Guide
+:toc: left
+:toclevels: 3
+:icons: font
+
+This guide covers the top 20 failure modes encountered when using Vordr/Svalinn.
+
+== Quick Diagnosis
+
+Run the doctor command first:
+
+[source,bash]
+----
+vordr doctor --all
+----
+
+This will identify most common issues and provide fix commands.
+
+== Rootless Mode Issues
+
+=== R1: User Namespaces Disabled
+
+*Symptom:* Container creation fails with "permission denied" or "operation not permitted"
+
+*Doctor Output:*
+----
+Kernel/Rootless
+  x Unprivileged user namespaces disabled
+    -> sudo sysctl -w kernel.unprivileged_userns_clone=1
+----
+
+*Cause:* Some distributions disable unprivileged user namespaces by default.
+
+*Fix:*
+[source,bash]
+----
+# Temporary fix
+sudo sysctl -w kernel.unprivileged_userns_clone=1
+
+# Permanent fix
+echo 'kernel.unprivileged_userns_clone=1' | sudo tee /etc/sysctl.d/99-userns.conf
+sudo sysctl --system
+----
+
+*Affected Distros:* Debian, Ubuntu (some versions), RHEL 8
+
+=== R2: Subuid/Subgid Not Configured
+
+*Symptom:* "newuidmap: write to uid_map failed"
+
+*Doctor Output:*
+----
+Kernel/Rootless
+  x /etc/subuid missing entries for user
+    -> sudo usermod --add-subuids 100000-165535 $USER
+----
+
+*Fix:*
+[source,bash]
+----
+# Add subuid/subgid ranges
+sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 $USER
+
+# Verify
+grep $USER /etc/subuid /etc/subgid
+----
+
+=== R3: XDG_RUNTIME_DIR Not Set
+
+*Symptom:* "Could not determine runtime directory"
+
+*Fix:*
+[source,bash]
+----
+# For systemd systems
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+
+# For non-systemd
+export XDG_RUNTIME_DIR=/tmp/runtime-$USER
+mkdir -p $XDG_RUNTIME_DIR
+chmod 700 $XDG_RUNTIME_DIR
+----
+
+== Networking Issues
+
+=== N1: Netavark Not Found
+
+*Symptom:* "Container networking will be limited"
+
+*Doctor Output:*
+----
+Networking
+  ! netavark not found (container networking will be limited)
+    -> cargo install netavark
+----
+
+*Fix:*
+[source,bash]
+----
+# Install from cargo
+cargo install netavark
+
+# Or from distribution packages
+# Fedora: sudo dnf install netavark
+# Ubuntu: sudo apt install netavark
+----
+
+=== N2: DNS Resolution Fails
+
+*Symptom:* Containers cannot resolve hostnames
+
+*Doctor Output:*
+----
+Networking
+  ! aardvark-dns not found (DNS resolution will be limited)
+----
+
+*Fix:*
+[source,bash]
+----
+cargo install aardvark-dns
+----
+
+=== N3: Port Already in Use
+
+*Symptom:* "Address already in use" when mapping ports
+
+*Diagnosis:*
+[source,bash]
+----
+# Find what's using the port
+sudo ss -tlnp | grep :8080
+----
+
+*Fix:* Either stop the conflicting service or use a different port.
+
+=== N4: iptables/nftables Conflicts
+
+*Symptom:* Network rules not applying, connectivity issues
+
+*Diagnosis:*
+[source,bash]
+----
+# Check if nftables is in use
+sudo nft list tables
+
+# Check iptables
+sudo iptables -L -n
+----
+
+*Fix:* Ensure netavark is configured for your firewall backend.
+
+== Registry Issues
+
+=== RG1: Authentication Failed
+
+*Symptom:* 401 Unauthorized when pulling images
+
+*Doctor Output:*
+----
+Registry
+  x Authentication failed for ghcr.io
+    -> vordr logout ghcr.io && vordr login ghcr.io
+----
+
+*Fix:*
+[source,bash]
+----
+# Re-authenticate
+vordr logout ghcr.io
+vordr login ghcr.io
+----
+
+=== RG2: TLS Certificate Error
+
+*Symptom:* "certificate verify failed"
+
+*Cause:* Self-signed certificates or corporate proxies
+
+*Fix:*
+[source,bash]
+----
+# Add registry to insecure list (not recommended for production)
+vordr config set registries.insecure='["myregistry.local:5000"]'
+
+# Or install the CA certificate
+sudo cp ca.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+----
+
+=== RG3: Image Not Found
+
+*Symptom:* "manifest unknown" or "not found"
+
+*Diagnosis:*
+[source,bash]
+----
+# Check if image exists
+vordr image search myimage
+
+# Check available tags
+vordr image tags myimage
+----
+
+== Runtime Issues
+
+=== RT1: OCI Runtime Not Found
+
+*Symptom:* "No OCI runtime found"
+
+*Doctor Output:*
+----
+Runtime
+  x No OCI runtime found (youki or runc)
+    -> cargo install youki
+----
+
+*Fix:*
+[source,bash]
+----
+# Install youki (recommended)
+cargo install youki
+
+# Or install runc
+# Ubuntu: sudo apt install runc
+# Fedora: sudo dnf install runc
+----
+
+=== RT2: Cgroup v2 Not Available
+
+*Symptom:* Resource limits not working
+
+*Doctor Output:*
+----
+Kernel/Rootless
+  ! cgroup v2 not detected (using v1)
+----
+
+*Fix:* Add to kernel command line:
+----
+systemd.unified_cgroup_hierarchy=1
+----
+
+=== RT3: Overlay Filesystem Not Available
+
+*Symptom:* "overlay: unknown filesystem type"
+
+*Fix:*
+[source,bash]
+----
+sudo modprobe overlay
+echo 'overlay' | sudo tee /etc/modules-load.d/overlay.conf
+----
+
+== State Database Issues
+
+=== S1: Database Corruption
+
+*Symptom:* "database disk image is malformed"
+
+*Fix:*
+[source,bash]
+----
+# Backup and reset
+mv ~/.local/share/vordr/vordr.db ~/.local/share/vordr/vordr.db.bak
+vordr ps  # This creates a new database
+----
+
+=== S2: Database Locked
+
+*Symptom:* "database is locked"
+
+*Cause:* Another process has the database open, or NFS issues.
+
+*Fix:*
+[source,bash]
+----
+# Check for other processes
+fuser ~/.local/share/vordr/vordr.db
+
+# If on NFS, disable WAL mode
+vordr config set database.journal_mode='delete'
+----
+
+=== S3: Permission Denied on State Directory
+
+*Doctor Output:*
+----
+State Database
+  x /var/lib/vordr not writable
+    -> sudo chown $USER:$USER /var/lib/vordr
+----
+
+*Fix:*
+[source,bash]
+----
+# For system-wide installation
+sudo chown $USER:$USER /var/lib/vordr
+
+# Or use user-level paths
+export VORDR_ROOT=~/.local/share/vordr
+----
+
+== Gatekeeper Issues
+
+=== G1: SPARK Verification Unavailable
+
+*Doctor Output:*
+----
+Gatekeeper
+  ! Gatekeeper stub loaded (SPARK verification unavailable)
+    -> Install GNAT/SPARK and rebuild: just build-vordr
+----
+
+*Cause:* Vordr was built without GNAT/SPARK toolchain.
+
+*Fix:* Install GNAT and rebuild:
+[source,bash]
+----
+# Ubuntu
+sudo apt install gnat gprbuild
+
+# Then rebuild
+just build-vordr
+----
+
+=== G2: Policy Rejection
+
+*Symptom:* "Container blocked by Gatekeeper"
+
+*Diagnosis:*
+[source,bash]
+----
+vordr explain --last
+----
+
+*Fix:* Review the policy explanation and either:
+- Modify container configuration
+- Use a different security profile
+- Request policy exception
+
+== Configuration Issues
+
+=== C1: Config File Syntax Error
+
+*Symptom:* "Failed to parse config file"
+
+*Diagnosis:*
+[source,bash]
+----
+vordr config validate
+----
+
+*Fix:* Edit the config file and fix syntax:
+[source,bash]
+----
+vordr config edit
+----
+
+=== C2: Environment Override Not Working
+
+*Cause:* Environment variables must use correct prefix.
+
+*Fix:*
+[source,bash]
+----
+# Correct format
+export VORDR_RUNTIME=runc
+export VORDR_ROOT=/custom/path
+
+# NOT
+export RUNTIME=runc  # Wrong, missing VORDR_ prefix
+----
+
+== Error Code Reference
+
+|===
+|Exit Code |Error ID |Description
+
+|0 |SUCCESS |Operation completed successfully
+|1 |ERR_GENERAL |General/unspecified error
+|2 |ERR_USAGE |Invalid command usage
+|10 |ERR_RUNTIME |OCI runtime error
+|11 |ERR_RUNTIME_NOT_FOUND |Runtime binary not found
+|20 |ERR_NETWORK |Networking error
+|21 |ERR_NETWORK_CONFIG |Invalid network configuration
+|30 |ERR_REGISTRY |Registry communication error
+|31 |ERR_AUTH |Authentication failed
+|32 |ERR_IMAGE_NOT_FOUND |Image not found
+|40 |ERR_STATE |State database error
+|41 |ERR_STATE_CORRUPT |Database corruption detected
+|50 |ERR_POLICY |Policy violation
+|51 |ERR_POLICY_DENIED |Operation denied by Gatekeeper
+|60 |ERR_CONFIG |Configuration error
+|61 |ERR_CONFIG_PARSE |Failed to parse config
+|===
+
+== Getting Help
+
+If your issue is not covered here:
+
+1. Run `vordr doctor --all --format json` and include output
+2. Check existing issues: https://github.com/svalinnproject/svalinn/issues
+3. File a new issue with:
+   - Vordr version (`vordr version`)
+   - OS and kernel version
+   - Doctor output
+   - Steps to reproduce

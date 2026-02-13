@@ -1,0 +1,57 @@
+# Trust and Transparency Information for cerrotorre.dev
+# https://github.com/nightwatchcybersecurity/trustandtransparency.org
+
+# === Organization Information ===
+Organization: hyperpolymath
+Legal Name: Jonathan D.A. Jewell
+Country: United Kingdom
+Contact: info@cerrotorre.dev
+Website: https://cerrotorre.dev
+
+# === Responsible Disclosure ===
+Security Contact: security@cerrotorre.dev
+Security Policy: https://github.com/hyperpolymath/cerro_torre_stack/security/policy
+Bug Bounty: Not currently available
+Encryption: https://keys.openpgp.org/search?q=jonathan.jewell@open.ac.uk
+
+# === Privacy ===
+Privacy Policy: https://cerrotorre.dev/privacy
+Data Controller: Jonathan D.A. Jewell
+Data Protection Officer: privacy@cerrotorre.dev
+GDPR Compliance: Yes
+Consent Management: Consent-Aware HTTP (cookie-based)
+
+# === Transparency ===
+Open Source: Yes
+License: PMPL-1.0-or-later (https://palimpsest.spdx.dev)
+Source Code: https://github.com/hyperpolymath/cerro_torre_stack
+Issue Tracker: https://github.com/hyperpolymath/cerro_torre_stack/issues
+Changelog: https://github.com/hyperpolymath/cerro_torre_stack/releases
+
+# === Infrastructure ===
+Hosting: GitHub Pages
+CDN: Cloudflare
+TLS Provider: Let's Encrypt, DigiCert
+DNS: Cloudflare
+Analytics: Self-hosted (consent required)
+
+# === Third-Party Services ===
+# None currently (all self-hosted or GitHub-hosted)
+
+# === Compliance & Standards ===
+WCAG Level: AA (target)
+RFC 9116: Compliant (security.txt)
+HSTS Preload: Yes
+CAA Records: Yes (flag 128)
+SPF/DMARC: Yes
+
+# === Contact Methods ===
+Email: info@cerrotorre.dev
+GitHub: https://github.com/hyperpolymath/cerro_torre_stack
+Security Email: security@cerrotorre.dev
+PGP Key: https://keys.openpgp.org/search?q=jonathan.jewell@open.ac.uk
+
+# === Verification ===
+Last Updated: 2026-01-31
+Verified By: Jonathan D.A. Jewell
+Canonical URL: https://cerrotorre.dev/.well-known/trust.txt

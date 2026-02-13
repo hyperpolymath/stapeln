@@ -1,0 +1,603 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn Testing Guide
+:toc: preamble
+:toclevels: 3
+:icons: font
+
+Comprehensive guide for testing Svalinn Gateway.
+
+== Test Categories
+
+=== 1. Unit Tests (ReScript)
+
+Test individual modules in isolation.
+
+*Status:* Integration test framework created (330+ lines)
+
+*Location:* `tests/integration_test.res`
+
+*Run:*
+[source,bash]
+----
+# Compile ReScript tests
+just build-res
+
+# Run with Deno
+deno run --allow-all tests/integration_test.res.mjs
+----
+
+=== 2. Integration Tests
+
+Test module interactions (Gateway ↔ McpClient ↔ PolicyEngine ↔ Validation).
+
+*Status:* ✅ Created, ⏳ Not yet run (needs Vörðr)
+
+*Tests included:*
+- MCP client configuration loading
+- MCP health check
+- Validation module schema loading
+- Policy engine evaluation (strict/permissive modes)
+- Authentication type parsing
+
+=== 3. End-to-End Tests
+
+Test full request flow through the system.
+
+*Status:* ⏳ Pending (requires Vörðr MCP server)
+
+=== 4. Performance Tests
+
+Benchmark latency and throughput.
+
+*Status:* ✅ Scripts created
+
+*Location:* `benchmarks/`
+
+== End-to-End Testing
+
+=== Prerequisites
+
+==== 1. Start Vörðr MCP Server
+
+[source,bash]
+----
+# Clone and build Vörðr
+git clone https://github.com/hyperpolymath/vordr.git
+cd vordr
+just build
+
+# Start MCP server
+./target/release/vordr mcp-server --port 8080
+----
+
+Verify Vörðr is running:
+[source,bash]
+----
+curl http://localhost:8080/health
+# Expected: {"status": "healthy"}
+----
+
+==== 2. Start Svalinn Gateway
+
+[source,bash]
+----
+cd svalinn
+export VORDR_ENDPOINT=http://localhost:8080
+just serve
+----
+
+Verify Svalinn is running:
+[source,bash]
+----
+curl http://localhost:8000/health
+# Expected: {"status": "healthy", "vordrConnected": true}
+----
+
+=== E2E Test Scenarios
+
+==== Scenario 1: List Containers
+
+[source,bash]
+----
+curl http://localhost:8000/api/v1/containers
+# Expected: {"containers": [...]}
+----
+
+==== Scenario 2: Pull Image
+
+[source,bash]
+----
+curl -X POST http://localhost:8000/api/v1/images/pull \
+  -H "Content-Type: application/json" \
+  -d '{"image": "nginx:alpine"}'
+# Expected: 200 OK with pull progress
+----
+
+==== Scenario 3: Run Container (with validation)
+
+[source,bash]
+----
+curl -X POST http://localhost:8000/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "nginx:alpine",
+    "name": "test-nginx"
+  }'
+# Expected: 201 Created with container ID
+----
+
+==== Scenario 4: Verify Image (with policy)
+
+[source,bash]
+----
+curl -X POST http://localhost:8000/api/v1/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "digest": "sha256:abc123...",
+    "policy": {
+      "version": 1,
+      "requiredPredicates": ["https://slsa.dev/provenance/v1"],
+      "allowedSigners": [],
+      "logQuorum": 1,
+      "mode": "permissive"
+    }
+  }'
+# Expected: 200 OK with verification result
+----
+
+==== Scenario 5: Invalid Request (validation fails)
+
+[source,bash]
+----
+curl -X POST http://localhost:8000/api/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{"invalid": "request"}'
+# Expected: 400 Bad Request with validation errors
+----
+
+==== Scenario 6: Malformed Policy
+
+[source,bash]
+----
+curl -X POST http://localhost:8000/api/v1/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "digest": "sha256:abc123",
+    "policy": {"version": "invalid"}
+  }'
+# Expected: 400 Bad Request with policy validation errors
+----
+
+=== Automated E2E Test Script
+
+Create `tests/e2e_test.sh`:
+
+[source,bash]
+----
+#!/usr/bin/env bash
+set -euo pipefail
+
+GATEWAY="http://localhost:8000"
+PASSED=0
+FAILED=0
+
+test_endpoint() {
+  local name="$1"
+  local method="$2"
+  local endpoint="$3"
+  local data="$4"
+  local expected_status="$5"
+
+  echo -n "Testing: $name... "
+
+  if [ -n "$data" ]; then
+    status=$(curl -s -o /dev/null -w "%{http_code}" \
+      -X "$method" \
+      -H "Content-Type: application/json" \
+      -d "$data" \
+      "$GATEWAY$endpoint")
+  else
+    status=$(curl -s -o /dev/null -w "%{http_code}" \
+      -X "$method" \
+      "$GATEWAY$endpoint")
+  fi
+
+  if [ "$status" -eq "$expected_status" ]; then
+    echo "✅ PASS (HTTP $status)"
+    PASSED=$((PASSED + 1))
+  else
+    echo "❌ FAIL (expected $expected_status, got $status)"
+    FAILED=$((FAILED + 1))
+  fi
+}
+
+echo "Svalinn E2E Tests"
+echo "================="
+echo ""
+
+test_endpoint "Health check" "GET" "/health" "" 200
+test_endpoint "Readiness check" "GET" "/ready" "" 200
+test_endpoint "List containers" "GET" "/api/v1/containers" "" 200
+test_endpoint "List images" "GET" "/api/v1/images" "" 200
+
+test_endpoint "Run valid request" "POST" "/api/v1/run" \
+  '{"image":"nginx:alpine","name":"test"}' 201
+
+test_endpoint "Run invalid request" "POST" "/api/v1/run" \
+  '{"invalid":"data"}' 400
+
+test_endpoint "Verify with valid policy" "POST" "/api/v1/verify" \
+  '{"digest":"sha256:abc","policy":{"version":1,"requiredPredicates":[],"allowedSigners":[],"logQuorum":0,"mode":"permissive"}}' 200
+
+test_endpoint "Verify with invalid policy" "POST" "/api/v1/verify" \
+  '{"digest":"sha256:abc","policy":{"version":"bad"}}' 400
+
+echo ""
+echo "================="
+echo "Results: $PASSED passed, $FAILED failed"
+
+if [ $FAILED -eq 0 ]; then
+  echo "✅ All tests passed"
+  exit 0
+else
+  echo "❌ Some tests failed"
+  exit 1
+fi
+----
+
+Run:
+[source,bash]
+----
+chmod +x tests/e2e_test.sh
+./tests/e2e_test.sh
+----
+
+== Authentication Testing
+
+=== Prerequisites
+
+Authentication testing requires an OIDC provider. Options:
+
+==== Option 1: Keycloak (Local)
+
+[source,bash]
+----
+# Run Keycloak in Docker
+docker run -d \
+  -p 8080:8080 \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:latest start-dev
+
+# Access: http://localhost:8080
+# Login: admin / admin
+# Create realm: svalinn
+# Create client: svalinn-gateway
+----
+
+==== Option 2: Auth0 (Cloud)
+
+1. Sign up at https://auth0.com
+2. Create Application → Machine to Machine
+3. Note: Domain, Client ID, Client Secret
+
+==== Option 3: Mock OIDC Server
+
+[source,typescript]
+----
+// tests/mock_oidc.ts
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+
+const mockJWKS = {
+  keys: [{
+    kty: "RSA",
+    kid: "test-key",
+    use: "sig",
+    n: "...", // Base64 encoded public key
+    e: "AQAB"
+  }]
+};
+
+serve((req) => {
+  const url = new URL(req.url);
+
+  if (url.pathname === "/.well-known/openid-configuration") {
+    return new Response(JSON.stringify({
+      issuer: "http://localhost:9000",
+      authorization_endpoint: "http://localhost:9000/authorize",
+      token_endpoint: "http://localhost:9000/token",
+      jwks_uri: "http://localhost:9000/.well-known/jwks.json"
+    }), { headers: { "Content-Type": "application/json" } });
+  }
+
+  if (url.pathname === "/.well-known/jwks.json") {
+    return new Response(JSON.stringify(mockJWKS), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  return new Response("Not Found", { status: 404 });
+}, { port: 9000 });
+----
+
+=== Test Scenarios
+
+==== 1. OAuth2/OIDC Flow
+
+[source,bash]
+----
+# Start Svalinn with OIDC enabled
+export AUTH_ENABLED=true
+export AUTH_METHODS=oidc
+export OIDC_ISSUER=http://localhost:8080/realms/svalinn
+export OIDC_CLIENT_ID=svalinn-gateway
+
+just serve
+----
+
+Test flow:
+[source,bash]
+----
+# 1. Request without token (should fail)
+curl http://localhost:8000/api/v1/containers
+# Expected: 401 Unauthorized
+
+# 2. Get token (manual for now)
+# Use OAuth2 client to get JWT
+
+# 3. Request with token
+curl http://localhost:8000/api/v1/containers \
+  -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+# Expected: 200 OK
+----
+
+==== 2. API Key Authentication
+
+[source,bash]
+----
+# Start Svalinn with API keys
+export AUTH_ENABLED=true
+export AUTH_METHODS=apikey
+export API_KEYS=sk_test_abc123,sk_test_def456
+
+just serve
+----
+
+Test:
+[source,bash]
+----
+# Valid API key
+curl http://localhost:8000/api/v1/containers \
+  -H "X-API-Key: sk_test_abc123"
+# Expected: 200 OK
+
+# Invalid API key
+curl http://localhost:8000/api/v1/containers \
+  -H "X-API-Key: invalid"
+# Expected: 401 Unauthorized
+----
+
+==== 3. mTLS Authentication
+
+Requires client certificates. Setup:
+
+[source,bash]
+----
+# Generate CA
+openssl req -x509 -newkey rsa:4096 -days 365 \
+  -keyout ca-key.pem -out ca-cert.pem -nodes
+
+# Generate client cert
+openssl req -newkey rsa:4096 -keyout client-key.pem \
+  -out client-req.pem -nodes
+openssl x509 -req -in client-req.pem -CA ca-cert.pem \
+  -CAkey ca-key.pem -out client-cert.pem -days 365
+
+# Configure Nginx for mTLS
+ssl_client_certificate /path/to/ca-cert.pem;
+ssl_verify_client on;
+----
+
+Test:
+[source,bash]
+----
+curl https://localhost:8000/api/v1/containers \
+  --cert client-cert.pem \
+  --key client-key.pem \
+  --cacert ca-cert.pem
+----
+
+=== Automated Auth Tests
+
+Create `tests/auth_test.sh`:
+
+[source,bash]
+----
+#!/usr/bin/env bash
+
+# Test 1: No auth when disabled
+export AUTH_ENABLED=false
+# Should allow requests without tokens
+
+# Test 2: API key auth
+export AUTH_ENABLED=true
+export AUTH_METHODS=apikey
+export API_KEYS=sk_test_12345
+# Should require X-API-Key header
+
+# Test 3: OIDC auth
+export AUTH_METHODS=oidc
+export OIDC_ISSUER=http://localhost:9000
+# Should require Bearer token
+----
+
+== Performance Testing
+
+=== Benchmark Suite
+
+Run built-in benchmarks:
+
+[source,bash]
+----
+deno bench --allow-net benchmarks/gateway_bench.ts
+----
+
+Expected output:
+[source]
+----
+Health endpoint latency                    ... 5ms (baseline)
+Container list endpoint latency            ... 95ms
+JSON Schema validation (run request)       ... 3ms
+Policy format validation                   ... 8ms
+10 concurrent health checks                ... 45ms
+100 concurrent health checks               ... 380ms
+----
+
+=== Load Testing
+
+[source,bash]
+----
+deno run --allow-net benchmarks/load_test.ts
+----
+
+Runs 4 scenarios:
+1. Health endpoint @ 100 RPS (10s)
+2. Container list @ 50 RPS (10s)
+3. Run request @ 20 RPS (10s)
+4. Stress test @ 500 RPS (30s)
+
+=== Performance Targets
+
+[cols="1,1,1",options="header"]
+|===
+|Metric |Target |Acceptable
+
+|Health endpoint P95
+|< 10ms
+|< 50ms
+
+|Container list P95
+|< 50ms
+|< 100ms
+
+|Validation overhead
+|< 5ms
+|< 10ms
+
+|Sustained throughput
+|> 1000 req/s
+|> 500 req/s
+
+|Success rate (stress)
+|> 99%
+|> 95%
+|===
+
+== Continuous Integration
+
+=== GitHub Actions Workflow
+
+[source,yaml]
+----
+name: Test Suite
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Compile ReScript
+        run: |
+          npm install -g rescript
+          rescript build
+
+      - name: Run integration tests
+        run: deno run --allow-all tests/integration_test.res.mjs
+
+      - name: Run benchmarks
+        run: deno bench --allow-net benchmarks/gateway_bench.ts
+
+      - name: Security audit
+        run: ./scripts/security_audit.sh
+----
+
+== Test Coverage
+
+*Current coverage:*
+
+[cols="1,1,1",options="header"]
+|===
+|Module |Lines |Coverage
+
+|Gateway.res
+|400+
+|Integration tests
+
+|McpClient.res
+|330+
+|Integration tests
+
+|PolicyEngine.res
+|330+
+|Unit + integration
+
+|Validation.res
+|230+
+|Integration tests
+
+|Auth modules
+|1,100+
+|⏳ Needs OIDC setup
+|===
+
+*Total:* 2,770+ lines, integration test framework ready
+
+== Debugging Tests
+
+=== Enable Verbose Logging
+
+[source,bash]
+----
+export LOG_LEVEL=debug
+deno run --allow-all tests/integration_test.res.mjs
+----
+
+=== Inspect MCP Traffic
+
+[source,bash]
+----
+# Use tcpdump to see MCP JSON-RPC calls
+sudo tcpdump -i lo -A port 8080
+----
+
+=== Check Schema Validation
+
+[source,bash]
+----
+# Manually validate a request
+deno run --allow-read << 'EOF'
+import Ajv from "npm:ajv";
+const ajv = new Ajv();
+const schema = JSON.parse(await Deno.readTextFile("spec/schemas/gateway-run-request.v1.json"));
+const data = { image: "nginx:alpine", name: "test" };
+console.log(ajv.validate(schema, data));
+EOF
+----
+
+== Next Steps
+
+1. **Set up Vörðr locally** → Enable E2E tests
+2. **Set up OIDC provider** → Enable auth tests
+3. **Run full test suite** → Ensure 100% functionality
+4. **Performance tuning** → Meet throughput targets
+5. **CI/CD integration** → Automated testing on every commit
+
+== Support
+
+* Issues: https://github.com/hyperpolymath/svalinn/issues
+* Discussions: https://github.com/hyperpolymath/svalinn/discussions

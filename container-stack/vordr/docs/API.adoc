@@ -1,0 +1,355 @@
+// SPDX-License-Identifier: MPL-2.0-or-later
+= Vörðr API Reference
+:toc: auto
+:toclevels: 3
+
+== MCP Tools
+
+The Vörðr MCP adapter exposes the following tools via JSON-RPC 2.0.
+
+=== Container Lifecycle
+
+==== vordr_container_create
+
+Create a new container with verified configuration.
+
+.Request
+[source,json]
+----
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "vordr_container_create",
+    "arguments": {
+      "image": "alpine:latest",
+      "name": "my-container",
+      "config": {
+        "privileged": false,
+        "readOnlyRoot": true
+      }
+    }
+  },
+  "id": 1
+}
+----
+
+.Response
+[source,json]
+----
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "Container created: abc123def456"
+    }]
+  },
+  "id": 1
+}
+----
+
+==== vordr_container_start
+
+Start a created container after verification.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| containerId | string | Container ID to start
+|===
+
+==== vordr_container_stop
+
+Stop a running container.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| containerId | string | Container ID to stop
+| timeout | integer | Stop timeout in seconds (default: 10)
+|===
+
+==== vordr_container_remove
+
+Remove a stopped container.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| containerId | string | Container ID to remove
+| force | boolean | Force remove even if running (default: false)
+|===
+
+=== Verification
+
+==== vordr_verify_image
+
+Verify a container image signature and attestation.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| image | string | Image reference to verify
+| checkSbom | boolean | Check SBOM attestation
+| checkSignature | boolean | Check image signature
+|===
+
+.Response includes
+[source,json]
+----
+{
+  "verified": true,
+  "sbom": {
+    "format": "SPDX",
+    "vulnerabilities": 0
+  },
+  "signature": {
+    "valid": true,
+    "signer": "key-fingerprint"
+  }
+}
+----
+
+==== vordr_verify_config
+
+Verify container configuration against security policy.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| config | object | Container configuration to verify
+|===
+
+=== Authorization
+
+==== vordr_request_authorization
+
+Request threshold authorization for privileged operation.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| operation | string | Operation requiring authorization
+| threshold | integer | Required signature threshold (k)
+| signers | integer | Total authorized signers (n)
+|===
+
+.Response
+[source,json]
+----
+{
+  "requestId": "auth-123",
+  "state": "pending",
+  "threshold": 2,
+  "collected": 0
+}
+----
+
+==== vordr_submit_signature
+
+Submit a signature share for authorization.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| requestId | string | Authorization request ID
+| signature | string | Signature share (base64)
+| signerId | string | Signer identifier
+|===
+
+=== Monitoring
+
+==== vordr_monitor_start
+
+Start eBPF monitoring for a container.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| containerId | string | Container ID to monitor
+| syscalls | boolean | Monitor syscalls (default: true)
+| network | boolean | Monitor network activity (default: false)
+| filesystem | boolean | Monitor filesystem access (default: false)
+|===
+
+==== vordr_monitor_stop
+
+Stop eBPF monitoring for a container.
+
+==== vordr_get_anomalies
+
+Get detected anomalies for a container.
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| containerId | string | Container ID
+| severity | string | Minimum severity (low/medium/high/critical)
+|===
+
+=== Reversibility
+
+==== vordr_rollback
+
+Rollback to previous container state (Bennett reversibility).
+
+.Parameters
+[cols="1,1,3"]
+|===
+| Name | Type | Description
+
+| containerId | string | Container ID
+| steps | integer | Number of steps to rollback (default: 1)
+|===
+
+==== vordr_preview_rollback
+
+Preview what rollback would do without executing.
+
+== Elixir API
+
+=== Vordr.Containers
+
+[source,elixir]
+----
+# Create a container
+{:ok, pid} = Vordr.Containers.create("alpine:latest", name: "my-container")
+
+# Start a container
+:ok = Vordr.Containers.start(pid)
+
+# Get container state
+{state, data} = Vordr.Containers.get_state(pid)
+
+# Stop a container
+:ok = Vordr.Containers.stop(pid, timeout: 10_000)
+
+# Remove a container
+:ok = Vordr.Containers.remove(pid, force: false)
+----
+
+=== Vordr.Reversibility
+
+[source,elixir]
+----
+# Execute with journal logging
+{:ok, result} = Vordr.Reversibility.execute(container_id, :start)
+
+# Rollback last operation
+{:ok, rolled_back} = Vordr.Reversibility.rollback(container_id, 1)
+
+# Preview rollback
+{:ok, operations} = Vordr.Reversibility.preview_rollback(container_id)
+
+# Execute with automatic rollback on error
+Vordr.Reversibility.with_rollback(container_id, fn ->
+  {:ok, _} = some_operation()
+end)
+----
+
+== Idris2 Types
+
+=== Container States
+
+[source,idris]
+----
+data ContainerState : Type where
+  ImageOnly : ContainerState
+  Created   : ContainerState
+  Running   : ContainerState
+  Paused    : ContainerState
+  Stopped   : ContainerState
+  Removed   : ContainerState
+----
+
+=== Valid Transitions
+
+[source,idris]
+----
+data ValidTransition : ContainerState -> ContainerState -> Type where
+  CreateFromImage : ValidTransition ImageOnly Created
+  StartCreated    : ValidTransition Created Running
+  PauseRunning    : ValidTransition Running Paused
+  ResumeP         : ValidTransition Paused Running
+  StopRunning     : ValidTransition Running Stopped
+  StopPaused      : ValidTransition Paused Stopped
+  RestartStopped  : ValidTransition Stopped Running
+  RemoveStopped   : ValidTransition Stopped Removed
+  RemoveCreated   : ValidTransition Created Removed
+----
+
+=== SBOM Verification
+
+[source,idris]
+----
+-- Verify SBOM has no critical vulnerabilities
+verifySBOM : (doc : SBOMDocument) ->
+             (lookup : VulnId -> Maybe Severity) ->
+             Either String (NoCriticalVulns doc)
+----
+
+== Ada/SPARK API
+
+=== Container Policy
+
+[source,ada]
+----
+-- Validate container configuration
+function Validate_Configuration (
+   Config : Container_Config
+) return Validation_Result
+  with Post =>
+    (if Validate_Configuration'Result = Valid then Is_Secure (Config));
+----
+
+=== Threshold Signatures
+
+[source,ada]
+----
+-- Create a (k,n) threshold scheme
+function Create_Scheme (
+   Threshold     : Positive;
+   Total_Signers : Positive
+) return Threshold_Scheme
+  with Pre  => Threshold <= Total_Signers
+               and Total_Signers <= Max_Signers,
+       Post => Is_Valid_Scheme (Create_Scheme'Result);
+
+-- Add a signature share
+procedure Add_Share (
+   Scheme : in out Threshold_Scheme;
+   Share  : Signature_Share;
+   Result : out Authorization_Result
+)
+  with Pre  => Is_Valid_Scheme (Scheme),
+       Post => Is_Valid_Scheme (Scheme)
+               and (if Result = Authorized then Threshold_Reached (Scheme));
+----
+
+=== Gatekeeper
+
+[source,ada]
+----
+-- Get final decision on authorization request
+function Decide (Req : Authorization_Request) return Gatekeeper_Decision
+  with Pre => Is_Valid_Request (Req);
+----

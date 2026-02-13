@@ -1,0 +1,492 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Cerro Torre Container Image Variants
+:toc: left
+:toclevels: 3
+
+[IMPORTANT]
+====
+**Looking for alpha/beta releases?** Check the `releases/` directory (not here).
+
+**Looking for research (R-) or extreme (X-) builds?** See directories:
+
+* `containerfiles-research/` - Idris2 dependent type verification (experimental proofs)
+* `containerfiles-extreme/` - ATS2 linear type verification (high-security compliance)
+
+**These standard variants are production-ready** and recommended for 95% of users.
+====
+
+== Overview
+
+Three pre-configured Cerro Torre images for different use cases:
+
+[cols="1,1,1,3",options="header"]
+|===
+| Variant | Size | Use Case | Features
+
+| **ct-i**
+| ~80MB
+| Infrastructure/CI
+| Registry ops, basic packing
+
+| **ct-a**
+| ~150MB
+| Attestation/Security
+| Full signing, Rekor, policy
+
+| **ct**
+| ~200MB
+| Complete
+| Everything
+|===
+
+== Variant 1: ct-i (Infrastructure)
+
+**Purpose:** Fast container operations for CI/CD pipelines
+
+**Includes:**
+
+* ✅ ct pack (create bundles)
+* ✅ ct fetch (pull from registries)
+* ✅ ct push (upload to registries)
+* ✅ ct unpack (extract to OCI layout)
+* ✅ Registry authentication (Docker Hub, GHCR, ECR, GCR, ACR)
+* ✅ Basic verification (hash checks only)
+* ❌ NO signing (use ct-a or ct for that)
+* ❌ NO transparency logs
+* ❌ NO SBOM generation
+
+**Usage:**
+
+[source,bash]
+----
+# Pull image
+podman pull ghcr.io/hyperpolymath/ct-i:latest
+
+# Use in CI/CD
+podman run --rm \
+  -v $PWD:/workspace \
+  -e REGISTRY_AUTH_FILE=/workspace/.docker/config.json \
+  ct-i:latest pack /workspace/app:v1.0.0 -o /workspace/app.ctp
+
+# Quick registry operations
+podman run --rm ct-i:latest fetch docker.io/library/nginx:1.26
+----
+
+== Variant 2: ct-a (Attestation)
+
+**Purpose:** Complete signing and attestation workflow
+
+**Includes:**
+
+* ✅ Everything from ct-i
+* ✅ ct sign (Ed25519, ML-DSA-65 post-quantum)
+* ✅ ct keygen (key generation)
+* ✅ ct key (key management)
+* ✅ Transparency log integration (Rekor)
+* ✅ in-toto attestation generation
+* ✅ SBOM generation (SPDX, CycloneDX)
+* ✅ Policy engine
+* ❌ NO Debian/Fedora importers (use ct for that)
+
+**Usage:**
+
+[source,bash]
+----
+# Pull image
+podman pull ghcr.io/hyperpolymath/ct-a:latest
+
+# Generate signing key
+podman run --rm \
+  -v ct-keys:/etc/ct/keys \
+  ct-a:latest keygen --id release-2026
+
+# Sign bundle
+podman run --rm \
+  -v $PWD:/workspace \
+  -v ct-keys:/etc/ct/keys \
+  ct-a:latest sign /workspace/app.ctp -k release-2026
+
+# Submit to transparency log
+podman run --rm \
+  -v $PWD:/workspace \
+  ct-a:latest transparency upload /workspace/app.ctp
+----
+
+== Variant 3: ct (Complete)
+
+**Purpose:** Full Cerro Torre functionality
+
+**Includes:**
+
+* ✅ Everything from ct-i and ct-a
+* ✅ Debian importer
+* ✅ Fedora importer
+* ✅ Alpine importer (planned)
+* ✅ SPARK formal verification tooling
+* ✅ Development tools (debugger, profiler)
+
+**Usage:**
+
+[source,bash]
+----
+# Pull image
+podman pull ghcr.io/hyperpolymath/ct:latest
+
+# Import Debian package
+podman run --rm \
+  -v $PWD:/workspace \
+  ct:latest import debian nginx -o /workspace/nginx.ctp
+
+# Full pipeline with verification
+podman run --rm \
+  -v $PWD:/workspace \
+  -v ct-keys:/etc/ct/keys \
+  ct:latest pack docker.io/nginx:1.26 \
+    | ct sign -k release-2026 \
+    | ct verify --policy strict
+----
+
+== Feature Matrix
+
+[cols="1,1,1,1,2",options="header"]
+|===
+| Feature | ct-i | ct-a | ct | Rationale
+
+| **Registry Ops**
+| ✅
+| ✅
+| ✅
+| Essential for all
+
+| **Basic Packing**
+| ✅
+| ✅
+| ✅
+| Essential for all
+
+| **Hash Verification**
+| ✅
+| ✅
+| ✅
+| Essential for all
+
+| **Ed25519 Signing**
+| ❌
+| ✅
+| ✅
+| Security-focused only
+
+| **Post-Quantum (ML-DSA)**
+| ❌
+| ✅
+| ✅
+| Future-proofing
+
+| **Transparency Logs**
+| ❌
+| ✅
+| ✅
+| Attestation workflow
+
+| **SBOM Generation**
+| ❌
+| ✅
+| ✅
+| Supply chain visibility
+
+| **Policy Engine**
+| ❌
+| ✅
+| ✅
+| Trust decisions
+
+| **Debian Importer**
+| ❌
+| ❌
+| ✅
+| Full distribution building
+
+| **Fedora Importer**
+| ❌
+| ❌
+| ✅
+| Full distribution building
+
+| **SPARK Proofs**
+| ❌
+| ❌
+| ✅
+| Development/verification
+|===
+
+== Building
+
+[source,bash]
+----
+# Build all variants
+just build-all-images
+
+# Build individually
+just build-ct-i    # Infrastructure variant
+just build-ct-a    # Attestation variant
+just build-ct      # Complete variant
+----
+
+== Testing
+
+[source,bash]
+----
+# Test all variants
+just test-ct-i
+just test-ct-a
+just test-ct
+----
+
+== Publishing
+
+[source,bash]
+----
+# Publish all variants
+just publish-all
+
+# Publish individually
+just publish-ct-i
+just publish-ct-a
+just publish-ct
+----
+
+== Registry Layout
+
+----
+ghcr.io/hyperpolymath/
+├── ct-i:latest          # Infrastructure variant
+├── ct-i:v2.0.0
+├── ct-a:latest          # Attestation variant
+├── ct-a:v2.0.0
+├── ct:latest            # Complete variant
+└── ct:v2.0.0
+----
+
+== Tagging Convention
+
+[source,bash]
+----
+# Version tags
+v2.0.0, v2.0, v2, latest
+
+# Feature tags
+ct-i:infrastructure
+ct-a:attestation
+ct:complete
+
+# Alias tags
+ct-i:ci         → ct-i:latest
+ct-a:security   → ct-a:latest
+ct:full         → ct:latest
+----
+
+== Quick Start Guide
+
+=== For CI/CD Users (ct-i)
+
+[source,bash]
+----
+# In .gitlab-ci.yml or GitHub Actions
+docker run --rm \
+  -v $PWD:/workspace \
+  ghcr.io/hyperpolymath/ct-i:latest \
+  pack /workspace/Dockerfile -o /workspace/app.ctp
+----
+
+=== For Security Teams (ct-a)
+
+[source,bash]
+----
+# Generate signing key
+docker run --rm \
+  -v ct-keys:/keys \
+  ghcr.io/hyperpolymath/ct-a:latest \
+  keygen --id production-2026 --output /keys
+
+# Sign and attest
+docker run --rm \
+  -v $PWD:/workspace \
+  -v ct-keys:/keys \
+  ghcr.io/hyperpolymath/ct-a:latest \
+  sign /workspace/app.ctp -k /keys/production-2026
+----
+
+=== For Platform Teams (ct full)
+
+[source,bash]
+----
+# Import Debian package
+docker run --rm \
+  -v $PWD:/workspace \
+  ghcr.io/hyperpolymath/ct:latest \
+  import debian nginx -o /workspace/nginx.ctp
+----
+
+== Image Size Comparison
+
+----
+ct-i:        80MB  (minimal, registry-focused)
+ct-a:       150MB  (+signing, +rekor, +sbom)
+ct:         200MB  (+importers, +spark, +dev tools)
+----
+
+== Examples
+
+=== Example 1: CI/CD Pipeline with ct-i
+
+[source,yaml]
+----
+# .gitlab-ci.yml
+build:
+  image: ghcr.io/hyperpolymath/ct-i:latest
+  script:
+    - ct pack $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG -o app.ctp
+  artifacts:
+    paths:
+      - app.ctp
+----
+
+=== Example 2: Sign and Verify with ct-a
+
+[source,bash]
+----
+# Generate key
+podman run --rm -v ct-keys:/keys ct-a:latest keygen --id prod-2026
+
+# Sign
+podman run --rm -v $PWD:/workspace -v ct-keys:/keys \
+  ct-a:latest sign /workspace/app.ctp -k prod-2026
+
+# Verify
+podman run --rm -v $PWD:/workspace -v ct-keys:/keys \
+  ct-a:latest verify /workspace/app.ctp --policy strict
+----
+
+=== Example 3: Import and Build with ct
+
+[source,bash]
+----
+# Import Debian base
+podman run --rm -v $PWD:/workspace ct:latest \
+  import debian nginx -o /workspace/nginx-base.ctp
+
+# Build on top of it
+podman run --rm -v $PWD:/workspace ct:latest \
+  pack /workspace/nginx-base.ctp + /workspace/config/ \
+  -o /workspace/nginx-custom.ctp
+----
+
+== Choosing the Right Variant
+
+[cols="1,1,1",options="header"]
+|===
+| Use Case | Recommended | Reason
+
+| CI/CD pipelines
+| ct-i
+| Fast, minimal dependencies
+
+| Security attestation
+| ct-a
+| Full signing and transparency
+
+| Distribution building
+| ct
+| Importers for Debian/Fedora
+
+| Air-gapped deployment
+| ct (with bundles)
+| Self-contained with all tools
+
+| Development
+| ct
+| Complete tooling
+|===
+
+== Troubleshooting
+
+=== ct-i: Registry authentication fails
+
+[source,bash]
+----
+# Mount registry auth file
+podman run --rm \
+  -v ~/.docker/config.json:/root/.docker/config.json:ro \
+  ct-i:latest fetch private.registry.io/image:tag
+----
+
+=== ct-a: Signing key not found
+
+[source,bash]
+----
+# Check key directory
+podman run --rm -v ct-keys:/keys ct-a:latest key list
+
+# Generate new key if missing
+podman run --rm -v ct-keys:/keys ct-a:latest keygen --id mykey
+----
+
+=== ct: Import fails for unsupported distro
+
+[source,bash]
+----
+# Check supported distros
+podman run --rm ct:latest import --list
+
+# Use complete variant, not ct-i or ct-a
+----
+
+== Full Variant Matrix
+
+Cerro Torre offers **9 total variants** (3 verification levels × 3 feature sets):
+
+[cols="1,1,1,1",options="header"]
+|===
+| Feature Set | Standard (SPARK) | Research (Idris2+SPARK) | eXtreme (ATS2+SPARK)
+
+| Infrastructure (-i)
+| **ct-i** (this directory)
+| R-ct-i (research/)
+| X-ct-i (extreme/)
+
+| Attestation (-a)
+| **ct-a** (this directory)
+| R-ct-a (research/)
+| X-ct-a (extreme/)
+
+| Complete (no suffix)
+| **ct** (this directory)
+| R-ct (research/)
+| X-ct (extreme/)
+|===
+
+**Verification levels:**
+
+* **Standard** (this directory): Ada/SPARK proofs only - production-ready, recommended for 95% of users
+* **Research** (`containerfiles-research/`): Adds Idris2 dependent type proofs - for academic research
+* **eXtreme** (`containerfiles-extreme/`): Adds ATS2 linear type proofs - for military/financial compliance
+
+**Feature sets:**
+
+* **-i** (Infrastructure): Registry ops, basic packing (~80MB)
+* **-a** (Attestation): -i + signing, Rekor, SBOM (~150MB)
+* **(no suffix)** (Complete): -a + importers, dev tools (~200MB)
+
+**Most users need:** `ct-i`, `ct-a`, or `ct` (standard variants, this directory).
+
+== Not Alpha/Beta
+
+[IMPORTANT]
+====
+**R- and X- variants are NOT alpha/beta releases.**
+
+* **R-/X- variants**: Stable code, experimental/extreme *verification methods*
+* **Alpha/Beta releases**: Unstable *features* (found in `releases/` directory)
+
+All 9 variants are production-quality code. They differ only in verification approach.
+====

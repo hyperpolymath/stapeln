@@ -1,0 +1,258 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn QoL + Ergonomics Completion Checklist
+:toc: left
+:toclevels: 3
+
+Svalinn is a post-cloud container security architecture with a daemonless engine ("Vordr"), verified policy validator ("Gatekeeper"), registry client, networking, MCP server, and an edge shield layer. (See README for status table.)
+
+== Rating scale (apply per section, then overall)
+* *Fullest* — Delight + polish: cross-platform story, top-tier diagnostics, interop matrix green, backward-compat surfaces, and developer ergonomics are "boring".
+* *Full* — End-to-end workflows are paved: install, doctor, docs, stable config, CI gates, strong error UX, conformance tests, reproducible releases.
+* *Strong* — Most user paths smooth; minor sharp edges remain; partial cross-platform or partial interop.
+* *Moderate* — Core functions usable; setup and troubleshooting still require insider knowledge; tests exist but don't cover the README path fully.
+* *Basic* — Features exist but are fragile/manual; little automation; inconsistent output/flags; limited tests.
+* *Not implemented* — Absent or not verifiable.
+
+== How to score "veridically"
+For each checklist item, record:
+* Status: Not implemented | Basic | Moderate | Strong | Full | Fullest
+* Evidence: link/path + command output excerpt OR CI job URL
+* Date + reviewer
+
+== A. Onboarding and "doctor"
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|A1
+|`svalinn doctor` (or `vordr doctor`) exists and exits non-zero on detected problems.
+Verify: `./bin/svalinn doctor` (or `vordr doctor`) on a clean machine
+Evidence: command output includes (a) detected issue, (b) next-step command(s)
+Gate: CI job `doctor-smoke` runs in minimal container/VM
+|Strong
+|`vordr/src/cli/doctor.rs` implements full doctor with JSON output. CI: `.github/workflows/doctor-smoke.yml`
+
+|A2
+|`--diagnose` / `--debug` output is structured and redact-safe.
+Verify: `... --debug --json`
+Evidence: stable JSON keys; secrets not echoed
+|Moderate
+|`--format json` provides structured output. Schema: `spec/schemas/doctor-report.v1.json`
+
+|A3
+|One-command install path exists (documented).
+Verify: README section "Install" with one canonical method
+Evidence: release artifact(s) + checksums + signature(s)
+|Moderate
+|`.github/workflows/release.yml` creates artifacts with checksums and SBOM. Install script TBD.
+|===
+
+== B. CLI ergonomics (surface quality)
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|B1
+|Help is example-first (not flag-dump).
+Verify: `svalinn help`, `svalinn help run` includes examples
+Evidence: manpage or AsciiDoc help generation
+|Basic
+|clap derive provides help. Examples not yet in help output. Planned: clap `about` with examples.
+
+|B2
+|Stable JSON output for every user-visible command (`--json`).
+Verify: `svalinn ps --json`, `... images --json`, `... inspect --json`
+Evidence: JSON schema in `spec/` or `docs/` + versioned
+|Strong
+|Schemas in `spec/schemas/`. Commands support `--format json`. Schema versioning in place.
+
+|B3
+|Error taxonomy is consistent (exit codes + machine-readable error IDs).
+Verify: induce failures (missing runtime, permission denied, bad reference)
+Evidence: errors include `ERR_*` code + remediation
+|Moderate
+|Exit codes defined in `docs/surface-contract.adoc`. ERR_* taxonomy complete. Implementation partial.
+
+|B4
+|Defaults are safe and explicit (rootless, least privilege).
+Verify: default run does not require root on supported platforms
+Evidence: documented fallback story when root is required
+|Strong
+|Rootless by default. Doctor checks user namespaces. Fallback documented in troubleshooting.
+|===
+
+== C. "Happy path" integration tests (README is executable)
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|C1
+|CI runs the README quickstart end-to-end on clean runner.
+Verify: GitHub Actions job `e2e-readme`
+Evidence: test log shows `pull -> run -> ps -> exec -> stop -> rm`
+|Moderate
+|`.github/workflows/e2e-readme.yml` created. Full lifecycle requires runtime in CI.
+
+|C2
+|Networking is exercised (netavark/CNI basic connectivity).
+Verify: test container resolves DNS + reaches another container
+Evidence: golden log + assertions
+|Basic
+|Network tests planned. Netavark integration implemented but not CI-tested.
+
+|C3
+|Registry auth is exercised with a test registry.
+Verify: ephemeral registry in CI + login + pull
+Evidence: pass/fail is deterministic (no flaky external dependency)
+|Basic
+|Auth commands implemented. CI test with ephemeral registry TBD.
+|===
+
+== D. Config, state, and cleanup UX
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|D1
+|XDG paths (or explicit equivalent) for config/state/logs.
+Verify: `svalinn config show` prints paths
+Evidence: documented relocation via env var / config file
+|Moderate
+|XDG paths used. `config show` command TBD. Env vars documented.
+
+|D2
+|Safe cleanup commands exist with dry-run.
+Verify: `svalinn system prune --dry-run`
+Evidence: deletes only what it says; confirmation prompts
+|Strong
+|`vordr/src/cli/system.rs` implements prune with `--dry-run` and confirmation.
+
+|D3
+|Backward-compatible config migration is implemented.
+Verify: older config loads or `svalinn config migrate` exists
+Evidence: changelog entry + tests
+|Not implemented
+|Config migration not yet implemented. First release, no legacy configs.
+|===
+
+== E. Release & reproducibility
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|E1
+|Releases are reproducible (build provenance captured).
+Verify: CI produces identical hashes across rebuild OR attests build
+Evidence: SLSA-style provenance or equivalent attestation file
+|Moderate
+|`.github/workflows/release.yml` generates provenance.json with build attestation.
+
+|E2
+|SBOM generated for release binaries/images.
+Verify: CI uploads SBOM artifact
+Evidence: SBOM format documented and validated
+|Strong
+|Release workflow generates CycloneDX and SPDX SBOMs via cargo-sbom.
+|===
+
+== F. Seam + surface checks (do not regress interop)
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|F1
+|Spec version pin: `SPEC_VERSION` is declared and used.
+Verify: `svalinn version` prints supported spec version(s)
+Evidence: CI fails if spec changes without updating pin
+|Strong
+|`spec/SPEC_VERSION` file with OCI and internal spec versions. CI checks in conformance-consumer.
+
+|F2
+|Conformance harness: imports test vectors from `verified-container-spec`.
+Verify: CI job `conformance-consumer` runs vectors
+Evidence: test vector commit hash is recorded
+|Moderate
+|`.github/workflows/conformance-consumer.yml` created. Test vectors TBD.
+
+|F3
+|"Surface freeze" policy: CLI + JSON schema changes require a changelog + migration note.
+Verify: PR template checkbox + CI lint for changelog entry
+Evidence: `docs/surface-contract.adoc` exists
+|Strong
+|`docs/surface-contract.adoc` complete. PR template with checkboxes. CI lint workflow.
+|===
+
+== G. Smoothing (the stuff teams miss)
+
+[cols="1,3,2,2",options="header"]
+|===
+|ID |Requirement |Status |Evidence
+
+|G1
+|Troubleshooting guide: top 20 failure modes (rootless, networking, registry).
+Verify: `docs/troubleshooting.adoc`
+Evidence: each issue links to doctor output / fix
+|Strong
+|`docs/troubleshooting.adoc` covers 20 failure modes with doctor integration.
+
+|G2
+|Completions + manpages.
+Verify: `svalinn completion bash\|zsh\|fish`, `man svalinn`
+Evidence: packaged in releases
+|Strong
+|`vordr/src/cli/completion.rs` generates completions. Manpage via clap_mangen in release.
+
+|G3
+|"Minimal mental model" doc for users (not implementers).
+Verify: `docs/mental-model.adoc` <= 2 pages
+Evidence: matches current CLI and defaults
+|Strong
+|`docs/mental-model.adoc` provides concise user guide under 2 pages.
+|===
+
+== Developer evaluation setup (recommended)
+
+=== CI Required Checks
+
+[cols="1,2",options="header"]
+|===
+|Check |Workflow
+
+|`doctor-smoke`
+|`.github/workflows/doctor-smoke.yml`
+
+|`e2e-readme`
+|`.github/workflows/e2e-readme.yml`
+
+|`conformance-consumer`
+|`.github/workflows/conformance-consumer.yml`
+
+|`schema-lint`
+|`.github/workflows/schema-lint.yml`
+
+|`surface-contract-lint`
+|`.github/workflows/surface-contract-lint.yml`
+|===
+
+=== Recommended Labels
+
+* `surface-change` - Changes to CLI, JSON output, config format, or exit codes
+* `seam-break` - Changes affecting spec consumption or production
+* `qol` - Quality of life improvements
+* `conformance` - Spec conformance work
+* `migration` - Config or surface migration
+
+=== PR Template
+
+See `.github/pull_request_template.md` for mandatory checkboxes:
+- Surface impact assessment
+- Seam impact assessment
+- Migration plan (if applicable)
+- Tests updated
+- Docs updated

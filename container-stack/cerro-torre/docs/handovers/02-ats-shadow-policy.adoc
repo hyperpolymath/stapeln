@@ -1,0 +1,46 @@
+= ATS Shadow Verification Policy
+:status: normative
+:audience: maintainers, CI authors
+
+== Purpose
+
+ATS may be used as a *shadow verification tool* to reinforce confidence in the canonical implementation.
+
+ATS is not part of the trusted computing base.
+
+== Authority
+
+* ATS output is advisory only.
+* ATS MUST NOT declare artifacts valid or invalid.
+* ATS MUST NOT generate canonical outputs.
+* ATS MUST NOT be required at runtime.
+
+== Allowed Uses
+
+ATS MAY be used to:
+
+* Check canonicalization idempotence
+* Validate semantic equivalence over a declared subset
+* Cross-check canonical bytes against spec rules
+* Detect inconsistencies between spec and implementation
+
+== Prohibited Uses
+
+ATS MUST NOT:
+
+* Override SPARK behavior
+* Block production builds
+* Act as a trust root
+* Be referenced as authoritative in governance or legal contexts
+
+== Failure Handling
+
+If ATS disagrees with the SPARK core:
+
+* CI MAY fail
+* Human review is REQUIRED
+* The SPARK output remains authoritative
+
+== Survivability Requirement
+
+The system MUST function correctly if ATS tooling is removed entirely.

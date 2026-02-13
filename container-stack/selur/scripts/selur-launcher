@@ -1,0 +1,38 @@
+#!/bin/bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Launcher for welded svalinn+vordr
+
+set -euo pipefail
+
+INSTALL_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+
+echo "🚀 Starting selur(svalinn+vordr) welded build..."
+
+# Start vordr in background with selur IPC enabled
+"${INSTALL_DIR}/bin/vordr" \
+  --selur-ipc unix:///run/selur-sv.sock \
+  --listen-mode ipc \
+  --state-db /var/lib/selur-sv/vordr.db &
+VORDR_PID=$!
+
+# Wait for vordr to be ready
+sleep 2
+
+echo "✅ Vörðr started (PID: $VORDR_PID)"
+
+# Start svalinn with auto-configured vordr endpoint
+VORDR_ENDPOINT="selur://unix:///run/selur-sv.sock" \
+SELUR_WASM="${INSTALL_DIR}/lib/selur.wasm" \
+"${INSTALL_DIR}/bin/svalinn" &
+SVALINN_PID=$!
+
+echo "✅ Svalinn started (PID: $SVALINN_PID)"
+echo "📡 Listening on http://0.0.0.0:${SVALINN_PORT:-8000}"
+echo "🔗 IPC bridge: unix:///run/selur-sv.sock (0.7ms latency)"
+
+# Wait for svalinn (main process)
+wait $SVALINN_PID
+
+# Cleanup on exit
+echo "🛑 Shutting down..."
+kill $VORDR_PID 2>/dev/null || true

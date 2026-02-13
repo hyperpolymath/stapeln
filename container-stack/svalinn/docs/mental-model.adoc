@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Vordr Mental Model
+:icons: font
+
+A minimal guide for users (not implementers).
+
+== What is Vordr?
+
+Vordr is a *daemonless container engine*. Unlike Docker, there's no background service - each command runs directly.
+
+----
+Docker:     CLI  ->  daemon  ->  container
+Vordr:      CLI  ────────────>  container
+----
+
+== Core Concepts
+
+=== Containers
+
+A container is an isolated process with its own:
+- Filesystem (from an image)
+- Network (bridge, host, or none)
+- Resource limits (CPU, memory)
+
+----
+$ vordr run nginx:latest     # Create and start
+$ vordr ps                   # List running
+$ vordr stop <id>            # Stop gracefully
+$ vordr rm <id>              # Remove
+----
+
+=== Images
+
+Images are read-only templates. Vordr pulls them from registries.
+
+----
+$ vordr pull alpine:latest   # Download image
+$ vordr image ls             # List local images
+----
+
+=== Volumes
+
+Persistent storage that survives container removal.
+
+----
+$ vordr volume create mydata
+$ vordr run -v mydata:/data alpine
+----
+
+=== Networks
+
+Container networking via Netavark.
+
+----
+$ vordr network create mynet
+$ vordr run --network mynet alpine
+----
+
+== Security Model
+
+=== Profiles
+
+Three built-in security profiles:
+
+|===
+|Profile |Use Case |Restrictions
+
+|`strict`
+|Production
+|Drop all capabilities, read-only root, user namespace
+
+|`balanced`
+|Default
+|Essential capabilities only, user namespace
+
+|`dev`
+|Development
+|Relaxed for debugging
+|===
+
+----
+$ vordr run --profile strict nginx:latest
+----
+
+=== Gatekeeper
+
+Every container configuration passes through Gatekeeper - a formally verified policy validator written in Ada/SPARK.
+
+If something is blocked:
+----
+$ vordr explain --last
+----
+
+== Rootless by Default
+
+Vordr runs as your user, not root. This means:
+- Containers can't access root-only resources
+- Port < 1024 requires additional configuration
+- User namespaces map container root to your UID
+
+== Command Cheatsheet
+
+----
+# Lifecycle
+vordr run IMAGE [CMD]        # Run new container
+vordr ps                     # List containers
+vordr stop CONTAINER         # Stop container
+vordr rm CONTAINER           # Remove container
+
+# Images
+vordr pull IMAGE             # Download image
+vordr image ls               # List images
+
+# Inspection
+vordr inspect CONTAINER      # Container details
+vordr logs CONTAINER         # View logs
+
+# System
+vordr doctor                 # Check system health
+vordr system df              # Disk usage
+vordr system prune           # Cleanup unused
+
+# Configuration
+vordr config show            # Show config paths
+vordr profile ls             # List security profiles
+----
+
+== Where Things Live
+
+|===
+|Path |Purpose
+
+|`~/.config/vordr/`
+|Configuration files
+
+|`~/.local/share/vordr/`
+|Container state and images (rootless)
+
+|`/var/lib/vordr/`
+|Container state and images (system-wide)
+|===
+
+== Getting Help
+
+----
+$ vordr help                 # General help
+$ vordr help run             # Command-specific help
+$ vordr doctor               # System diagnostics
+$ vordr explain              # Policy explanations
+----

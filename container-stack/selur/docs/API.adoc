@@ -1,0 +1,344 @@
+= selur API Documentation
+:toc:
+:toclevels: 3
+
+API reference for the selur Ephapax-linear WASM sealant.
+
+== Rust API
+
+=== `Bridge`
+
+Main interface for IPC between Svalinn and Vörðr.
+
+[source,rust]
+----
+pub struct Bridge {
+    // Internal fields omitted
+}
+----
+
+==== `Bridge::new`
+
+Load and initialize the selur WASM module.
+
+[source,rust]
+----
+pub fn new(wasm_path: impl AsRef<Path>) -> Result<Self>
+----
+
+*Parameters:*
+
+* `wasm_path` - Path to `selur.wasm` file
+
+*Returns:*
+
+* `Ok(Bridge)` - Successfully initialized bridge
+* `Err(...)` - Failed to load WASM module
+
+*Example:*
+
+[source,rust]
+----
+let bridge = Bridge::new("path/to/selur.wasm")?;
+----
+
+==== `Bridge::send_request`
+
+Send a request through the bridge to Vörðr.
+
+[source,rust]
+----
+pub fn send_request(&mut self, request: &[u8]) -> Result<Vec<u8>>
+----
+
+*Parameters:*
+
+* `request` - Request payload as bytes
+
+*Returns:*
+
+* `Ok(Vec<u8>)` - Response payload
+* `Err(...)` - Request failed
+
+*Request Format:*
+
+[source]
+----
+[command: 1 byte]
+[payload_len: 4 bytes, little-endian]
+[payload: variable]
+----
+
+*Response Format:*
+
+[source]
+----
+[status: 1 byte]
+[payload_len: 4 bytes, little-endian]
+[payload: variable]
+----
+
+*Example:*
+
+[source,rust]
+----
+let mut request = Vec::new();
+request.push(0x01); // CREATE_CONTAINER
+request.extend_from_slice(&10u32.to_le_bytes());
+request.extend_from_slice(b"nginx:latest");
+
+let response = bridge.send_request(&request)?;
+----
+
+==== `Bridge::memory_size`
+
+Get the WASM linear memory size.
+
+[source,rust]
+----
+pub fn memory_size(&mut self) -> Result<usize>
+----
+
+*Returns:*
+
+* `Ok(usize)` - Memory size in bytes
+* `Err(...)` - Failed to get memory
+
+*Example:*
+
+[source,rust]
+----
+let size = bridge.memory_size()?;
+println!("WASM memory: {} bytes", size);
+----
+
+=== `ErrorCode`
+
+Error codes returned by WASM module.
+
+[source,rust]
+----
+#[repr(u32)]
+pub enum ErrorCode {
+    Success = 0,
+    InvalidRequest = 1,
+    ContainerNotFound = 2,
+    PermissionDenied = 3,
+}
+----
+
+==== `ErrorCode::from_u32`
+
+Convert u32 to ErrorCode.
+
+[source,rust]
+----
+pub fn from_u32(code: u32) -> Option<Self>
+----
+
+*Example:*
+
+[source,rust]
+----
+let error = ErrorCode::from_u32(response[0] as u32);
+if let Some(ErrorCode::Success) = error {
+    println!("Request succeeded");
+}
+----
+
+== Ephapax API
+
+=== `bridge`
+
+Main bridge function with linear types.
+
+[source,haskell]
+----
+bridge :: Region r => Request@r -> Response@r
+----
+
+Zero-copy IPC function that:
+
+1. Receives request from Svalinn (consumes `Request@r`)
+2. Delegates to Vörðr (via shared WASM memory)
+3. Returns response to Svalinn (transfers ownership)
+
+*Region Annotation:*
+
+The `@r` region annotation ensures:
+
+* Resources are consumed exactly once
+* No use-after-free or double-free errors
+* Zero-copy semantics via WASM linear memory
+
+=== `validate_request`
+
+Validate request before processing.
+
+[source,haskell]
+----
+validate_request :: Request@r -> Request@r
+----
+
+*Checks:*
+
+* Request size ≤ 1 MB
+* Request is non-empty
+* Request format is valid
+
+=== Container Operations
+
+==== `create_container`
+
+[source,haskell]
+----
+create_container :: ContainerConfig@r -> Response@r
+----
+
+Create a new container from configuration.
+
+==== `start_container`
+
+[source,haskell]
+----
+start_container :: ContainerId@r -> Response@r
+----
+
+Start an existing container.
+
+==== `stop_container`
+
+[source,haskell]
+----
+stop_container :: ContainerId@r -> Response@r
+----
+
+Stop a running container.
+
+==== `inspect_container`
+
+[source,haskell]
+----
+inspect_container :: ContainerId@r -> Response@r
+----
+
+Get container state and configuration.
+
+== Type Definitions
+
+=== Request
+
+[source,haskell]
+----
+data Request@r = Request
+  { command :: Command@r
+  , payload :: Bytes@r
+  , correlation_id :: String
+  }
+----
+
+=== Response
+
+[source,haskell]
+----
+data Response@r = Response
+  { status :: ResponseStatus
+  , payload :: Bytes@r
+  , correlation_id :: String
+  }
+----
+
+=== Command
+
+[source,haskell]
+----
+data Command@r
+  = CreateContainer ContainerConfig@r
+  | StartContainer ContainerId@r
+  | StopContainer ContainerId@r
+  | InspectContainer ContainerId@r
+  | DeleteContainer ContainerId@r
+----
+
+=== ResponseStatus
+
+[source,haskell]
+----
+data ResponseStatus
+  = Success
+  | InvalidRequest
+  | ContainerNotFound
+  | PermissionDenied
+----
+
+== WASM Exports
+
+=== `allocate`
+
+[source,c]
+----
+u32 allocate(u32 size)
+----
+
+Allocate memory in WASM linear memory.
+
+*Returns:* Pointer to allocated memory
+
+=== `deallocate`
+
+[source,c]
+----
+void deallocate(u32 ptr, u32 size)
+----
+
+Free previously allocated memory.
+
+=== `send_request`
+
+[source,c]
+----
+u32 send_request(u32 request_ptr, u32 request_len)
+----
+
+Process a request.
+
+*Returns:* Error code (0 = success)
+
+=== `get_response`
+
+[source,c]
+----
+u32 get_response(u32 response_ptr)
+----
+
+Get the response length.
+
+*Returns:* Response length in bytes
+
+== Integration
+
+=== Svalinn (TypeScript)
+
+[source,typescript]
+----
+import { Bridge } from "./selur_bindings.ts";
+
+const bridge = new Bridge("./selur.wasm");
+const response = await bridge.sendRequest(containerRequest);
+----
+
+=== Vörðr (Elixir)
+
+[source,elixir]
+----
+defmodule Vordr.Selur do
+  def handle_request(request) do
+    # Process container lifecycle request
+    # Return response
+  end
+end
+----
+
+== License
+
+PMPL-1.0-or-later

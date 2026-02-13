@@ -1,0 +1,45 @@
+{
+  "name": "@svalinn/gateway",
+  "version": "0.2.0",
+  "license": "PMPL-1.0-or-later",
+  "exports": {
+    ".": "./Main.res.js"
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --watch Main.res.js",
+    "start": "deno run --allow-net --allow-read --allow-env Main.res.js",
+    "serve": "deno run --allow-net --allow-read --allow-env Main.res.js",
+    "build": "deno compile --allow-net --allow-read --allow-env -o ../dist/svalinn Main.res.js",
+    "test": "deno test --allow-net --allow-read --allow-env tests/*.test.js",
+    "fmt": "deno fmt",
+    "lint": "deno lint"
+  },
+  "imports": {
+    "rescript/lib/es6/": "../node_modules/rescript/lib/es6/",
+    "@rescript/core/lib/es6/": "../node_modules/@rescript/core/lib/es6/",
+    "hono": "jsr:@hono/hono@^4",
+    "@hono/hono": "jsr:@hono/hono@^4",
+    "@std/path": "jsr:@std/path@^1",
+    "@std/fs": "jsr:@std/fs@^1",
+    "@std/json": "jsr:@std/json@^1",
+    "@std/yaml": "jsr:@std/yaml@^1",
+    "@std/cli": "jsr:@std/cli@^1",
+    "ajv": "npm:ajv@^8",
+    "ajv-formats": "npm:ajv-formats@^3"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

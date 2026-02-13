@@ -1,0 +1,44 @@
+{
+  "$schema": "../spec/policy-schema.json",
+  "version": "1",
+  "description": "Strict trust policy - requires known signers and attestations",
+
+  "default_action": "deny",
+
+  "signers": {
+    "allowed": [
+      {
+        "key_id": "cerro-official-*",
+        "required": true,
+        "comment": "Must be signed by Cerro Torre official key"
+      }
+    ],
+    "threshold": 1
+  },
+
+  "registries": {
+    "allowed": [
+      "docker.io/library/*"
+    ],
+    "blocked": [
+      "*.untrusted.example"
+    ]
+  },
+
+  "base_images": {
+    "allowed": [
+      "docker.io/library/alpine:3.*",
+      "docker.io/library/debian:bookworm*"
+    ]
+  },
+
+  "suites": {
+    "allowed": ["CT-SIG-01", "CT-SIG-02"],
+    "minimum": "CT-SIG-01"
+  },
+
+  "require_attestations": {
+    "provenance": true,
+    "sbom": true
+  }
+}

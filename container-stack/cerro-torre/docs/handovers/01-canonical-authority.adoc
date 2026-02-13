@@ -1,0 +1,48 @@
+= Canonical Authority and Language Policy
+:status: normative
+:audience: maintainers, auditors, foundations
+
+== Decision Summary
+
+The Cerro Torre project defines correctness and trust using:
+
+* A written, normative specification
+* A single authoritative implementation in Ada/SPARK
+* Executable golden test corpora
+
+Advanced proof tooling (including ATS) is permitted only as *non-authoritative reinforcement*.
+
+== Canonical Source of Truth
+
+The following are authoritative, in descending order:
+
+1. The written specification (under /spec)
+2. Golden test corpora (valid + invalid cases)
+3. The Ada/SPARK reference implementation
+
+No other artifact may define or override semantics.
+
+== Language Policy
+
+* Ada/SPARK is the sole canonical implementation language.
+* The project MUST remain correct and buildable without any auxiliary proof tools.
+* No semantic rule may exist only in implementation-level proofs or types.
+
+== Rationale
+
+This policy prioritizes:
+
+* Auditability
+* Institutional trust
+* Long-term survivability
+* Clear governance boundaries
+
+Cleverness must not become a dependency.
+
+== Non-Goals
+
+This project does NOT attempt to:
+
+* Encode full semantics in a type system
+* Require dependent types for correctness
+* Use multiple authoritative implementations

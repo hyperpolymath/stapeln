@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Example Svalinn Compose File
+#
+# This demonstrates a typical web application stack with:
+# - Nginx frontend (verified image)
+# - Application backend (custom image)
+# - PostgreSQL database
+# - Redis cache
+#
+# Run with: svalinn-compose up
+
+version: "1.0"
+name: myapp
+
+# Svalinn-specific security configuration
+x-svalinn:
+  policy: standard
+  verify: true
+  attestations:
+    require-sbom: false
+    require-signature: false
+
+services:
+  # Frontend proxy
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    x-svalinn:
+      policy: strict
+
+  # Application backend
+  backend:
+    image: ghcr.io/myorg/myapp:v1.0.0
+    environment:
+      DATABASE_URL: postgres://postgres:secret@db:5432/myapp
+      REDIS_URL: redis://cache:6379
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: myapp
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis cache
+  cache:
+    image: redis:7-alpine
+    volumes:
+      - cache_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+  cache_data:
+    driver: local

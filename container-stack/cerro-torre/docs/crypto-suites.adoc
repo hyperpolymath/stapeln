@@ -1,0 +1,120 @@
+= Crypto Suites — Suite Commitment (No Downgrade)
+:toc:
+:toclevels: 3
+:status: draft
+
+== Goal
+
+Cerro Torre artifacts and attestations MUST be verifiable without algorithm negotiation.
+Instead of "fallback" (try X, else Y), we use *suite commitment*:
+
+* Every signed object declares `suite_id`.
+* The declared `suite_id` is covered by the signature.
+* Verifiers either support that suite or reject; they do NOT silently downgrade.
+
+This prevents downgrade attacks while allowing algorithm agility.
+
+== Definitions
+
+Suite ID::
+A stable identifier like `CT-SIG-02` that maps to an exact algorithm set.
+
+Algorithm Set::
+A structured description of primitives and parameters for signatures, hashing, and (optionally) key establishment.
+
+Policy::
+Rules describing which suites are allowed for which roles (e.g. governance keys vs. local build keys).
+
+== Suite Registry
+
+Suites are defined in `spec/crypto-suites.json`.
+This file is the single source of truth for supported suites.
+
+== Current Suites
+
+=== CT-SIG-01 (Classical baseline)
+* Signature: Ed25519 (EdDSA)
+* Canonical digest: SHA-256
+* Status: allowed for local/dev; governance MAY restrict.
+
+=== CT-SIG-02 (Hybrid, recommended for governance)
+* Signatures REQUIRED: Ed25519 AND ML-DSA (Dilithium; NIST FIPS 204 naming)
+* Canonical digest: SHA-256
+* Status: recommended for governance and long-lived attestations.
+
+=== CT-SIG-03 (PQ-only)
+* Signature: ML-DSA
+* Canonical digest: SHA-256
+* Status: optional; enable when ecosystem readiness is sufficient.
+
+=== CT-SIG-04 (Ed448, optional)
+* Signature: Ed448
+* Canonical digest: SHA-256
+* Status: optional; not default.
+
+== Manifest Requirements (.ctp)
+
+Manifests MUST declare:
+
+* `security.suite_id`: a suite ID from `spec/crypto-suites.json`
+* `security.payload_binding`: which digest binds the manifest to signatures (default: `manifest.canonical_bytes_sha256`)
+
+Optionally:
+
+* `security.algorithms`: MUST match the registry entry for `security.suite_id` if provided.
+  If omitted, tools MUST fill it during summarization from the registry.
+
+== Summary Requirements (summary.json)
+
+Summaries MUST include:
+
+* `security.suite_id` and resolved `security.algorithms`
+* `security.binding_digest` (e.g., canonical bytes SHA-256)
+* `signatures[]` with explicit `suite_id` and key identifiers
+
+The signature input MUST include `security.suite_id` so it is not negotiable.
+
+== Verification Rules
+
+A verifier MUST:
+
+1. Canonicalize the .ctp bytes deterministically.
+2. Compute `binding_digest` (SHA-256 of canonical bytes unless overridden).
+3. Load `spec/crypto-suites.json`.
+4. Ensure `suite_id` exists and is enabled by policy.
+5. Verify signatures exactly per the suite definition.
+6. Reject if:
+   * suite unknown,
+   * suite disabled by policy,
+   * algorithms mismatch registry,
+   * any REQUIRED signature missing/invalid.
+
+== Policy Rules (Default)
+
+Default policy is intentionally conservative:
+
+* governance attestations: require `CT-SIG-02` or stronger
+* local/dev attestations: allow `CT-SIG-01` and `CT-SIG-02`
+* PQ-only suites: optional and off-by-default unless explicitly enabled
+
+== Digest Algorithms
+
+=== Primary (Required)
+* **SHA-256**: Canonical digest for all binding operations.
+
+=== Secondary (Optional, additive)
+* **BLAKE3**: May be included as additional digest in summary for performance.
+* **SHAKE256**: Treat as XOF; explicit output length required if used.
+
+Secondary digests are informational; SHA-256 remains authoritative for binding.
+
+== Backwards Compatibility
+
+Older artifacts without `security.suite_id` are NOT valid under this scheme.
+If legacy support is required, define an explicit `CT-LEGACY-00` suite and gate it behind policy.
+
+== Related Specifications
+
+* `spec/crypto-suites.json` — Machine-readable suite registry
+* `spec/keystore-policy.json` — Argon2id policy for local keystores (separate concern)
+* `spec/keystore-nongoals.adoc` — What keystore policy MUST NOT do

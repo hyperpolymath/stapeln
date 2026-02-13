@@ -1,0 +1,63 @@
+= Semantic Authority and Invariant Hierarchy
+:status: normative
+:audience: spec authors, implementers
+
+== Overview
+
+Semantic meaning in Cerro Torre is defined hierarchically.
+
+This hierarchy prevents accidental transfer of authority from the specification to tooling.
+
+== Authority Layers
+
+=== Layer A — Written Specification (Authoritative)
+
+Defines:
+
+* Manifest meaning
+* Validity rules
+* Canonical form
+* Error taxonomy
+* Versioning and compatibility
+
+All semantics MUST be expressible in plain language here.
+
+=== Layer B — Golden Corpora (Enforcement)
+
+Golden corpora:
+
+* Make the spec executable
+* Prevent semantic drift
+* Serve as regression contracts
+
+They do not define new meaning.
+
+=== Layer C — Proof Artifacts (Reinforcing Only)
+
+Includes:
+
+* SPARK proof obligations
+* ATS shadow verification
+* Formal checks
+
+These MAY detect errors but MUST NOT define semantics.
+
+Failure of proofs does not invalidate the spec.
+
+=== Layer D — Type-Level Constraints (Local Hygiene)
+
+Types MAY:
+
+* Prevent misuse internally
+* Encode local invariants
+
+Types MUST NOT:
+
+* Replace validation
+* Encode semantics not present in the spec
+
+== Normative Rule
+
+Every invariant enforced by tooling MUST be describable in the written specification.
+
+If it cannot be written down, it is not a valid invariant.

@@ -1,0 +1,177 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Hyperpolymath Container Ecosystem Configuration
+#
+# This file defines how Svalinn integrates with the broader ecosystem.
+# Run: svalinn ecosystem check  (to verify all components)
+
+version: "1.0"
+name: hyperpolymath-containers
+
+# Core container stack
+core:
+  svalinn:
+    repo: hyperpolymath/svalinn
+    role: Edge gateway and policy enforcement
+    endpoint: ${SVALINN_ENDPOINT:-http://localhost:8000}
+
+  vordr:
+    repo: hyperpolymath/vordr
+    role: Formally verified container runtime
+    endpoint: ${VORDR_ENDPOINT:-http://localhost:8080}
+    features:
+      - Ada/SPARK gatekeeper
+      - Idris2 proofs
+      - eBPF monitoring
+      - Elixir orchestration
+
+  cerro-torre:
+    repo: hyperpolymath/cerro-torre
+    role: Supply-chain verified image builder
+    cli: ct
+    features:
+      - .ctp bundle format
+      - SPARK-verified crypto
+      - in-toto attestations
+      - Transparency log integration
+
+# Protocol specifications
+specs:
+  verified-container-spec:
+    repo: hyperpolymath/verified-container-spec
+    role: Protocol schemas for attestation verification
+    schemas:
+      - schema/trust-store.schema.json
+      - schema/attestation-bundle.schema.json
+      - schema/transparency-log.schema.json
+    test_vectors:
+      - vectors/valid/
+      - vectors/invalid/
+      - vectors/adversarial/
+
+# MCP integrations
+mcp:
+  poly-container-mcp:
+    repo: hyperpolymath/poly-container-mcp
+    role: AI-assisted container operations
+    endpoint: ${POLY_CONTAINER_MCP:-http://localhost:3000}
+    runtimes:
+      - nerdctl (preferred)
+      - podman
+      - docker (fallback)
+
+  poly-k8s-mcp:
+    repo: hyperpolymath/poly-k8s-mcp
+    role: Kubernetes operations via MCP
+    endpoint: ${POLY_K8S_MCP:-http://localhost:3001}
+
+# Supporting infrastructure
+infrastructure:
+  zerotier-k8s-link:
+    repo: hyperpolymath/zerotier-k8s-link
+    role: Encrypted overlay networking
+
+  zig-container-ffi:
+    repo: hyperpolymath/zig-container-ffi
+    role: High-performance FFI bindings
+
+# Build toolchain (install via asdf)
+toolchain:
+  asdf-apko-plugin:
+    repo: hyperpolymath/asdf-apko-plugin
+    provides: apko
+    purpose: OCI image builder from Alpine packages
+
+  asdf-melange-plugin:
+    repo: hyperpolymath/asdf-melange-plugin
+    provides: melange
+    purpose: APK package builder with SBOM
+
+  asdf-cosign-plugin:
+    repo: hyperpolymath/asdf-cosign-plugin
+    provides: cosign
+    purpose: Container signing (Sigstore)
+
+  asdf-linkerd-plugin:
+    repo: hyperpolymath/asdf-linkerd-plugin
+    provides: linkerd
+    purpose: Service mesh CLI
+
+  asdf-envoy-plugin:
+    repo: hyperpolymath/asdf-envoy-plugin
+    provides: envoy
+    purpose: Cloud-native proxy
+
+# Integration paths
+integrations:
+  # svalinn-compose.yaml → Svalinn → Vörðr
+  compose-to-runtime:
+    flow:
+      - svalinn-compose parses YAML
+      - Validates against policy
+      - Calls Svalinn HTTP API
+      - Svalinn delegates to Vörðr
+      - Vörðr creates containers
+
+  # .ctp bundle → ct verify → ct run → Svalinn
+  ctp-to-runtime:
+    flow:
+      - ct verify checks bundle integrity
+      - ct run unpacks to OCI layout
+      - Delegates to Svalinn (or podman/nerdctl)
+      - Svalinn validates policy
+      - Vörðr executes
+
+  # AI agent → poly-container-mcp → runtime
+  ai-to-runtime:
+    flow:
+      - MCP client calls poly-container-mcp
+      - Tool dispatches to runtime
+      - Runtime executes (FOSS-first)
+      - Results returned via MCP
+
+# Security policies
+security:
+  defaults:
+    policy: standard
+    verify_images: true
+    require_sbom: false
+    require_signature: false
+
+  strict:
+    policy: strict
+    verify_images: true
+    require_sbom: true
+    require_signature: true
+    read_only_root: true
+
+  development:
+    policy: permissive
+    verify_images: false
+    require_sbom: false
+    require_signature: false
+
+# Quick start
+quickstart:
+  install_toolchain: |
+    # Install asdf plugins
+    asdf plugin add apko https://github.com/hyperpolymath/asdf-apko-plugin
+    asdf plugin add melange https://github.com/hyperpolymath/asdf-melange-plugin
+    asdf plugin add cosign https://github.com/hyperpolymath/asdf-cosign-plugin
+    asdf install apko latest
+    asdf install melange latest
+    asdf install cosign latest
+
+  start_stack: |
+    # Start the container stack
+    cd ~/Documents/hyperpolymath-repos/vordr && cargo run &
+    cd ~/Documents/hyperpolymath-repos/svalinn/src && deno task start &
+
+  run_compose: |
+    # Run a compose file
+    cd ~/Documents/hyperpolymath-repos/svalinn/src
+    deno task compose up -f ../examples/svalinn-compose.yaml
+
+  run_ctp_bundle: |
+    # Run a Cerro Torre bundle
+    ct verify myapp.ctp
+    ct run myapp.ctp --runtime=svalinn

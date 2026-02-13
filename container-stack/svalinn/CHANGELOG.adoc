@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+== [Unreleased]
+
+=== Added
+
+==== CLI Features (SHOULD - P2)
+- `vordr doctor` command with 5 check categories (runtime, networking, kernel, state, gatekeeper)
+- `vordr system df/prune/info/reset` commands with dry-run support
+- `vordr compose up/down/ps/logs/config` with explicit unsupported key warnings
+- `vordr login/logout` with registry authentication
+- `vordr auth ls` for credential management
+- `vordr completion bash|zsh|fish` for shell completions
+
+==== CLI Features (COULD - P3)
+- `vordr profile ls/show/diff/set-default/create` for security profile management
+- `vordr explain` command for policy rejection diagnostics
+- Three built-in security profiles: strict, balanced, dev
+
+==== Documentation
+- `docs/troubleshooting.adoc` - Top 20 failure modes with doctor integration
+- `docs/mental-model.adoc` - Minimal user guide (under 2 pages)
+- `docs/surface-contract.adoc` - API stability contract with exit codes
+
+==== Quality Assurance
+- `CHECKLIST-QOL.adoc` - QoL completion checklist with ratings
+- `EVALUATION-REPORT.adoc` - Veridical evaluation template
+- JSON schemas for CLI output (`spec/schemas/*.v1.json`)
+- Spec version pinning (`spec/SPEC_VERSION`)
+
+==== CI/CD
+- `doctor-smoke.yml` - Doctor command smoke tests
+- `e2e-readme.yml` - README happy path tests
+- `schema-lint.yml` - JSON schema validation
+- `surface-contract-lint.yml` - Surface change detection
+- `conformance-consumer.yml` - Spec conformance tests
+- `release.yml` - Multi-platform release with SBOM and provenance
+
+==== Developer Experience
+- PR template with surface/seam impact checkboxes
+- Evidence directory for evaluation artifacts
+
+=== Changed
+- Exit codes now follow documented taxonomy (see `docs/surface-contract.adoc`)
+
+=== Fixed
+- Doctor command JSON output now matches schema
+
+== [0.1.0] - Unreleased
+
+=== Added
+- Initial Vordr container engine implementation
+- Container lifecycle: create, start, stop, pause, resume, kill, delete
+- OCI runtime integration (youki/runc)
+- Netavark networking backend
+- SQLite state management with WAL mode
+- Gatekeeper FFI stub for SPARK integration
+- Registry client with auth support
+- MCP server for AI-assisted management

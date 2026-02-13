@@ -1,0 +1,419 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn Project Roadmap
+:toc: preamble
+:toclevels: 2
+:icons: font
+
+This roadmap outlines the development trajectory for the Svalinn ecosystem, a post-cloud security architecture combining formally verified container security with AI-assisted orchestration.
+
+== Current State (v0.1.0)
+
+=== Vordr Core - Implementation Complete
+
+The core container engine is functionally complete with the following modules:
+
+[cols="1,1,2",options="header"]
+|===
+|Module |Location |Status
+
+|*CLI Framework*
+|`vordr/src/cli/`
+|Complete - Full command structure
+
+|*Container Lifecycle*
+|`vordr/src/engine/lifecycle.rs`
+|Complete - Create, start, stop, pause, resume, kill, delete
+
+|*State Management*
+|`vordr/src/engine/state.rs`
+|Complete - SQLite with WAL/DELETE mode switching
+
+|*OCI Config Builder*
+|`vordr/src/engine/config.rs`
+|Complete - OCI runtime spec generation
+
+|*Gatekeeper FFI*
+|`vordr/src/ffi/gatekeeper.rs`
+|Complete - Rust bindings ready for SPARK integration
+
+|*Runtime Shim*
+|`vordr/src/runtime/shim.rs`
+|Complete - youki/runc integration
+
+|*TTRPC Support*
+|`vordr/src/runtime/ttrpc.rs`
+|Complete - IPC protocol support
+
+|*Networking*
+|`vordr/src/network/netavark.rs`
+|Complete - Netavark integration, bridge networks
+
+|*Registry Client*
+|`vordr/src/registry/mod.rs`
+|Complete - OCI Distribution with auth
+
+|*MCP Server*
+|`vordr/src/mcp/mod.rs`
+|Complete - 11 tool definitions for AI integration
+|===
+
+=== What Works Now
+
+* Full CLI command structure (`vordr run`, `exec`, `ps`, `stop`, `rm`, etc.)
+* Container state machine with SQLite persistence
+* OCI runtime specification generation
+* Security policy validation framework (Gatekeeper FFI)
+* Runtime shim communication (youki/runc)
+* Container networking via Netavark
+* Image pulling from OCI registries (Docker Hub, GHCR, etc.)
+* Volume and network management commands
+* MCP tool definitions for AI assistants
+
+== Phase 1: Hardening
+
+=== 1.1 Integration Testing
+
+* [ ] End-to-end container lifecycle tests
+* [ ] Multi-container network tests
+* [ ] Registry authentication tests (private registries)
+* [ ] Volume mount tests (bind, named)
+* [ ] Graceful shutdown and signal handling tests
+
+=== 1.2 SPARK Gatekeeper Integration
+
+* [ ] Complete Ada/SPARK policy implementation
+* [ ] GNATprove verification at level 2
+* [ ] FFI linkage testing
+* [ ] Security policy unit tests
+* [ ] Benchmark validation overhead
+
+=== 1.3 Error Handling Improvements
+
+* [ ] Comprehensive error messages with recovery hints
+* [ ] Logging improvements (structured JSON option)
+* [ ] Debug mode with verbose output
+* [ ] Graceful degradation when optional components missing
+
+== Phase 2: Feature Completion
+
+=== 2.1 Container Features
+
+* [ ] Container logs with follow mode
+* [ ] Container stats (CPU, memory, network)
+* [ ] Container health checks
+* [ ] Restart policies
+* [ ] Resource limits (cgroup v2)
+* [ ] Seccomp profile support
+
+=== 2.2 Image Management
+
+* [ ] Image build from Dockerfile/Containerfile
+* [ ] Image layer caching
+* [ ] Image push to registries
+* [ ] Multi-platform image support
+* [ ] Image garbage collection
+
+=== 2.3 Networking Enhancements
+
+* [ ] DNS resolution within containers
+* [ ] IPv6 support
+* [ ] Multiple network attachment
+* [ ] Network aliases
+* [ ] Firewall rule integration
+
+=== 2.4 Volume Features
+
+* [ ] Named volume drivers
+* [ ] Volume backup/restore
+* [ ] Encrypted volumes
+* [ ] Network volumes (NFS, etc.)
+
+== Phase 3: Edge Shield (Svalinn) ✅ 90% COMPLETE (2026-01-25)
+
+=== 3.1 ReScript/Deno Foundation ✅ COMPLETE
+
+* [x] Project structure and build setup (rescript.json, deno.json)
+* [x] HTTP API server (Hono) - 400+ lines ReScript
+* [x] Authentication middleware (OAuth2/OIDC/JWT/API keys/mTLS) - 430+ lines
+* [ ] WebSocket support for real-time updates (planned)
+
+=== 3.2 Orchestration Layer ⏳ PLANNED
+
+* [ ] Multi-node container scheduling
+* [ ] Service discovery
+* [ ] Load balancing
+* [ ] Rolling deployments
+* [ ] Health monitoring
+
+=== 3.3 API Gateway ✅ COMPLETE
+
+* [x] REST API for container management (12+ endpoints)
+* [x] Request validation (JSON Schema with Ajv) - 230+ lines
+* [x] Policy enforcement (Gatekeeper policies) - 330+ lines
+* [x] MCP client integration (Vörðr) - 330+ lines
+* [x] Structured logging (JSON format)
+* [x] Health/readiness endpoints
+* [ ] GraphQL endpoint (optional, planned)
+* [ ] Rate limiting (planned)
+* [ ] Audit logging (planned)
+
+== Phase 4: AI Integration
+
+=== 4.1 MCP Server Implementation
+
+* [ ] MCP server binary (standalone)
+* [ ] Tool execution handlers
+* [ ] Streaming output support
+* [ ] Context management
+
+=== 4.2 AI-Assisted Features
+
+* [ ] Natural language container commands
+* [ ] Anomaly detection suggestions
+* [ ] Security recommendations
+* [ ] Performance optimization hints
+* [ ] Log analysis
+
+=== 4.3 Agentic Workflows
+
+* [ ] Multi-step task execution
+* [ ] Rollback on failure
+* [ ] Human-in-the-loop approvals
+* [ ] Audit trail
+
+== Phase 5: Production Readiness
+
+=== 5.1 Security Hardening
+
+* [ ] Security audit
+* [ ] Penetration testing
+* [ ] CVE response process
+* [ ] Security documentation
+
+=== 5.2 Performance
+
+* [ ] Benchmark suite
+* [ ] Profiling and optimization
+* [ ] Memory usage optimization
+* [ ] Startup time optimization
+
+=== 5.3 Observability
+
+* [ ] Prometheus metrics endpoint
+* [ ] OpenTelemetry tracing
+* [ ] Structured logging
+* [ ] Health check endpoints
+
+=== 5.4 Documentation
+
+* [ ] User guide
+* [ ] API reference
+* [ ] Security guide
+* [ ] Deployment guide
+* [ ] Troubleshooting guide
+
+== Phase 6: Security Hardening
+
+**Current Compliance**: 20% svalinn-project compliant
+**Target**: 90%+ compliance by v1.0
+
+=== 6.1 Phase 1 (v1.0) - WAF and Firewall (Q2 2026)
+
+*Status*: Configs created, deployment required
+
+* [x] OWASP ModSecurity Core Rule Set configuration
+* [x] Firewalld zone definitions (svalinn-edge, svalinn-internal)
+* [x] Security headers middleware (HSTS, CSP, X-Frame-Options)
+* [ ] Deploy ModSecurity with nginx frontend (1-2 weeks)
+* [ ] Deploy firewalld zones to production
+* [ ] SSRF protection (URL validation, IP allowlists)
+* [ ] Rate limiting per IP (100 req/min default)
+* [ ] Request size limits enforcement
+
+**Effort**: 1-2 weeks
+**Impact**: OWASP Top 10 defenses, WAF protection
+
+=== 6.2 Phase 2 (v1.5) - Post-Quantum TLS (Q4 2026)
+
+*Status*: BLOCKED by Deno - no PQ-TLS support yet
+
+* [ ] **Option 1**: Wait for Deno OQS-BoringSSL integration (6-12 months)
+* [ ] **Option 2**: Rewrite gateway in Rust with Hyper + Rustls + liboqs (2-3 months)
+* [ ] **Option 3**: Deploy nginx with OQS-OpenSSL frontend (1-2 weeks)
+* [ ] Kyber-1024 KEM for TLS key exchange
+* [ ] Hybrid TLS (classical + PQ) mode
+* [ ] PQ cipher suite negotiation
+
+**Effort**: 1-2 weeks (nginx) OR 2-3 months (Rust) OR 6-12 months (wait)
+**Impact**: Quantum-resistant transport security
+
+=== 6.3 Phase 3 (v2.0) - Modern Transport (Q1 2027)
+
+*Status*: Tracking Deno issue #9900
+
+* [ ] QUIC protocol support
+* [ ] HTTP/3 for gateway operations
+* [ ] 0-RTT connection establishment
+* [ ] IPv6-only mode (disable IPv4)
+* [ ] XChaCha20-Poly1305 cipher suite
+* [ ] HKDF-SHAKE512 key derivation
+
+**Effort**: 3-4 weeks (when Deno support lands)
+**Impact**: Faster connections, reduced latency, better mobile support
+
+=== 6.4 Phase 4 (v2.5) - Advanced Security (Q2 2027)
+
+*Status*: Planned
+
+* [ ] Role-Based Access Control (RBAC)
+* [ ] Multi-Factor Authentication (MFA) - TOTP/WebAuthn
+* [ ] SIEM integration (Splunk, ELK, Datadog)
+* [ ] Automated threat response
+* [ ] Container image scanning integration
+* [ ] Runtime application self-protection (RASP)
+* [ ] Secrets management (HashiCorp Vault integration)
+
+**Effort**: 6-8 weeks
+**Impact**: Enterprise-grade security features
+
+=== Security Compliance Roadmap
+
+| Component | v0.2 | v1.0 | v1.5 | v2.0 | v2.5 |
+|-----------|------|------|------|------|------|
+| OAuth2/JWT | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Security Headers | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ModSecurity | Config | ✅ | ✅ | ✅ | ✅ |
+| Firewalld | Config | ✅ | ✅ | ✅ | ✅ |
+| SSRF Protection | ❌ | ✅ | ✅ | ✅ | ✅ |
+| PQ-TLS | ❌ | ❌ | ✅ | ✅ | ✅ |
+| QUIC/HTTP/3 | ❌ | ❌ | ❌ | ✅ | ✅ |
+| RBAC | ❌ | ❌ | ⏳ | ✅ | ✅ |
+| MFA | ❌ | ❌ | ❌ | ⏳ | ✅ |
+| SIEM | ❌ | ❌ | ❌ | ⏳ | ✅ |
+
+**Current Compliance**: 20%
+**v1.0 Target**: 60%
+**v2.5 Target**: 95%
+
+**See Also**: link:SECURITY.md[Security Policy], link:../cerro-torre/docs/MISSING-SECURITY-COMPONENTS.adoc[Ecosystem Security Audit]
+
+== Technical Decisions (Locked)
+
+These decisions are finalized and should not be revisited:
+
+=== Languages
+
+[cols="1,1,2",options="header"]
+|===
+|Use Case |Language |Rationale
+
+|Core engine
+|Rust
+|Memory safety, async, ecosystem
+
+|Security policy
+|Ada/SPARK
+|Formal verification, AoRTE proofs
+
+|Edge layer
+|ReScript
+|Type safety, compiles to JS
+
+|Runtime
+|Deno
+|Security-first, no node_modules
+
+|Build scripts
+|Bash (<50 lines)
+|POSIX compatibility
+
+|Build orchestration
+|Justfile
+|Cross-platform, simple
+|===
+
+=== Prohibited
+
+* TypeScript (use ReScript)
+* Node.js/npm/Bun (use Deno)
+* Go (use Rust)
+* Python except SaltStack
+* Kotlin/Swift (use Tauri/Dioxus)
+
+=== Infrastructure
+
+[cols="1,1",options="header"]
+|===
+|Component |Choice
+
+|State database
+|SQLite (WAL mode, DELETE fallback)
+
+|Runtime
+|youki (primary), runc (fallback)
+
+|Networking
+|Netavark
+
+|IPC
+|TTRPC
+
+|Package management
+|Guix (primary), Nix (fallback)
+|===
+
+== Version Milestones
+
+=== v0.1.0 (Released)
+* Core Vörðr implementation complete
+* CLI functional
+* Basic container operations
+
+=== v0.2.0 (Current - 90% Complete)
+* ✅ Edge shield foundation (Svalinn gateway)
+* ✅ REST API (12+ endpoints)
+* ✅ MCP client integration with Vörðr
+* ✅ Request validation (JSON Schema)
+* ✅ Policy enforcement (Gatekeeper)
+* ✅ Authentication middleware (OAuth2/OIDC/JWT/mTLS)
+* ⏳ Integration tests passing (deferred - needs OIDC provider)
+* [ ] SPARK gatekeeper linked
+* [ ] Error handling improvements
+
+=== v0.3.0
+* Container logs and stats
+* Resource limits
+* Health checks
+
+=== v0.4.0
+* Image build support
+* Network enhancements
+* Volume improvements
+
+=== v0.5.0
+* Basic orchestration (svalinn-compose)
+* Multi-node scheduling
+* Service discovery
+
+=== v1.0.0
+* Production ready
+* Full documentation
+* Security audited
+* Performance optimized
+
+== Contributing
+
+See link:CONTRIBUTING.md[CONTRIBUTING.md] for contribution guidelines.
+
+Priority areas for contribution:
+
+1. Integration tests
+2. Documentation
+3. Error messages and UX
+4. Performance testing
+
+== References
+
+* link:.meta/STATE.scm[Machine-readable project state]
+* link:Justfile[Build commands]
+* link:vordr/Cargo.toml[Rust dependencies]

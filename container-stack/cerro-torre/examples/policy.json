@@ -1,0 +1,36 @@
+{
+  "$schema": "../spec/policy-schema.json",
+  "version": "1",
+  "description": "Starter trust policy for Cerro Torre",
+
+  "default_action": "deny",
+
+  "signers": {
+    "allowed": [
+      {
+        "key_id": "*",
+        "comment": "Trust any signer (permissive for getting started)"
+      }
+    ],
+    "threshold": 1
+  },
+
+  "registries": {
+    "allowed": [
+      "docker.io/library/*",
+      "ghcr.io/*",
+      "quay.io/*"
+    ],
+    "blocked": []
+  },
+
+  "suites": {
+    "allowed": ["CT-SIG-01", "CT-SIG-02", "CT-SIG-03", "CT-SIG-04"],
+    "minimum": "CT-SIG-01"
+  },
+
+  "require_attestations": {
+    "provenance": false,
+    "sbom": false
+  }
+}

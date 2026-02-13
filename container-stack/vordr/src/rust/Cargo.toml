@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: MPL-2.0-or-later
+# Svalinn Project - Vordr (The Warden)
+# High-Assurance Daemonless Container Engine
+
+[package]
+name = "vordr"
+version = "0.1.0"
+edition = "2021"
+authors = ["Svalinn Project <team@svalinnproject.org>"]
+description = "High-assurance daemonless container engine with formally verified security"
+license = "PMPL-1.0-or-later"
+repository = "https://github.com/svalinnproject/svalinn"
+homepage = "https://svalinnproject.org"
+readme = "README.md"
+keywords = ["container", "oci", "security", "formal-verification", "spark"]
+categories = ["command-line-utilities", "virtualization"]
+
+[dependencies]
+# OCI Specification
+oci-spec = "0.7"
+
+# Communication
+ttrpc = "0.8"
+
+# State Management
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+clap_complete = "4"
+clap_mangen = "0.2"
+
+# Terminal UI
+dialoguer = "0.11"
+console = "0.15"
+tabled = "0.16"
+bytesize = "1"
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+base64 = "0.22"
+toml = "0.8"
+protobuf = "2" # Already present
+
+# XDG paths
+dirs = "5"
+
+# Error Handling
+thiserror = "2"
+anyhow = "1"
+
+# HTTP Client (for registry)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# HTTP Server (for MCP)
+axum = { version = "0.7", features = ["macros"] }
+
+# Utilities
+uuid = { version = "1", features = ["v4"] }
+which = "7"
+nix = { version = "0.29", features = ["user", "process", "signal", "fs"] }
+libc = "0.2"
+sha2 = "0.10"
+hex = "0.4"
+tempfile = "3"
+walkdir = "2"
+flate2 = "1"
+tar = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+textwrap = "0.16"
+
+# Logging
+log = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# eBPF Monitoring (Aya framework)
+aya = { version = "0.12", optional = true }
+aya-log = { version = "0.2", optional = true }
+
+[features]
+default = []
+bpf = ["aya", "aya-log"]
+full = ["bpf"]
+
+[build-dependencies]
+cc = "1"  # For compiling C stubs when Ada/SPARK not available
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bin]]
+name = "vordr"
+path = "main.rs"
+
+[[bench]]
+name = "container_lifecycle"
+harness = false
+
+[[bench]]
+name = "ebpf_overhead"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+# Keep debug info for development
+debug = true

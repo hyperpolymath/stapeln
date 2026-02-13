@@ -1,0 +1,48 @@
+{
+  "$schema": "../schemas/edge-policy.v1.json",
+  "version": "1.0",
+  "name": "transparency-first",
+  "description": "Policy emphasizing transparency log verification over key trust",
+  "registries": {
+    "allow": ["docker.io", "ghcr.io", "quay.io", "gcr.io"],
+    "deny": [],
+    "requireSignature": true
+  },
+  "images": {
+    "allowPatterns": ["*"],
+    "denyPatterns": ["*:latest"],
+    "requireSbom": true,
+    "maxAgeDays": 90
+  },
+  "resources": {
+    "maxMemoryMb": 4096,
+    "maxCpuCores": 4.0,
+    "maxContainers": 50,
+    "maxStorageGb": 20
+  },
+  "security": {
+    "allowPrivileged": false,
+    "allowHostNetwork": false,
+    "allowHostPid": false,
+    "allowHostIpc": false,
+    "readOnlyRoot": true,
+    "dropCapabilities": ["SYS_ADMIN", "NET_ADMIN", "SYS_PTRACE"],
+    "addCapabilities": ["NET_BIND_SERVICE"]
+  },
+  "verification": {
+    "signatureAlgorithms": ["ed25519", "ecdsa-p256", "ecdsa-p384", "rsa-4096"],
+    "transparencyLogs": {
+      "required": ["rekor", "sigstore", "ct-tlog", "trillian"],
+      "quorum": 3
+    },
+    "sbomRequired": true,
+    "sbomFormats": ["spdx", "cyclonedx", "syft"],
+    "provenanceLevel": 2,
+    "maxSignatureAgeDays": 60,
+    "keyTrustLevel": "self-signed",
+    "requiredPredicates": [
+      "https://slsa.dev/provenance/v1"
+    ]
+  },
+  "notes": "This policy prioritizes transparency log verification with high quorum requirements. Accepts self-signed keys as long as entries exist in multiple independent transparency logs, providing security through public auditability rather than key trust hierarchies."
+}

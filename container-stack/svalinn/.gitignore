@@ -1,0 +1,129 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# RSR-compliant .gitignore (hyperpolymath edition)
+
+# --- OS & Editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.orig
+*.rej
+
+# --- Build Artifacts ---
+# ReScript
+/lib/bs/
+/lib/es6/
+/lib/ocaml/
+/src/**/*.bs.js
+/src/**/*.bs.map
+/src/**/*.res.mjs
+/ui/**/*.bs.js
+/ui/**/*.bs.map
+.bsb.lock
+bsconfig.json.lock
+
+# Rust
+/target/
+/build/
+Cargo.lock  # Keep for reproducibility, but ignore in diffs
+
+# Elixir
+/cover/
+/doc/
+*.ez
+erl_crash.dump
+
+# Python (SaltStack migration)
+__pycache__/
+*.py[cod]
+.venv/
+.env/
+
+# Haskell
+/.stack-work/
+/dist-newstyle/
+
+# Ada/SPARK
+*.ali
+/obj/
+/bin/
+
+# --- Dependencies ---
+/node_modules/
+/vendor/
+/deps/
+/.elixir_ls/
+/_opam/
+
+# --- Rootless/Container ---
+# svalinn/vordr
+/container/
+/rootfs/
+/var/lib/containerd/
+/run/containerd/
+
+# --- WASM/SDP ---
+/wasm/
+*.wasm
+*.wat
+*.wast
+
+# --- Secrets & Keys ---
+.env
+.env.*
+*.pem
+*.key
+secrets/
+*.gpg
+*.asc
+
+# --- Test/Coverage ---
+/coverage/
+htmlcov/
+.nyc_output/
+/test-results/
+
+# --- Logs ---
+*.log
+/logs/
+/var/log/
+
+# --- Temp ---
+/tmp/
+*.tmp
+*.bak
+/tmp_versions/
+
+# --- CI/CD (cicd-hyper-a) ---
+/artifacts/
+/cache/
+/build-cache/
+/dist-newstyle/
+
+# --- ReScript-Specific ---
+# Ignore compiled output in src/
+/src/dist/
+/src/**/*.js
+/src/**/*.js.map
+
+# --- PhD Research ---
+/data/
+/results/
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+
+# --- Non-Proprietary Tools ---
+# Cockpit (temporary)
+/cockpit/
+/etc/cockpit/
+
+# --- Documentation ---
+/docs/_build/
+/docs/.doctrees/

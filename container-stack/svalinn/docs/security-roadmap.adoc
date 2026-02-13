@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Security & Fault-Tolerance Roadmap
+:toc: preamble
+:toclevels: 2
+
+This roadmap tracks end-to-end security and resilience across data integrity,
+supply chain, kernel isolation, memory safety, process safety, and platform
+controls.
+
+== 1. MVP (v0.1)
+
+=== Data Integrity
+* Attestation bundle + trust store validation (single log, single signer)
+* Canonicalization rules defined in spec
+* Audit logs for verification and execution
+
+=== Supply Chain
+* Minimal `.ctp` build with upstream hash verification
+* Bundle attachment via OCI referrers
+* CI path: build → attest → verify → run
+
+=== Kernel & Process Isolation
+* Vordr runtime integration (runc/youki)
+* Basic profiles (strict/balanced/dev)
+
+=== Platform Security
+* Health checks, timeouts, structured error codes
+* Strict request validation
+
+== 2. v1.0 (Hardening)
+
+=== Data Integrity
+* Mandatory canonicalization during signing and verification
+* Trust store update signing
+* Schema-validated API responses
+
+=== Supply Chain
+* Multi-log quorum (≥2) enforced in producer and consumer
+* Threshold signatures (FROST-Ed25519)
+* Reproducible build verification (independent rebuild)
+* Full CI conformance against Verified Container Spec
+
+=== Kernel & Process Isolation
+* SELinux/CIL policy generation and application
+* Seccomp profile support
+* Cgroup v2 resource limits
+
+=== Memory & Type Safety
+* Ada/SPARK verification of core CT pipeline
+* FFI boundary audits and tests
+* Fuzzing for bundle/manifest parsers
+
+=== Platform Security
+* OIDC auth, RBAC, and rate limiting
+* Secrets management for signing keys
+* Persistent scheduler state + crash recovery
+
+== 3. v2.0 (Resilience + Assurance)
+
+=== Data Integrity
+* Cross-log consistency proofs and gossiping
+* Transparent key rotation with quorum
+
+=== Supply Chain
+* Multi-source importers with verification (Debian, Fedora, Alpine)
+* Hardware-backed signing (TPM/HSM)
+* Tamper-evident build pipelines
+
+=== Kernel & Process Isolation
+* Verified policy enforcement (SPARK proofs)
+* Runtime attestation for container execution
+
+=== Platform Security
+* End-to-end observability (metrics, traces, audit trails)
+* Multi-tenant policy isolation
+* Disaster recovery playbooks
+
+== Ownership & Dependencies
+
+[cols="1,1,2,2",options="header"]
+|===
+|Domain |Owner |Dependencies |Notes
+
+|Data integrity
+|Spec + Svalinn
+|Verified Container Spec conformance, trust store updates
+|Gatekeeper must enforce canonicalization
+
+|Supply chain
+|Cerro Torre
+|OCI referrers, transparency logs, threshold keys
+|Reproducible build verification required
+
+|Kernel/process isolation
+|Vordr + Svalinn
+|SELinux, seccomp, cgroups v2
+|Policy handoff from CT to Vordr
+
+|Memory/type safety
+|Cerro Torre + Gatekeeper
+|SPARK proofs, FFI audits, fuzzing
+|Parser hardening required
+
+|Platform security
+|Svalinn
+|OIDC, RBAC, secrets management
+|Rate limiting + audit retention
+|===

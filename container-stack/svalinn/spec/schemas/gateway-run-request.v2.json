@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://svalinn.dev/schemas/gateway-run-request.v2.json",
+  "title": "Gateway Run Request v2",
+  "type": "object",
+  "required": ["imageName", "imageDigest"],
+  "properties": {
+    "imageName": { "type": "string" },
+    "imageDigest": { "type": "string" },
+    "name": { "type": "string" },
+    "detach": { "type": "boolean" },
+    "policy": { "type": "object" },
+    "trustStore": { "type": "object" },
+    "policyPath": { "type": "string" },
+    "trustStorePath": { "type": "string" },
+    "bundlePath": { "type": "string" },
+    "config": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "ports": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "volumes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "networks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "secrets": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "command": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "workdir": { "type": "string" },
+        "readOnlyRoot": { "type": "boolean" },
+        "privileged": { "type": "boolean" },
+        "healthcheck": {
+          "type": "object",
+          "properties": {
+            "test": { "type": "string" },
+            "interval": { "type": "string" },
+            "timeout": { "type": "string" },
+            "retries": { "type": "integer" },
+            "startPeriod": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

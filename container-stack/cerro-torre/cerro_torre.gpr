@@ -1,0 +1,164 @@
+--  Cerro Torre - GNAT Project File
+--
+--  Build with: alr build
+--  Or directly: gprbuild -P cerro_torre.gpr
+
+with "config/cerro_torre_config.gpr";
+--  with "proven";  --  Temporarily disabled due to compilation errors in proven library
+
+project Cerro_Torre is
+
+   --  Build mode: Development, Release, or Proof
+   type Build_Mode_Type is ("Development", "Release", "Proof");
+   Build_Mode : Build_Mode_Type := external ("CERRO_BUILD_MODE", "Development");
+
+   --  Feature set: infrastructure, attestation, or complete
+   type Feature_Set_Type is ("infrastructure", "attestation", "complete");
+   Feature_Set : Feature_Set_Type := external ("CERRO_FEATURES", "complete");
+
+   --  Verification level: spark, idris2, or ats2
+   type Verification_Type is ("spark", "idris2", "ats2");
+   Verification : Verification_Type := external ("CERRO_VERIFICATION", "spark");
+
+   --  Source directories based on feature set
+   Src_Dirs_Common := (
+      "src/core",
+      "src/cli"
+   );
+
+   Src_Dirs_Infrastructure := Src_Dirs_Common & (
+      "src/build",
+      "src/runtime"
+   );
+
+   Src_Dirs_Attestation := Src_Dirs_Infrastructure & (
+      "src/policy",
+      "src/bindings"
+   );
+
+   Src_Dirs_Complete := Src_Dirs_Attestation & (
+      "src/importers/debian",
+      "src/importers/fedora",
+      "src/importers/alpine",
+      "src/exporters/oci",
+      "src/exporters/rpm-ostree"
+   );
+
+   case Feature_Set is
+      when "infrastructure" =>
+         for Source_Dirs use Src_Dirs_Infrastructure & ("tests");
+      when "attestation" =>
+         for Source_Dirs use Src_Dirs_Attestation & ("tests");
+      when "complete" =>
+         for Source_Dirs use Src_Dirs_Complete & ("tests");
+   end case;
+
+   for Object_Dir use "obj/" & Build_Mode;
+   for Exec_Dir use "bin";
+
+   for Main use ("cerro_main.adb", "ct_test_parser.adb", "ct_test_crypto.adb", "ct_test_e2e.adb");
+
+   --  Rename executables
+   package Builder is
+      for Executable ("cerro_main.adb") use "ct";
+      for Executable ("ct_test_parser.adb") use "ct-test-parser";
+      for Executable ("ct_test_crypto.adb") use "ct-test-crypto";
+      for Executable ("ct_test_e2e.adb") use "ct-test-e2e";
+   end Builder;
+
+   --  Compiler switches based on build mode and verification level
+   package Compiler is
+      Common_Switches := (
+         "-gnat2022",           --  Ada 2022 standard
+         "-gnatwa",             --  Enable all warnings
+         "-gnatwU",             --  Suppress warnings for unreferenced entities
+         "-gnaty3abcefhiklnprtuxM120"  --  Style checks (no ordering, no subprogram specs) with 120 char lines
+      );
+
+      --  Verification level defines
+      Verification_Switches := ();
+      case Verification is
+         when "spark" =>
+            Verification_Switches := ("-gnateDVERIFICATION_SPARK");
+         when "idris2" =>
+            Verification_Switches := ("-gnateDVERIFICATION_IDRIS2", "-gnateDVERIFICATION_SPARK");
+         when "ats2" =>
+            Verification_Switches := ("-gnateDVERIFICATION_ATS2", "-gnateDVERIFICATION_SPARK");
+      end case;
+
+      --  Feature set defines
+      Feature_Switches := ();
+      case Feature_Set is
+         when "infrastructure" =>
+            Feature_Switches := ("-gnateDFEATURES_INFRASTRUCTURE");
+         when "attestation" =>
+            Feature_Switches := ("-gnateDFEATURES_ATTESTATION", "-gnateDFEATURES_INFRASTRUCTURE");
+         when "complete" =>
+            Feature_Switches := ("-gnateDFEATURES_COMPLETE", "-gnateDFEATURES_ATTESTATION", "-gnateDFEATURES_INFRASTRUCTURE");
+      end case;
+
+      case Build_Mode is
+         when "Development" =>
+            for Default_Switches ("Ada") use Common_Switches & Verification_Switches & Feature_Switches & (
+               "-g",              --  Debug info
+               "-gnata",          --  Enable assertions
+               "-gnatVa",         --  All validity checks
+               "-O0",             --  No optimization
+               "-gnateE"          --  Extra exception info
+            );
+
+         when "Release" =>
+            for Default_Switches ("Ada") use Common_Switches & Verification_Switches & Feature_Switches & (
+               "-O2",             --  Optimization level 2
+               "-gnatn",          --  Inlining
+               "-gnatVa"          --  Validity checks
+            );
+
+         when "Proof" =>
+            for Default_Switches ("Ada") use Common_Switches & Verification_Switches & Feature_Switches & (
+               "-g",              --  Debug info for provers
+               "-gnata",          --  Enable assertions
+               "-gnatVa"          --  All validity checks
+            );
+      end case;
+   end Compiler;
+
+   --  Binder settings
+   package Binder is
+      case Build_Mode is
+         when "Development" =>
+            for Default_Switches ("Ada") use ("-Es");  --  Symbolic tracebacks
+
+         when "Release" =>
+            for Default_Switches ("Ada") use ();
+
+         when "Proof" =>
+            for Default_Switches ("Ada") use ("-Es");
+      end case;
+   end Binder;
+
+   --  Linker settings
+   --  Note: When liboqs is installed, link with -loqs for ML-DSA-87 support
+   --  Without liboqs, the library falls back to stub implementations
+   package Linker is
+      --  Optional: Add "-loqs" when liboqs is installed
+      --  for Default_Switches ("Ada") use ("-loqs");
+      for Default_Switches ("Ada") use ();
+   end Linker;
+
+   --  SPARK Proof settings
+   package Prove is
+      for Proof_Switches ("Ada") use (
+         "--level=2",           --  Proof level
+         "--timeout=60",        --  Timeout per VC
+         "--steps=10000",       --  Max steps per VC
+         "--prover=cvc5,z3,altergo"  --  SMT solvers
+      );
+   end Prove;
+
+   --  Documentation generation
+   package Documentation is
+      for Documentation_Dir use "doc/api";
+   end Documentation;
+
+end Cerro_Torre;

@@ -1,0 +1,304 @@
+= Getting Started
+:toc:
+:toclevels: 3
+
+This guide will help you install selur and run your first zero-copy IPC example.
+
+== Prerequisites
+
+=== Required
+
+[cols="1,1,1"]
+|===
+| Tool | Version | Purpose
+
+| Zig
+| 0.16.0-dev or later
+| WASM compilation
+
+| Rust
+| 1.70+
+| Rust bindings
+
+| Cargo
+| Latest
+| Rust package manager
+
+| Just
+| 1.0+
+| Task runner
+|===
+
+=== Optional (for formal verification)
+
+[cols="1,1,1"]
+|===
+| Tool | Version | Purpose
+
+| Idris2
+| 0.7.0+
+| Formal proofs
+
+| Pack
+| Latest
+| Idris2 package manager
+|===
+
+== Installation
+
+=== Option 1: From Source (Recommended)
+
+[source,bash]
+----
+# Clone the repository
+git clone https://github.com/hyperpolymath/selur.git
+cd selur
+
+# Build WASM module
+just build
+
+# Verify proofs (optional, requires Idris2)
+just verify
+
+# Run tests
+cargo test
+
+# Run example
+cargo run --example basic
+----
+
+=== Option 2: From Crates.io (Coming Soon)
+
+[source,bash]
+----
+# Add to Cargo.toml
+[dependencies]
+selur = "1.0"
+----
+
+== Verify Installation
+
+Check that everything works:
+
+[source,bash]
+----
+# Should output: WASM module: 539136 bytes
+just build && ls -lh zig-out/bin/selur.wasm
+
+# Should output: All tests passed
+cargo test
+
+# Should output: Verification passed
+just verify  # Optional, requires Idris2
+----
+
+== Your First selur Program
+
+=== 1. Create a new Rust project
+
+[source,bash]
+----
+cargo new --bin my-selur-app
+cd my-selur-app
+----
+
+=== 2. Add selur dependency
+
+Edit `Cargo.toml`:
+
+[source,toml]
+----
+[dependencies]
+selur = { path = "../selur" }  # Adjust path as needed
+anyhow = "1.0"
+----
+
+=== 3. Write your first program
+
+Edit `src/main.rs`:
+
+[source,rust]
+----
+use selur::{Bridge, ErrorCode};
+use anyhow::Result;
+
+fn main() -> Result<()> {
+    // Load the WASM module
+    let mut bridge = Bridge::new("path/to/selur.wasm")?;
+
+    // Check WASM memory size
+    let memory_size = bridge.memory_size()?;
+    println!("WASM memory: {} bytes", memory_size);
+
+    // Create a sample request
+    // Format: [command: 1 byte][payload_len: 4 bytes][payload: variable]
+    let mut request = Vec::new();
+    request.push(0x01);  // CREATE_CONTAINER command
+    request.extend_from_slice(&12u32.to_le_bytes());
+    request.extend_from_slice(b"nginx:latest");
+
+    // Send request through zero-copy bridge
+    let response = bridge.send_request(&request)?;
+
+    // Parse response
+    if let Some(status_byte) = response.first() {
+        if let Some(status) = ErrorCode::from_u32(*status_byte as u32) {
+            println!("Status: {}", status);
+
+            if matches!(status, ErrorCode::Success) {
+                println!("Container created successfully!");
+            }
+        }
+    }
+
+    Ok(())
+}
+----
+
+=== 4. Run your program
+
+[source,bash]
+----
+cargo run
+----
+
+Expected output:
+----
+WASM memory: 1048576 bytes
+Status: Success
+Container created successfully!
+----
+
+== Next Steps
+
+* Read the link:Quick-Start.adoc[Quick Start] for a 5-minute tutorial
+* Explore the link:../examples/[examples directory]
+* Check out the link:User-Guide.adoc[User Guide] for comprehensive usage
+* Learn about link:Integration-Guide.adoc[integration with Svalinn/Vörðr]
+
+== Troubleshooting
+
+=== WASM file not found
+
+**Error:** `Failed to load WASM module: No such file or directory`
+
+**Solution:** Run `just build` from the selur repository root to generate `zig-out/bin/selur.wasm`
+
+[source,bash]
+----
+cd /path/to/selur
+just build
+----
+
+Then update your code to point to the correct path:
+
+[source,rust]
+----
+let mut bridge = Bridge::new("/absolute/path/to/selur/zig-out/bin/selur.wasm")?;
+----
+
+=== Zig version mismatch
+
+**Error:** `no field named 'root_source_file' in struct 'Build.ExecutableOptions'`
+
+**Solution:** Update to Zig 0.16.0-dev or later:
+
+[source,bash]
+----
+# Check version
+zig version
+
+# Install latest (if needed)
+# See: https://ziglang.org/download/
+----
+
+=== Idris2 not found
+
+**Error:** `just verify` fails with `idris2: command not found`
+
+**Solution:** Install Idris2 (optional - only needed for formal verification):
+
+[source,bash]
+----
+# macOS
+brew install idris2
+
+# Linux (build from source)
+git clone https://github.com/idris-lang/Idris2.git
+cd Idris2
+make bootstrap
+make install
+----
+
+Or skip verification (proofs are pre-verified):
+
+[source,bash]
+----
+# Just build without verification
+just build
+cargo test
+----
+
+== Platform-Specific Notes
+
+=== Linux
+
+All tools available via package managers. For Zig development builds:
+
+[source,bash]
+----
+# Fedora/RHEL
+sudo dnf install zig rust cargo
+
+# Ubuntu/Debian
+sudo apt install zig rustc cargo
+
+# Arch
+sudo pacman -S zig rust
+----
+
+=== macOS
+
+Use Homebrew:
+
+[source,bash]
+----
+brew install zig rust just
+----
+
+=== Windows
+
+Use Chocolatey or Scoop:
+
+[source,powershell]
+----
+# Chocolatey
+choco install zig rust just
+
+# Scoop
+scoop install zig rust just
+----
+
+Or download installers directly:
+
+* Zig: https://ziglang.org/download/
+* Rust: https://rustup.rs/
+* Just: https://github.com/casey/just
+
+== What's Next?
+
+Now that you have selur installed, you can:
+
+1. **Learn the basics** - link:Quick-Start.adoc[Quick Start Tutorial]
+2. **Explore examples** - link:../examples/[Example Programs]
+3. **Integrate with your project** - link:Integration-Guide.adoc[Integration Guide]
+4. **Contribute** - link:Contributing.adoc[Contributing Guide]
+5. **Deep dive** - link:../docs/ARCHITECTURE.adoc[Architecture Documentation]
+
+== Getting Help
+
+If you encounter issues:
+
+1. Check link:Troubleshooting.adoc[Troubleshooting Guide]
+2. Search link:FAQ.adoc[FAQ]
+3. Open an https://github.com/hyperpolymath/selur/issues[issue on GitHub]

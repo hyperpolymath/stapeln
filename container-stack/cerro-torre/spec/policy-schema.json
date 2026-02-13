@@ -1,0 +1,225 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cerro-torre.org/schemas/policy/v1",
+  "title": "Cerro Torre Trust Policy",
+  "description": "Trust policy for ct verify and related commands",
+  "type": "object",
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1",
+      "description": "Policy schema version"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this policy"
+    },
+    "default_action": {
+      "type": "string",
+      "enum": ["allow", "deny"],
+      "default": "deny",
+      "description": "Action when no rules match"
+    },
+
+    "signers": {
+      "type": "object",
+      "description": "Signer trust configuration",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "description": "Signers that are trusted",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key_id": {
+                "type": "string",
+                "description": "Key ID pattern (glob supported)"
+              },
+              "fingerprint": {
+                "type": "string",
+                "description": "SHA256 fingerprint of public key"
+              },
+              "required": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, signature from this signer is mandatory"
+              },
+              "comment": {
+                "type": "string",
+                "description": "Human-readable note"
+              }
+            }
+          }
+        },
+        "denied": {
+          "type": "array",
+          "description": "Signers that are explicitly distrusted (revocation)",
+          "items": {
+            "type": "object",
+            "required": ["key_id"],
+            "properties": {
+              "key_id": {
+                "type": "string",
+                "description": "Key ID to deny"
+              },
+              "fingerprint": {
+                "type": "string",
+                "description": "SHA256 fingerprint (more specific)"
+              },
+              "after": {
+                "type": "string",
+                "format": "date",
+                "description": "Deny signatures made after this date (ISO 8601)"
+              },
+              "before": {
+                "type": "string",
+                "format": "date",
+                "description": "Deny signatures made before this date"
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why this signer is denied"
+              }
+            }
+          }
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Minimum number of valid signatures required"
+        },
+        "threshold_from": {
+          "type": "array",
+          "description": "Specific signers for threshold (if not all allowed)",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "registries": {
+      "type": "object",
+      "description": "Source registry restrictions",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "description": "Registry patterns that are allowed",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked": {
+          "type": "array",
+          "description": "Registry patterns that are blocked",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "base_images": {
+      "type": "object",
+      "description": "Allowed base images for containers",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "suites": {
+      "type": "object",
+      "description": "Crypto suite restrictions",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "description": "Allowed crypto suites",
+          "items": {
+            "type": "string",
+            "enum": ["CT-SIG-01", "CT-SIG-02", "CT-SIG-03", "CT-SIG-04"]
+          }
+        },
+        "minimum": {
+          "type": "string",
+          "description": "Minimum acceptable suite strength",
+          "enum": ["CT-SIG-01", "CT-SIG-02", "CT-SIG-03", "CT-SIG-04"]
+        }
+      }
+    },
+
+    "require_attestations": {
+      "type": "object",
+      "description": "Required attestations in bundles",
+      "properties": {
+        "provenance": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require SLSA provenance attestation"
+        },
+        "sbom": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require SPDX SBOM"
+        },
+        "transparency_log": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require inclusion in transparency log"
+        }
+      }
+    },
+
+    "pin": {
+      "type": "object",
+      "description": "Pin specific bundles to exact digests",
+      "additionalProperties": {
+        "type": "object",
+        "description": "Pin configuration per bundle name",
+        "properties": {
+          "digest": {
+            "type": "string",
+            "description": "Required content digest (sha256:...)"
+          },
+          "signers": {
+            "type": "array",
+            "description": "Required signers for this bundle",
+            "items": {
+              "type": "string"
+            }
+          },
+          "comment": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "time": {
+      "type": "object",
+      "description": "Time-based validation rules",
+      "properties": {
+        "max_age_days": {
+          "type": "integer",
+          "description": "Maximum age of bundle in days"
+        },
+        "require_timestamp": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require signed timestamp in signatures"
+        },
+        "clock_skew_tolerance_seconds": {
+          "type": "integer",
+          "default": 300,
+          "description": "Maximum allowed clock skew"
+        }
+      }
+    }
+  }
+}

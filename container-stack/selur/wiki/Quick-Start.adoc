@@ -1,0 +1,293 @@
+= Quick Start
+:toc:
+:toclevels: 2
+
+A 5-minute tutorial to get you up and running with selur's zero-copy IPC.
+
+== What You'll Learn
+
+In this quick start, you'll:
+
+* Build the selur WASM module
+* Send your first zero-copy request
+* Understand the request/response format
+* Check error codes
+
+**Time:** ~5 minutes
+
+== Step 1: Clone and Build (2 minutes)
+
+[source,bash]
+----
+# Clone repository
+git clone https://github.com/hyperpolymath/selur.git
+cd selur
+
+# Build WASM module (takes ~30 seconds)
+just build
+
+# Verify it exists (should be ~527KB)
+ls -lh zig-out/bin/selur.wasm
+----
+
+Expected output:
+----
+-rw-r--r-- 1 user user 527K Jan 25 16:00 zig-out/bin/selur.wasm
+----
+
+== Step 2: Run the Basic Example (1 minute)
+
+[source,bash]
+----
+cargo run --example basic
+----
+
+Expected output:
+----
+selur Basic Example
+==================
+
+1. Loading WASM module...
+   ✓ Successfully loaded: zig-out/bin/selur.wasm
+   Memory: 1048576 bytes
+
+2. Creating container request...
+   Request: CREATE_CONTAINER "nginx:latest"
+   Request size: 17 bytes
+
+3. Sending request...
+   ✓ Request sent successfully
+
+4. Processing response...
+   Status: Success
+   Response payload: 12 bytes
+
+Example completed successfully!
+----
+
+== Step 3: Understand the Code (2 minutes)
+
+Here's what the basic example does:
+
+[source,rust]
+----
+use selur::{Bridge, ErrorCode};
+
+fn main() -> Result<()> {
+    // 1. Load WASM module
+    let mut bridge = Bridge::new("zig-out/bin/selur.wasm")?;
+
+    // 2. Create request
+    // Format: [command: 1 byte][payload_len: 4 bytes][payload: N bytes]
+    let mut request = Vec::new();
+    request.push(0x01);  // CREATE_CONTAINER = 0x01
+    request.extend_from_slice(&12u32.to_le_bytes());  // Length of "nginx:latest"
+    request.extend_from_slice(b"nginx:latest");
+
+    // 3. Send via zero-copy bridge
+    let response = bridge.send_request(&request)?;
+
+    // 4. Check status
+    if let Some(status_byte) = response.first() {
+        let status = ErrorCode::from_u32(*status_byte as u32);
+        println!("Status: {}", status.unwrap());
+    }
+
+    Ok(())
+}
+----
+
+=== Request Format
+
+All requests follow this binary format:
+
+----
++----------+--------------+--------------+
+| Command  | Payload Len  | Payload      |
+| 1 byte   | 4 bytes (LE) | N bytes      |
++----------+--------------+--------------+
+----
+
+**Command codes:**
+- `0x01` - CREATE_CONTAINER
+- `0x02` - START_CONTAINER
+- `0x03` - STOP_CONTAINER
+- `0x04` - INSPECT_CONTAINER
+- `0x05` - DELETE_CONTAINER
+
+=== Response Format
+
+All responses follow this format:
+
+----
++----------+--------------+--------------+
+| Status   | Payload Len  | Payload      |
+| 1 byte   | 4 bytes (LE) | N bytes      |
++----------+--------------+--------------+
+----
+
+**Status codes:**
+- `0x00` - Success
+- `0x01` - InvalidRequest
+- `0x02` - ContainerNotFound
+- `0x03` - PermissionDenied
+
+== Step 4: Try Error Handling
+
+Run the error handling example:
+
+[source,bash]
+----
+cargo run --example error_handling
+----
+
+This demonstrates:
+
+* ✅ Valid request handling
+* ❌ Oversized request rejection
+* ❌ Malformed request detection
+
+== What Makes This Fast?
+
+selur achieves **7-20x speedup** over JSON/HTTP through zero-copy:
+
+**Traditional JSON/HTTP:**
+----
+Request → JSON encode → HTTP → JSON decode → Process
+         └─── 2 copies ────┘
+
+Response ← JSON encode ← HTTP ← JSON decode ← Process
+          └─── 2 copies ────┘
+
+Total: 4 copies, 700-2000 μs latency
+----
+
+**selur WASM:**
+----
+Request → WASM linear memory (shared) → Process
+         └───── 0 copies ─────┘
+
+Response ← WASM linear memory (shared) ← Process
+          └───── 0 copies ─────┘
+
+Total: 0 copies, <100 μs latency
+----
+
+== Memory Safety Guarantee
+
+selur provides **triple memory safety:**
+
+1. **Compile-time** (Ephapax linear types)
+   - Resources consumed exactly once
+   - No use-after-free, no double-free
+
+2. **Runtime** (Zig bounds checking)
+   - Request size ≤ 1 MB
+   - All memory accesses validated
+
+3. **Formal verification** (Idris2 proofs)
+   - `noLostRequests` - Every request gets one response
+   - `noMemoryLeaks` - All memory freed
+   - `noBufferOverflow` - All accesses bounded
+   - 6 proofs + 4 theorems verified
+
+Check the proofs (requires Idris2):
+
+[source,bash]
+----
+just verify
+----
+
+== Next Steps
+
+Now that you've seen selur in action:
+
+**For Users:**
+* link:User-Guide.adoc[User Guide] - Comprehensive usage guide
+* link:Troubleshooting.adoc[Troubleshooting] - Common issues
+* link:FAQ.adoc[FAQ] - Frequently asked questions
+
+**For Developers:**
+* link:Integration-Guide.adoc[Integration Guide] - Integrate with Svalinn/Vörðr
+* link:../docs/API.adoc[API Reference] - Complete API documentation
+* link:../docs/ARCHITECTURE.adoc[Architecture] - Deep dive
+
+**Advanced:**
+* link:Testing-Guide.adoc[Testing Guide] - Write tests
+* link:Contributing.adoc[Contributing] - Contribute code
+* link:Building-From-Source.adoc[Building] - Build customizations
+
+== Quick Reference
+
+=== Build Commands
+
+[source,bash]
+----
+just build        # Build WASM module
+just verify       # Run Idris2 proofs (optional)
+just test         # Run all tests
+just clean        # Clean build artifacts
+just examples     # Run all examples
+----
+
+=== Cargo Commands
+
+[source,bash]
+----
+cargo check                       # Check compilation
+cargo test                        # Run tests
+cargo run --example basic         # Run basic example
+cargo run --example error_handling # Run error handling
+cargo bench                       # Run benchmarks
+----
+
+=== Common Patterns
+
+**Load WASM module:**
+[source,rust]
+----
+let mut bridge = Bridge::new("path/to/selur.wasm")?;
+----
+
+**Check memory size:**
+[source,rust]
+----
+let size = bridge.memory_size()?;
+----
+
+**Send request:**
+[source,rust]
+----
+let response = bridge.send_request(&request)?;
+----
+
+**Parse error code:**
+[source,rust]
+----
+let status = ErrorCode::from_u32(response[0] as u32);
+----
+
+== Performance Tips
+
+1. **Reuse Bridge instance** - Creating a new `Bridge` is expensive (loads WASM)
+2. **Batch requests** - Send multiple requests through one bridge instance
+3. **Pre-allocate request buffers** - Use `Vec::with_capacity()` for known sizes
+4. **Use release builds** - `cargo build --release` for production
+
+== Troubleshooting
+
+**WASM file not found?**
+Run `just build` to generate the WASM file.
+
+**Import errors?**
+Make sure selur is in your `Cargo.toml`:
+[source,toml]
+----
+[dependencies]
+selur = { path = "../selur" }
+----
+
+**Tests ignored?**
+Tests that require the WASM file are ignored by default. They run when `selur.wasm` exists.
+
+Need more help? Check link:Troubleshooting.adoc[Troubleshooting] or link:FAQ.adoc[FAQ].

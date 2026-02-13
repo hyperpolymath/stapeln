@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "requiredPredicates": [
+    "https://slsa.dev/provenance/v1",
+    "https://spdx.dev/Document"
+  ],
+  "allowedSigners": [
+    "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  ],
+  "logQuorum": 1,
+  "mode": "strict",
+  "notes": "MVP policy: single signer and single transparency log."
+}

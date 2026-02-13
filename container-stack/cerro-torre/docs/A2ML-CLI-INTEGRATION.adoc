@@ -1,0 +1,196 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= A2ML CLI Integration
+:toc: left
+
+== New Commands
+
+=== ct trust
+
+Manage trust stores (A2ML-based).
+
+[source,bash]
+----
+# Load trust store from A2ML
+ct trust load trust-store-2026.a2ml
+
+# List trusted keys
+ct trust list
+
+# Show specific key details
+ct trust show release-key-2026
+
+# Verify trust store attestation
+ct trust verify trust-store-2026.a2ml
+----
+
+=== ct policy
+
+Manage policies (A2ML-based).
+
+[source,bash]
+----
+# Load policy from A2ML
+ct policy load strict-prod.a2ml
+
+# Show policy details
+ct policy show strict-prod
+
+# Verify policy signature
+ct policy verify strict-prod.a2ml
+
+# Test policy against bundle (dry-run)
+ct policy test strict-prod.a2ml nginx.ctp
+----
+
+=== ct verify (extended)
+
+Verify bundle against A2ML policy.
+
+[source,bash]
+----
+# Verify with policy
+ct verify nginx.ctp --policy strict-prod.a2ml
+
+# Verify with explicit trust store
+ct verify nginx.ctp \
+  --policy strict-prod.a2ml \
+  --trust-store trust-store-2026.a2ml
+
+# Audit mode (log to policy-specified audit log)
+ct verify nginx.ctp --policy strict-prod.a2ml --audit
+----
+
+== Integration with Existing Commands
+
+=== ct sign (uses trust store)
+
+[source,bash]
+----
+# Sign with key from trust store
+ct sign nginx.ctp \
+  --key release-key-2026 \
+  --trust-store trust-store-2026.a2ml
+----
+
+=== ct pack (policy-aware)
+
+[source,bash]
+----
+# Pack with policy validation
+ct pack nginx:1.26 -o nginx.ctp \
+  --policy strict-prod.a2ml
+
+# This will:
+# 1. Pack the image
+# 2. Check if result meets policy (SBOM, registry, etc.)
+# 3. Fail if policy violated
+----
+
+== Command Flow Example
+
+[source,bash]
+----
+# 1. Load trust store
+ct trust load examples/policies/trust-store-2026.a2ml
+# Output: ✓ Loaded 5 keys, attestation verified
+
+# 2. Pack image
+ct pack docker.io/library/nginx:1.26 -o nginx.ctp
+# Output: ✓ Packed nginx.ctp (142MB)
+
+# 3. Sign with trusted key
+ct sign nginx.ctp --key release-key-2026
+# Output: ✓ Signed with release-key-2026 (ed25519)
+
+# 4. Verify against policy
+ct verify nginx.ctp --policy examples/policies/strict-prod.a2ml
+# Output:
+#   ✓ Signatures: 1/2 required
+#   ✗ SBOM: Required but not found
+#   ✓ Rekor: Entry verified
+#   ✓ Registry: docker.io allowed
+#   Result: FAIL - SBOM required
+
+# 5. Check audit log
+cat /var/log/ct/policy-decisions.log
+----
+
+== Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Policy verification passed |
+| 1 | Policy verification failed |
+| 2 | Policy verification inconclusive |
+| 3 | Error (invalid policy, missing trust store, etc.) |
+
+== Environment Variables
+
+[source,bash]
+----
+# Default trust store location
+export CT_TRUST_STORE=/etc/ct/trust-store-2026.a2ml
+
+# Default policy
+export CT_DEFAULT_POLICY=/etc/ct/policies/strict-prod.a2ml
+
+# Then:
+ct verify nginx.ctp  # Uses CT_DEFAULT_POLICY automatically
+----
+
+== Implementation Status
+
+[cols="1,1,1",options="header"]
+|===
+| Command | Status | Notes
+
+| `ct trust load`
+| ⬜ Planned
+| Parse A2ML, load keys
+
+| `ct trust list`
+| ⬜ Planned
+| Display loaded keys
+
+| `ct trust show`
+| ⬜ Planned
+| Show key details
+
+| `ct trust verify`
+| ⬜ Planned
+| Verify trust store attestation
+
+| `ct policy load`
+| ⬜ Planned
+| Parse A2ML policy
+
+| `ct policy show`
+| ⬜ Planned
+| Display policy
+
+| `ct policy verify`
+| ⬜ Planned
+| Verify policy signature
+
+| `ct policy test`
+| ⬜ Planned
+| Dry-run enforcement
+
+| `ct verify --policy`
+| ⬜ Planned
+| Policy-based verification
+
+| `ct sign --trust-store`
+| ⬜ Planned
+| Sign with trusted key
+|===
+
+== Next Steps
+
+1. ✅ Define Ada types (`cerro_policy_a2ml.ads`)
+2. ✅ Implement stub bodies (`cerro_policy_a2ml.adb`)
+3. ✅ Define enforcement engine (`cerro_policy_enforce.ads/adb`)
+4. ⬜ Add CLI argument parsing for new commands
+5. ⬜ Implement actual A2ML parsing (call a2ml CLI or parse directly)
+6. ⬜ Implement signature/SBOM/Rekor verification
+7. ⬜ Add integration tests

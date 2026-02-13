@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://svalinn.dev/schemas/gateway-run-request.v1.json",
+  "title": "Gateway Run Request",
+  "type": "object",
+  "required": ["imageDigest", "imageName"],
+  "properties": {
+    "bundlePath": { "type": "string" },
+    "trustStorePath": { "type": "string" },
+    "policyPath": { "type": "string" },
+    "bundle": { "type": "object" },
+    "trustStore": { "type": "object" },
+    "policy": { "type": "object" },
+    "imageDigest": { "type": "string" },
+    "imageName": { "type": "string" },
+    "profile": { "type": "string" },
+    "removeOnExit": { "type": "boolean" },
+    "detach": { "type": "boolean" },
+    "vordrArgs": { "type": "array", "items": { "type": "string" } },
+    "runCommand": { "type": "array", "items": { "type": "string" } },
+    "useCommandSeparator": { "type": "boolean" }
+  }
+}

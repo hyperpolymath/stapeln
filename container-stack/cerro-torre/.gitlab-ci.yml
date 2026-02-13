@@ -1,0 +1,182 @@
+stages:
+  - attest
+  - verify
+  - publish
+
+variables:
+  CT_MVP_LOG_ID: "verified-container-log-mvp"
+  CT_MVP_LOG_URL: "https://logs.mvp.local"
+  CT_MVP_LOG_OPERATOR: "Cerro Torre MVP Log"
+  CT_MVP_STORE_ID: "cerro-torre-mvp"
+  CT_MVP_SIGNER_OWNER: "cerro-torre-mvp"
+
+mvp_attest:
+  stage: attest
+  image: python:3.12-alpine
+  before_script:
+    - apk add --no-cache bash openssl curl tar
+    - curl -sSL https://github.com/oras-project/oras/releases/latest/download/oras_1.2.0_linux_amd64.tar.gz -o /tmp/oras.tgz
+    - tar -xzf /tmp/oras.tgz -C /usr/local/bin oras
+  script:
+    - |
+      test -n "${CT_MVP_IMAGE_NAME:-}" || (echo "CT_MVP_IMAGE_NAME required" && exit 1)
+      if [ -z "${CT_MVP_IMAGE_DIGEST:-}" ]; then
+        CT_MVP_IMAGE_DIGEST="$(oras manifest fetch --descriptor "${CT_MVP_IMAGE_NAME}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])')"
+        export CT_MVP_IMAGE_DIGEST
+      fi
+      test -n "${CT_MVP_IMAGE_DIGEST:-}" || (echo "CT_MVP_IMAGE_DIGEST required" && exit 1)
+      python3 tools/mvp/ct_mvp.py keygen --out-dir tools/mvp/keys
+      python3 tools/mvp/ct_mvp.py trust-store \
+        --signer-pub tools/mvp/keys/signer.pub \
+        --log-pub tools/mvp/keys/log.pub \
+        --log-id "${CT_MVP_LOG_ID}" \
+        --log-url "${CT_MVP_LOG_URL}" \
+        --log-operator "${CT_MVP_LOG_OPERATOR}" \
+        --store-id "${CT_MVP_STORE_ID}" \
+        --signer-owner "${CT_MVP_SIGNER_OWNER}" \
+        --out tools/mvp/trust-store.json
+      python3 tools/mvp/ct_mvp.py bundle \
+        --image-name "${CT_MVP_IMAGE_NAME}" \
+        --image-digest "${CT_MVP_IMAGE_DIGEST}" \
+        --signer-key tools/mvp/keys/signer.key \
+        --signer-pub tools/mvp/keys/signer.pub \
+        --log-key tools/mvp/keys/log.key \
+        --log-id "${CT_MVP_LOG_ID}" \
+        --out tools/mvp/bundle.json
+  artifacts:
+    when: always
+    paths:
+      - tools/mvp/bundle.json
+      - tools/mvp/trust-store.json
+    expire_in: 7 days
+
+mvp_publish:
+  stage: publish
+  image: alpine:3.20
+  needs: ["mvp_attest"]
+  before_script:
+    - apk add --no-cache bash curl
+    - apk add --no-cache git
+    - curl -sSL https://github.com/oras-project/oras/releases/latest/download/oras_1.2.0_linux_amd64.tar.gz -o /tmp/oras.tgz
+    - tar -xzf /tmp/oras.tgz -C /usr/local/bin oras
+  script:
+    - |
+      test -n "${CT_MVP_IMAGE_NAME:-}" || (echo "CT_MVP_IMAGE_NAME required" && exit 1)
+      tools/mvp/publish_bundle.sh \
+        "${CT_MVP_IMAGE_NAME}" \
+        tools/mvp/bundle.json \
+        application/vnd.verified-container.bundle+json
+  rules:
+    - if: '$CT_MVP_PUBLISH == "true"'
+
+mvp_verify_run:
+  stage: verify
+  image: python:3.12-alpine
+  needs: ["mvp_attest"]
+  before_script:
+    - apk add --no-cache bash curl
+  script:
+    - |
+      test -n "${SVALINN_GATEWAY_URL:-}" || (echo "SVALINN_GATEWAY_URL required" && exit 1)
+      python3 - <<'PY'
+import json
+import os
+import subprocess
+
+gateway = os.environ["SVALINN_GATEWAY_URL"].rstrip("/")
+with open("tools/mvp/bundle.json", "r", encoding="utf-8") as handle:
+    bundle = json.load(handle)
+with open("tools/mvp/trust-store.json", "r", encoding="utf-8") as handle:
+    trust_store = json.load(handle)
+      policy = None
+      policy_path = os.environ.get("SVALINN_POLICY_PATH", "")
+      if policy_path:
+          with open(policy_path, "r", encoding="utf-8") as handle:
+              policy = json.load(handle)
+      else:
+          policy_repo = os.environ.get("SVALINN_POLICY_REPO", "")
+          policy_ref = os.environ.get("SVALINN_POLICY_REF", "main")
+          if policy_repo:
+              subprocess.run(["git", "clone", "--depth", "1", "--branch", policy_ref, policy_repo, "/tmp/svalinn"], check=True)
+              with open("/tmp/svalinn/spec/policy/mvp-policy.json", "r", encoding="utf-8") as handle:
+                  policy = json.load(handle)
+
+payload = {
+    "bundle": bundle,
+    "trustStore": trust_store,
+    "policy": policy,
+    "imageDigest": os.environ.get("CT_MVP_IMAGE_DIGEST", ""),
+    "imageName": os.environ.get("CT_MVP_IMAGE_NAME", ""),
+    "profile": "strict",
+}
+if not payload["imageDigest"] or not payload["imageName"]:
+    raise SystemExit("CT_MVP_IMAGE_NAME and CT_MVP_IMAGE_DIGEST are required")
+if payload["policy"] is None:
+    raise SystemExit("Provide SVALINN_POLICY_PATH or SVALINN_POLICY_REPO to load a policy")
+
+request = json.dumps(payload).encode("utf-8")
+      verify_response = subprocess.run(
+        [
+          "curl",
+          "-sS",
+          "-X",
+          "POST",
+          f"{gateway}/verify",
+          "-H",
+          "content-type: application/json",
+          "--data-binary",
+          "@-",
+        ],
+        check=True,
+        input=request,
+        stdout=subprocess.PIPE,
+      )
+      with open("tools/mvp/gate-report.json", "wb") as handle:
+          handle.write(verify_response.stdout)
+      run_response = subprocess.run(
+        [
+          "curl",
+          "-sS",
+          "-X",
+          "POST",
+          f"{gateway}/run",
+          "-H",
+          "content-type: application/json",
+          "--data-binary",
+          "@-",
+        ],
+        check=True,
+        input=request,
+        stdout=subprocess.PIPE,
+      )
+      with open("tools/mvp/run-response.json", "wb") as handle:
+          handle.write(run_response.stdout)
+      payload = json.loads(run_response.stdout.decode("utf-8"))
+      job_id = payload.get("jobId")
+      if not job_id:
+          raise SystemExit("run response missing jobId")
+      status = payload.get("status")
+      if status == "failed":
+          raise SystemExit("job failed immediately")
+      for _ in range(20):
+          status_response = subprocess.run(
+              ["curl", "-sS", f"{gateway}/status/{job_id}"],
+              check=True,
+              stdout=subprocess.PIPE,
+          )
+          status_payload = json.loads(status_response.stdout.decode("utf-8"))
+          state = status_payload.get("status")
+          if state == "running":
+              return
+          if state == "failed":
+              raise SystemExit(status_payload.get("error", "job failed"))
+          import time
+          time.sleep(1)
+      raise SystemExit("job did not reach running state")
+PY
+  artifacts:
+    when: always
+    paths:
+      - tools/mvp/gate-report.json
+      - tools/mvp/run-response.json
+    expire_in: 7 days

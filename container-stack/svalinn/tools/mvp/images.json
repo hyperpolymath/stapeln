@@ -1,0 +1,10 @@
+{
+  "images": [
+    {
+      "name": "svalinn/hello",
+      "tag": "latest",
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "verified": false
+    }
+  ]
+}

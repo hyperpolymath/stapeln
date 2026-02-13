@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://svalinn.dev/schemas/containers.v1.json",
+  "title": "Containers Response",
+  "type": "object",
+  "required": ["containers"],
+  "properties": {
+    "containers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "image", "status", "policyVerdict"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "image": { "type": "string" },
+          "status": { "type": "string" },
+          "policyVerdict": { "type": "string" },
+          "createdAt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

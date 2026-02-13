@@ -1,0 +1,569 @@
+= Contributing to selur
+:toc:
+:toclevels: 3
+
+Thank you for your interest in contributing to selur! This guide will help you get started.
+
+== Code of Conduct
+
+We follow the hyperpolymath community code of conduct:
+
+* **Be respectful** - Value diverse perspectives and experiences
+* **Be collaborative** - Work together constructively
+* **Be professional** - Keep discussions focused on technical merit
+* **Be inclusive** - Welcome newcomers and help them learn
+
+Violations can be reported to: jonathan.jewell@open.ac.uk
+
+== Ways to Contribute
+
+=== Reporting Bugs
+
+Found a bug? Please report it!
+
+1. Search https://github.com/hyperpolymath/selur/issues[existing issues] first
+2. If not found, open a new issue with:
+   - Descriptive title
+   - Steps to reproduce
+   - Expected vs. actual behavior
+   - Environment (OS, Zig version, Rust version)
+   - Error messages (full output)
+   - Minimal reproduction code
+
+**Example:**
+
+----
+Title: Bridge panics on empty request
+
+**Environment:**
+- OS: Ubuntu 22.04
+- Zig: 0.16.0-dev
+- Rust: 1.70.0
+- selur: main branch (commit abc123)
+
+**Steps to Reproduce:**
+1. Create empty request: `let req = Vec::new();`
+2. Send via bridge: `bridge.send_request(&req)?;`
+3. Bridge panics with "index out of bounds"
+
+**Expected:**
+Should return `ErrorCode::InvalidRequest`
+
+**Actual:**
+Panics with: `thread 'main' panicked at 'index out of bounds...'`
+
+**Minimal Code:**
+```rust
+use selur::Bridge;
+fn main() {
+    let mut bridge = Bridge::new("selur.wasm").unwrap();
+    let req = Vec::new();
+    bridge.send_request(&req).unwrap();  // Panics here
+}
+```
+----
+
+=== Suggesting Features
+
+Have an idea? We'd love to hear it!
+
+1. Check https://github.com/hyperpolymath/selur/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement[existing feature requests]
+2. Open a new issue with:
+   - Clear use case
+   - Proposed API (if applicable)
+   - Alternative approaches considered
+   - Impact on existing code
+
+**Example:**
+
+----
+Title: Add async/await support for send_request
+
+**Use Case:**
+When integrating with async Rust applications (Tokio, async-std),
+blocking on send_request is inefficient.
+
+**Proposed API:**
+```rust
+impl Bridge {
+    pub async fn send_request_async(&mut self, request: &[u8])
+        -> Result<Vec<u8>>;
+}
+```
+
+**Alternatives Considered:**
+1. Use tokio::task::spawn_blocking (current workaround)
+2. Make Bridge Sync + Send (requires refactoring)
+
+**Impact:**
+- Requires async Wasmtime API
+- No breaking changes (new method)
+- Could be gated behind `async` feature flag
+----
+
+=== Improving Documentation
+
+Documentation improvements are always welcome!
+
+* Fix typos or unclear explanations
+* Add examples
+* Improve API documentation
+* Update wiki pages
+* Translate to other languages
+
+Just submit a PR with your changes.
+
+=== Writing Code
+
+See below for detailed contribution workflow.
+
+== Contribution Workflow
+
+=== 1. Fork and Clone
+
+[source,bash]
+----
+# Fork on GitHub (click "Fork" button)
+
+# Clone your fork
+git clone https://github.com/YOUR-USERNAME/selur.git
+cd selur
+
+# Add upstream remote
+git remote add upstream https://github.com/hyperpolymath/selur.git
+
+# Verify remotes
+git remote -v
+----
+
+=== 2. Create Feature Branch
+
+[source,bash]
+----
+# Update main
+git checkout main
+git pull upstream main
+
+# Create feature branch
+git checkout -b feature/my-feature
+
+# Or for bug fixes:
+git checkout -b fix/issue-123
+----
+
+**Branch naming:**
+- `feature/description` - New features
+- `fix/issue-number` - Bug fixes
+- `docs/description` - Documentation
+- `refactor/description` - Code refactoring
+- `test/description` - Test improvements
+
+=== 3. Make Changes
+
+Follow the coding standards:
+
+**Rust:**
+[source,bash]
+----
+# Format code
+cargo fmt
+
+# Lint code
+cargo clippy -- -D warnings
+
+# Fix auto-fixable issues
+cargo clippy --fix
+----
+
+**Zig:**
+[source,bash]
+----
+# Format code
+zig fmt zig/*.zig
+----
+
+**Commit messages:**
+[source]
+----
+Short summary (50 chars or less)
+
+More detailed explanation if needed. Wrap at 72 characters.
+Explain what and why, not how (code shows how).
+
+- Bullet points are fine
+- Use present tense: "Add feature" not "Added feature"
+- Reference issues: "Fixes #123"
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+----
+
+=== 4. Add Tests
+
+All code changes must include tests:
+
+[source,rust]
+----
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_feature() {
+        // Test your feature
+        assert!(true);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_error_case() {
+        // Test error handling
+    }
+}
+----
+
+Run tests:
+
+[source,bash]
+----
+# Unit tests
+cargo test
+
+# Integration tests (requires WASM)
+just build
+cargo test -- --ignored
+
+# All tests
+cargo test -- --include-ignored
+----
+
+=== 5. Update Documentation
+
+If you changed the API:
+
+1. **Update inline docs** (`src/lib.rs`):
+[source,rust]
+----
+/// Brief description
+///
+/// # Examples
+///
+/// ```
+/// use selur::Bridge;
+/// // Example usage
+/// ```
+pub fn new_function() { }
+----
+
+2. **Update API reference** (`docs/API.adoc`)
+
+3. **Update user guide** (`wiki/User-Guide.adoc`) if user-facing
+
+4. **Update changelog** (if applicable)
+
+5. **Generate and check docs:**
+[source,bash]
+----
+cargo doc --no-deps --open
+----
+
+=== 6. Commit Changes
+
+[source,bash]
+----
+# Stage changes
+git add <files>
+
+# Commit with descriptive message
+git commit -m "Add async send_request support
+
+Implements async version of send_request using tokio.
+Gated behind 'async' feature flag to keep core dependency-free.
+
+- Added send_request_async() method
+- Added tests for async behavior
+- Updated documentation
+- Added example: examples/async_usage
+
+Fixes #42"
+
+# Or commit with co-author
+git commit
+# Then add in editor:
+# Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+----
+
+=== 7. Push to Your Fork
+
+[source,bash]
+----
+# Push feature branch
+git push origin feature/my-feature
+----
+
+=== 8. Open Pull Request
+
+1. Go to https://github.com/hyperpolymath/selur
+2. Click "New pull request"
+3. Select your fork and branch
+4. Fill in the PR template:
+
+----
+## Summary
+Brief description of what this PR does.
+
+## Changes
+- Added X feature
+- Fixed Y bug
+- Improved Z documentation
+
+## Testing
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Manual testing performed
+- [ ] Documentation updated
+
+## Checklist
+- [ ] Code formatted (`cargo fmt`)
+- [ ] No clippy warnings (`cargo clippy`)
+- [ ] Tests added
+- [ ] Documentation updated
+- [ ] Changelog updated (if applicable)
+
+## Related Issues
+Fixes #123
+Relates to #456
+----
+
+=== 9. Respond to Review
+
+Maintainers will review your PR and may request changes:
+
+[source,bash]
+----
+# Make requested changes
+git add <files>
+git commit -m "Address review comments
+
+- Fixed error handling as suggested
+- Added missing test case
+- Clarified documentation"
+
+# Push updates
+git push origin feature/my-feature
+----
+
+PR will update automatically.
+
+=== 10. Merge
+
+Once approved, maintainers will merge your PR. Congratulations! 🎉
+
+== Development Guidelines
+
+=== Code Style
+
+**Rust:**
+- Follow https://rust-lang.github.io/api-guidelines/[Rust API Guidelines]
+- Maximum line length: 100 characters
+- Use `rustfmt` default configuration
+- Prefer `?` over explicit error handling
+- Use `anyhow::Result` for error types
+- Add `#[must_use]` for important return values
+
+**Zig:**
+- Follow Zig community style
+- Use `snake_case` for functions
+- Use `PascalCase` for types
+- No `callconv(.C)` for WASM32
+- Always check errors (no `try` without handling)
+
+**Idris2:**
+- Follow Idris2 conventions
+- Use `camelCase` for functions
+- Use `PascalCase` for types
+- Document complex proofs
+
+=== Testing Requirements
+
+All PRs must include tests:
+
+* **New features** - Unit tests + integration test + example
+* **Bug fixes** - Regression test demonstrating the fix
+* **Refactoring** - Existing tests must still pass
+* **Documentation** - Doc tests for all examples
+
+**Coverage goals:**
+- Critical paths: >90%
+- Overall: >70%
+- Error handling: 100%
+
+=== Documentation Requirements
+
+All public APIs must be documented:
+
+[source,rust]
+----
+/// Brief one-line description
+///
+/// Longer description with more details.
+///
+/// # Arguments
+///
+/// * `arg` - Description
+///
+/// # Returns
+///
+/// Description of return value
+///
+/// # Errors
+///
+/// When this returns an error
+///
+/// # Panics
+///
+/// When this panics (if applicable)
+///
+/// # Safety
+///
+/// Safety requirements (if unsafe)
+///
+/// # Examples
+///
+/// ```
+/// use selur::Bridge;
+///
+/// let bridge = Bridge::new("selur.wasm")?;
+/// ```
+pub fn function(arg: Type) -> Result<Output> { }
+----
+
+=== Performance Considerations
+
+If your change affects performance:
+
+1. **Benchmark before:**
+[source,bash]
+----
+cargo bench -- --save-baseline before
+----
+
+2. **Make changes**
+
+3. **Benchmark after:**
+[source,bash]
+----
+cargo bench -- --baseline before
+----
+
+4. **Include results in PR:**
+----
+Benchmark: send_request/1000
+Before: 12.4 μs
+After:  8.2 μs
+Improvement: 34% faster
+----
+
+=== Security Considerations
+
+If your change touches security-sensitive code:
+
+- Memory safety (bounds checking, allocation)
+- Input validation
+- Cryptographic operations
+- Access control
+
+Please:
+1. Highlight in PR description
+2. Add extra tests for edge cases
+3. Consider formal verification if applicable
+4. Request security review
+
+== Priority Areas
+
+We especially welcome contributions in:
+
+**High Priority:**
+- Platform support (Windows, ARM64)
+- Performance optimizations
+- Error message improvements
+- Documentation enhancements
+
+**Medium Priority:**
+- Language bindings (TypeScript, Python)
+- Additional examples
+- Async/await support
+- Streaming API
+
+**Low Priority:**
+- Code cleanup
+- Test coverage improvements
+- Tooling enhancements
+
+See link:../ROADMAP.adoc[ROADMAP] for full list.
+
+== Communication
+
+=== Asking Questions
+
+Before starting work:
+
+1. Comment on the issue you want to work on
+2. Maintainers will assign it to you
+3. Ask questions in issue comments
+
+For general questions:
+
+- GitHub Discussions (coming soon)
+- Issue tracker
+- Email: jonathan.jewell@open.ac.uk
+
+=== Reporting Problems
+
+If you encounter issues:
+
+1. Check link:Troubleshooting.adoc[Troubleshooting Guide]
+2. Search existing issues
+3. Open new issue with details
+
+For security issues:
+
+Email jonathan.jewell@open.ac.uk directly (not public issue tracker).
+
+== Recognition
+
+Contributors are recognized in:
+
+- Git commit history (`Co-Authored-By`)
+- Release notes
+- `CONTRIBUTORS.md` file (coming soon)
+
+Significant contributions may receive:
+
+- Commit access
+- Maintainer role
+- Listing in README
+
+== License
+
+By contributing, you agree that your contributions will be licensed under PMPL-1.0-or-later.
+
+All code must include SPDX header:
+
+[source,rust]
+----
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+----
+
+## Getting Started
+
+Ready to contribute?
+
+1. **Find an issue:** Check https://github.com/hyperpolymath/selur/labels/good%20first%20issue["good first issue"] label
+2. **Comment on it:** Let us know you're working on it
+3. **Fork and code:** Follow the workflow above
+4. **Submit PR:** We'll review and merge!
+
+Questions? Open an issue or email jonathan.jewell@open.ac.uk
+
+Thank you for contributing to selur! 🚀

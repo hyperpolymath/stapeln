@@ -1,0 +1,11 @@
+# Keys Directory
+#
+# This directory stores public keys for:
+# - Upstream project signing keys (for verifying source authenticity)
+# - Cerro Torre builder keys (for verifying build attestations)
+# - Maintainer keys (for verifying package signatures)
+#
+# Key files should be named: <key-id>.pub or <key-id>.asc
+# Corresponding trust metadata goes in keys/trust.toml
+#
+# NEVER store private keys in this repository.

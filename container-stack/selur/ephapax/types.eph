@@ -1,0 +1,136 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+//
+// Core types for selur IPC bridge
+// Uses Ephapax-linear types for memory safety
+
+module selur.types
+
+// Linear region annotation
+// Resources in region @r must be consumed exactly once
+data Region r
+
+// Request from Svalinn to Vörðr
+// Linear type ensures request is not duplicated or leaked
+data Request@r = Request
+  { command :: Command@r
+  , payload :: Bytes@r
+  , correlation_id :: String
+  }
+
+// Response from Vörðr to Svalinn
+// Linear type ensures response is delivered exactly once
+data Response@r = Response
+  { status :: ResponseStatus
+  , payload :: Bytes@r
+  , correlation_id :: String
+  }
+
+// Command types
+data Command@r
+  = CreateContainer (ContainerConfig@r)
+  | StartContainer ContainerId@r
+  | StopContainer ContainerId@r
+  | InspectContainer ContainerId@r
+  | DeleteContainer ContainerId@r
+  | ListContainers
+
+// Response status
+data ResponseStatus
+  = Success
+  | Error ErrorCode String
+
+// Error codes
+data ErrorCode
+  = InvalidRequest
+  | ContainerNotFound
+  | ContainerAlreadyExists
+  | ResourceExhausted
+  | PermissionDenied
+  | InternalError
+
+// Container configuration
+data ContainerConfig@r = ContainerConfig
+  { image :: ImageRef@r
+  , name :: String
+  , env :: List (String, String)
+  , volumes :: List VolumeMount@r
+  , network :: NetworkConfig@r
+  }
+
+// Image reference (e.g., "nginx:latest" or digest)
+data ImageRef@r = ImageRef
+  { registry :: String
+  , repository :: String
+  , tag :: String
+  , digest :: Maybe String  -- Optional sha256:... digest
+  }
+
+// Volume mount
+data VolumeMount@r = VolumeMount
+  { source :: String
+  , target :: String
+  , readonly :: Bool
+  }
+
+// Network configuration
+data NetworkConfig@r = NetworkConfig
+  { mode :: NetworkMode
+  , ports :: List PortMapping
+  }
+
+data NetworkMode
+  = Bridge
+  | Host
+  | None
+
+data PortMapping = PortMapping
+  { container_port :: Int
+  , host_port :: Int
+  , protocol :: Protocol
+  }
+
+data Protocol = TCP | UDP
+
+// Container state (for inspect operations)
+data ContainerState@r = ContainerState
+  { id :: ContainerId@r
+  , status :: ContainerStatus
+  , image :: ImageRef@r
+  , created_at :: Int  -- Unix timestamp
+  , started_at :: Maybe Int
+  , finished_at :: Maybe Int
+  , exit_code :: Maybe Int
+  , config :: ContainerConfig@r
+  , mounts :: List VolumeMount@r
+  , network :: NetworkConfig@r
+  }
+
+data ContainerStatus
+  = Created
+  | Running
+  | Paused
+  | Stopped
+  | Exited
+  | Dead
+
+// Container identifier
+data ContainerId@r = ContainerId String
+
+// Raw byte buffer (for zero-copy via WASM linear memory)
+data Bytes@r = Bytes
+  { ptr :: Int       -- Offset in WASM linear memory
+  , len :: Int       -- Length in bytes
+  , capacity :: Int  -- Allocated capacity
+  }
+
+// Byte buffer operations
+bytes_new :: Int -> Bytes@r
+bytes_from_string :: String -> Bytes@r
+bytes_to_string :: Bytes@r -> String
+bytes_len :: Bytes@r -> Int
+
+// Export core types
+export Request, Response, Command, ResponseStatus, ErrorCode
+export ContainerConfig, ImageRef, VolumeMount, NetworkConfig
+export ContainerId, Bytes, Region

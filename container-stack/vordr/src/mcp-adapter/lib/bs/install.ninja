@@ -1,0 +1,34 @@
+rescript = 1
+rule cp
+  command = cp $i $out
+rule touch
+ command = touch $out
+o Main.cmi : cp ../bs/src/Main.cmi
+o Main.cmj : cp ../bs/src/Main.cmj
+o Main.cmt : cp ../bs/src/Main.cmt
+o Main.res : cp ../../src/Main.res
+o Tools.cmi : cp ../bs/src/Tools.cmi
+o Tools.cmj : cp ../bs/src/Tools.cmj
+o Tools.cmt : cp ../bs/src/Tools.cmt
+o Tools.res : cp ../../src/Tools.res
+o Types.cmi : cp ../bs/src/Types.cmi
+o Types.cmj : cp ../bs/src/Types.cmj
+o Types.cmt : cp ../bs/src/Types.cmt
+o Types.res : cp ../../src/Types.res
+o Server.cmi : cp ../bs/src/Server.cmi
+o Server.cmj : cp ../bs/src/Server.cmj
+o Server.cmt : cp ../bs/src/Server.cmt
+o Server.res : cp ../../src/Server.res
+o HttpMain.cmi : cp ../bs/src/HttpMain.cmi
+o HttpMain.cmj : cp ../bs/src/HttpMain.cmj
+o HttpMain.cmt : cp ../bs/src/HttpMain.cmt
+o HttpMain.res : cp ../../src/HttpMain.res
+o Protocol.cmi : cp ../bs/src/Protocol.cmi
+o Protocol.cmj : cp ../bs/src/Protocol.cmj
+o Protocol.cmt : cp ../bs/src/Protocol.cmt
+o Protocol.res : cp ../../src/Protocol.res
+o HttpServer.cmi : cp ../bs/src/HttpServer.cmi
+o HttpServer.cmj : cp ../bs/src/HttpServer.cmj
+o HttpServer.cmt : cp ../bs/src/HttpServer.cmt
+o HttpServer.res : cp ../../src/HttpServer.res
+build install.stamp : touch Main.cmi Main.cmj Tools.cmi Tools.cmj Types.cmi Types.cmj Server.cmi Server.cmj HttpMain.cmi HttpMain.cmj Protocol.cmi Protocol.cmj HttpServer.cmi HttpServer.cmj 

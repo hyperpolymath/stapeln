@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cerro-torre.org/schemas/crypto-suites.json",
+  "registry_version": "1.0",
+  "default_suite_id": "CT-SIG-01",
+  "suites": [
+    {
+      "suite_id": "CT-SIG-01",
+      "status": "stable",
+      "purpose": "classical",
+      "description": "Classical baseline using Ed25519. Suitable for development and local builds.",
+      "hash": {
+        "id": "sha256",
+        "output_bits": 256
+      },
+      "signatures": [
+        {
+          "id": "ed25519",
+          "required": true,
+          "encoding": "raw",
+          "key_ref": "ed25519_public_key"
+        }
+      ]
+    },
+    {
+      "suite_id": "CT-SIG-02",
+      "status": "stable",
+      "purpose": "hybrid",
+      "description": "Hybrid classical + post-quantum. Recommended for governance and long-lived attestations.",
+      "hash": {
+        "id": "sha256",
+        "output_bits": 256
+      },
+      "signatures": [
+        {
+          "id": "ed25519",
+          "required": true,
+          "encoding": "raw",
+          "key_ref": "ed25519_public_key"
+        },
+        {
+          "id": "ml-dsa-87",
+          "required": true,
+          "encoding": "raw",
+          "key_ref": "ml_dsa_public_key",
+          "notes": "ML-DSA parameter set 87 (highest security level, corresponds to Dilithium5). NIST FIPS 204."
+        }
+      ]
+    },
+    {
+      "suite_id": "CT-SIG-03",
+      "status": "experimental",
+      "purpose": "pq-only",
+      "description": "Post-quantum only. Enable when ecosystem readiness is sufficient.",
+      "hash": {
+        "id": "sha256",
+        "output_bits": 256
+      },
+      "signatures": [
+        {
+          "id": "ml-dsa-87",
+          "required": true,
+          "encoding": "raw",
+          "key_ref": "ml_dsa_public_key"
+        }
+      ]
+    },
+    {
+      "suite_id": "CT-SIG-04",
+      "status": "optional",
+      "purpose": "classical-strong",
+      "description": "Ed448 for higher classical security margin. Not default.",
+      "hash": {
+        "id": "sha256",
+        "output_bits": 256
+      },
+      "signatures": [
+        {
+          "id": "ed448",
+          "required": true,
+          "encoding": "raw",
+          "key_ref": "ed448_public_key"
+        }
+      ]
+    }
+  ],
+  "policy_defaults": {
+    "roles": {
+      "governance": {
+        "allowed_suite_ids": ["CT-SIG-02", "CT-SIG-03"],
+        "deny_experimental": true,
+        "description": "Governance keys require hybrid or stronger suites."
+      },
+      "developer": {
+        "allowed_suite_ids": ["CT-SIG-01", "CT-SIG-02"],
+        "deny_experimental": false,
+        "description": "Developer/local builds may use classical baseline."
+      },
+      "ci": {
+        "allowed_suite_ids": ["CT-SIG-01", "CT-SIG-02"],
+        "deny_experimental": true,
+        "description": "CI builds use stable suites only."
+      }
+    }
+  },
+  "digest_algorithms": {
+    "primary": {
+      "id": "sha256",
+      "output_bits": 256,
+      "role": "canonical_binding",
+      "notes": "SHA-256 is the authoritative digest for all binding operations."
+    },
+    "secondary": [
+      {
+        "id": "blake3",
+        "output_bits": 256,
+        "role": "informational",
+        "notes": "May be included as additional digest for performance. Not authoritative."
+      },
+      {
+        "id": "shake256",
+        "output_bits": "variable",
+        "role": "optional",
+        "notes": "XOF; explicit output length required if used."
+      }
+    ]
+  }
+}

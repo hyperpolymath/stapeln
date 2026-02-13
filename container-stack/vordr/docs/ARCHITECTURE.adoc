@@ -1,0 +1,197 @@
+// SPDX-License-Identifier: MPL-2.0-or-later
+= Vörðr Architecture
+:toc: auto
+:toclevels: 3
+
+== Overview
+
+Vörðr is a polyglot formally verified container orchestration system consisting of four main components:
+
+[source,text]
+----
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Vörðr Architecture                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │
+│  │   Idris2    │    │    Rust     │    │   Elixir    │    │  Ada/SPARK  │  │
+│  │   Core      │←──→│   eBPF      │←──→│ Orchestrator│←──→│   Trust     │  │
+│  │             │    │             │    │             │    │             │  │
+│  │ • Types     │    │ • Probes    │    │ • State     │    │ • Threshold │  │
+│  │ • Proofs    │    │ • Anomaly   │    │ • Reversi-  │    │   Sigs      │  │
+│  │ • SBOM      │    │ • Monitor   │    │   bility    │    │ • Gatekeeper│  │
+│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘  │
+│         │                  │                  │                  │          │
+│         └─────────────────┼──────────────────┼──────────────────┘          │
+│                           │                  │                             │
+│                    ┌──────▼──────────────────▼──────┐                      │
+│                    │       MCP Adapter (ReScript)    │                      │
+│                    └─────────────────────────────────┘                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+----
+
+== Component Details
+
+=== Idris2 Core (Formal Verification)
+
+The Idris2 core provides mathematical proofs about container behavior:
+
+* **Container.idr** - State machine with dependent types
+* **Verification.idr** - Attestation predicates
+* **Attestation.idr** - Cryptographic envelope formats
+* **SBOM.idr** - Software Bill of Materials verification
+* **Proofs.idr** - Machine-checked proofs
+
+Key type:
+
+[source,idris]
+----
+data ValidTransition : ContainerState -> ContainerState -> Type where
+  CreateFromImage : ValidTransition ImageOnly Created
+  StartCreated    : ValidTransition Created Running
+  -- ...
+----
+
+=== Rust eBPF (Runtime Monitoring)
+
+Syscall-level monitoring using Aya eBPF framework:
+
+* **ebpf/mod.rs** - Monitor coordination
+* **ebpf/probes.rs** - Aya probe definitions
+* **ebpf/events.rs** - Event types
+* **ebpf/anomaly.rs** - Anomaly detection
+
+Event flow:
+
+[source,text]
+----
+Container Process
+      │
+      ▼
+eBPF Tracepoints → Ring Buffer → Userspace Monitor → Anomaly Detection
+----
+
+=== Elixir Orchestrator (State Management)
+
+BEAM-based orchestration with Bennett reversibility:
+
+* **Containers.Container** - GenStateMachine for lifecycle
+* **Reversibility.Journal** - State transition logging
+* **Reversibility** - Rollback functionality
+* **Borg** - Container runtime integration
+* **Network** - Network namespace management
+
+=== Ada/SPARK Trust (Authorization)
+
+Formally verified threshold signatures:
+
+* **container_policy.ads/adb** - Security policy validation
+* **threshold_signatures.ads/adb** - (k,n) threshold schemes
+* **gatekeeper.ads/adb** - Authorization coordinator
+
+== Data Flow
+
+=== Container Creation
+
+[source,text]
+----
+1. Client → MCP Adapter
+2. MCP → Elixir Orchestrator (create request)
+3. Orchestrator → Idris2 (verify config)
+4. Orchestrator → Ada/SPARK (check authorization)
+5. Orchestrator → Borg (create container)
+6. Orchestrator → Journal (log transition)
+7. eBPF Monitor → attach probes
+8. Response → Client
+----
+
+=== Anomaly Detection
+
+[source,text]
+----
+1. eBPF probe fires on syscall
+2. Event sent to ring buffer
+3. Userspace monitor receives event
+4. Anomaly detector checks against baseline
+5. If anomaly: webhook alert + log
+6. Orchestrator notified (optional: pause container)
+----
+
+== Integration Points
+
+=== MCP Protocol
+
+The ReScript MCP adapter exposes all functionality via JSON-RPC:
+
+* `vordr_container_create` - Create container
+* `vordr_container_start` - Start container
+* `vordr_verify_image` - Verify image attestation
+* `vordr_request_authorization` - Threshold auth request
+* `vordr_monitor_start` - Start eBPF monitoring
+* `vordr_rollback` - Bennett-reversible rollback
+
+=== External Systems
+
+* **Cerro Torre** - Attestation storage
+* **Svalinn** - Security hooks
+* **Container registries** - Image pulling
+* **Webhook endpoints** - Alert delivery
+
+== Security Model
+
+=== Trust Boundaries
+
+1. **Idris2 proofs** - Compile-time verification
+2. **SPARK proofs** - Runtime authorization
+3. **eBPF isolation** - Kernel-level monitoring
+4. **BEAM supervision** - Process isolation
+
+=== Authorization Flow
+
+[source,text]
+----
+Privileged Operation Request
+      │
+      ▼
+Gatekeeper (Ada/SPARK)
+      │
+      ├── Check policy: Is_Secure(config)?
+      │
+      ├── Threshold scheme: k-of-n signatures
+      │
+      └── Decision: Allow/Deny/Pending
+----
+
+== Deployment
+
+=== Prerequisites
+
+* Linux kernel 4.15+ (eBPF)
+* Idris2 0.6.0+
+* Rust 1.75+
+* Elixir 1.15+
+* GNAT 13.0+
+
+=== Build
+
+[source,bash]
+----
+just build          # Build all components
+just test           # Run all tests
+just prove-spark    # Run SPARK prover
+----
+
+=== Run
+
+[source,bash]
+----
+# Start the orchestrator
+cd src/elixir && mix run --no-halt
+
+# Start eBPF monitoring (requires root)
+sudo ./target/release/vordr monitor start
+
+# Run MCP adapter
+cd src/mcp-adapter && deno task start
+----

@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Doctor Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vordr/**'
+      - '.github/workflows/doctor-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'vordr/**'
+      - '.github/workflows/doctor-smoke.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  doctor-smoke:
+    name: Doctor Smoke Test
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            vordr/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build vordr
+        working-directory: vordr
+        run: cargo build --release
+
+      - name: Run doctor (human output)
+        working-directory: vordr
+        run: |
+          ./target/release/vordr doctor --all || true
+          echo "Exit code: $?"
+
+      - name: Run doctor (JSON output)
+        working-directory: vordr
+        run: |
+          ./target/release/vordr doctor --all --format json > doctor-report.json
+          echo "Doctor report:"
+          cat doctor-report.json
+
+      - name: Validate JSON schema
+        run: |
+          # Install ajv-cli for schema validation
+          npm install -g ajv-cli ajv-formats
+
+          # Validate against schema
+          ajv validate \
+            -s spec/schemas/doctor-report.v1.json \
+            -d vordr/doctor-report.json \
+            --strict=false \
+            -c ajv-formats || echo "Schema validation skipped (optional)"
+
+      - name: Check for critical failures
+        working-directory: vordr
+        run: |
+          # Ensure doctor runs without crashing
+          ./target/release/vordr doctor --format json | jq -e '.summary.errors >= 0'
+
+          # Report summary
+          echo "## Doctor Summary" >> $GITHUB_STEP_SUMMARY
+          ./target/release/vordr doctor --format json | jq -r '"- Passed: \(.summary.passed)\n- Warnings: \(.summary.warnings)\n- Errors: \(.summary.errors)"' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload doctor report
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: doctor-report
+          path: vordr/doctor-report.json

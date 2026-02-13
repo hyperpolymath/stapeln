@@ -1,0 +1,127 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn MVP Gate
+:toc: preamble
+:toclevels: 2
+
+This helper verifies a Verified Container Spec bundle against the MVP policy.
+
+== Dependencies
+
+* `python3`
+* `openssl` (Ed25519 verification)
+
+== Verify a bundle
+
+[source,shell]
+----
+
+Update `spec/policy/mvp-policy.json` with the signer key ID produced by
+`ct_mvp.py keygen`.
+
+== MVP Gateway
+
+Run the gateway (requires Deno):
+
+[source,shell]
+----
+deno run --allow-run --allow-read --allow-write tools/mvp/svalinn_gateway.ts
+----
+
+Verify:
+
+[source,shell]
+----
+curl -X POST http://localhost:8000/verify \
+  -H 'content-type: application/json' \
+  -d '{
+    "bundlePath": "tools/mvp/bundle.json",
+    "trustStorePath": "tools/mvp/trust-store.json",
+    "policyPath": "spec/policy/mvp-policy.json",
+    "imageDigest": "sha256:..."
+  }'
+----
+
+You can also send inline JSON instead of file paths:
+
+[source,shell]
+----
+curl -X POST http://localhost:8000/verify \
+  -H 'content-type: application/json' \
+  -d '{
+    "bundle": { "mediaType": "application/vnd.verified-container.bundle+json", "version": "0.1.0", "attestations": [], "logEntries": [] },
+    "trustStore": { "version": 1, "id": "mvp", "updated": "2024-01-01T00:00:00Z", "keys": {}, "thresholds": {}, "logs": {} },
+    "policy": { "version": 1, "requiredPredicates": [], "allowedSigners": [], "logQuorum": 1 },
+    "imageDigest": "sha256:..."
+  }'
+----
+
+Successful responses include a report with predicates, signers, and log IDs.
+
+Run (single-node queue):
+
+[source,shell]
+----
+curl -X POST http://localhost:8000/run \
+  -H 'content-type: application/json' \
+  -d '{
+    "bundlePath": "tools/mvp/bundle.json",
+    "trustStorePath": "tools/mvp/trust-store.json",
+    "policyPath": "spec/policy/mvp-policy.json",
+    "imageDigest": "sha256:...",
+    "imageName": "registry.example.com/hello:latest",
+    "profile": "strict",
+    "removeOnExit": true,
+    "detach": true,
+    "vordrArgs": ["-p", "8080:80", "-e", "ENV=prod"],
+    "useCommandSeparator": true,
+    "runCommand": ["nginx", "-g", "daemon off;"]
+  }'
+----
+
+The gateway maps failures to the `error-response.v1.json` schema with
+`ERR_POLICY_DENIED`, `ERR_RUNTIME_NOT_FOUND`, or `ERR_RUNTIME_EXEC`.
+
+`vordrArgs` are appended verbatim after gateway-managed flags, and `runCommand`
+is appended after the image name.
+`--` is inserted automatically when `runCommand` is present, unless
+`useCommandSeparator` is explicitly set to `false`.
+
+== Health and State
+
+* `GET /healthz` reports dependency readiness.
+* `GET /healthz?strict=1` runs active checks (`python3 --version`, `openssl version`,
+  `vordr version`) and validates state/audit log writability.
+* State persists in `tools/mvp/state.json` by default. Override with
+  `SVALINN_STATE_PATH`.
+* `GET /v1/containers` returns container summaries. If `vordr ps --json` fails,
+  the gateway serves `tools/mvp/containers.json` as a fallback.
+* `GET /v1/containers/<id>/inspect` returns raw `vordr inspect --json` output.
+* `GET /v1/images` returns image summaries. If `vordr image ls --json` fails,
+  the gateway serves `tools/mvp/images.json` as a fallback.
+
+== Gateway Schemas
+
+Request schemas:
+
+* `spec/schemas/gateway-verify-request.v1.json`
+* `spec/schemas/gateway-run-request.v1.json`
+
+== Timeouts
+
+* Gate verification: `SVALINN_GATE_TIMEOUT_MS` (default 10000)
+* Vordr run: `SVALINN_VORDR_TIMEOUT_MS` (default 30000)
+
+== Logging
+
+The gateway logs JSON lines to stdout with request and job metadata.
+
+== Audit Log
+
+Runs append to `tools/mvp/audit.log` by default. Override with
+`SVALINN_AUDIT_PATH`.
+python3 tools/mvp/svalinn_gate.py verify \
+  --bundle tools/mvp/bundle.json \
+  --trust-store tools/mvp/trust-store.json \
+  --policy spec/policy/mvp-policy.json \
+  --image-digest sha256:<image-digest>
+----

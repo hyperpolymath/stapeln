@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= CLI UX Compatibility Rules
+:toc: preamble
+:toclevels: 2
+
+This document defines command and flag compatibility goals with Docker, Podman,
+and nerdctl to reduce user friction.
+
+== 1. Command Parity (MVP)
+
+Implement (or alias) these commands with the same semantics:
+
+* `run`, `ps`, `stop`, `rm`, `pull`
+* `image ls` (alias `images`)
+* `logs`, `inspect`
+* `login`, `logout`
+
+== 2. Flag Compatibility (MVP)
+
+For `vordr run`, accept and preserve the common flags:
+
+* `-d`, `--detach`
+* `--rm`, `--remove-on-exit` (prefer new flag; accept old for migration)
+* `--name <name>`
+* `-p`, `--publish <host:container>`
+* `-e`, `--env <KEY=VALUE>`
+* `-v`, `--volume <host:container>`
+* `--network <name>`
+* `--pull <policy>`
+* `--entrypoint <cmd>`
+* `-w`, `--workdir <path>`
+* `-u`, `--user <uid[:gid]>`
+* `--read-only`
+* `--tmpfs <path>`
+* `--cap-add <cap>`, `--cap-drop <cap>`
+
+== 3. Argument Ordering Rules
+
+* Flags are order-independent.
+* Repeated flags append (e.g., multiple `-e` or `-v`).
+* Accept both `--flag value` and `--flag=value`.
+* Allow `--` to separate run command arguments.
+
+== 4. Migration Rules
+
+* If a Docker/Podman flag is unsupported, emit:
+  - `ERR_USAGE` with a short explanation
+  - a replacement suggestion when available
+* Preserve exit codes as defined in `docs/surface-contract.adoc`.
+* Keep `--rm` as a deprecated alias of `--remove-on-exit` until v1.0.
+
+== 5. 1.0 Parity Goals
+
+* `exec`, `stats`, `top`
+* `network ls/create/rm`
+* `volume ls/create/rm`
+* `system df/prune`

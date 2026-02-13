@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://svalinn.dev/schemas/compose.v1.json",
+  "title": "Svalinn Compose File",
+  "description": "Multi-container application definition for Svalinn edge shield",
+  "type": "object",
+  "required": ["version", "services"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Compose file format version"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "Project name (defaults to directory name)"
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/service"
+      },
+      "minProperties": 1,
+      "description": "Service definitions"
+    },
+    "networks": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/network"
+      },
+      "description": "Network definitions"
+    },
+    "volumes": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/volume"
+      },
+      "description": "Named volume definitions"
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/secret"
+      },
+      "description": "Secret definitions"
+    },
+    "x-svalinn": {
+      "type": "object",
+      "description": "Svalinn-specific extensions",
+      "properties": {
+        "policy": {
+          "type": "string",
+          "enum": ["strict", "standard", "permissive"],
+          "default": "standard",
+          "description": "Default edge policy for all services"
+        },
+        "verify": {
+          "type": "boolean",
+          "default": true,
+          "description": "Verify all images before running"
+        },
+        "attestations": {
+          "type": "object",
+          "properties": {
+            "require-sbom": { "type": "boolean", "default": false },
+            "require-signature": { "type": "boolean", "default": false },
+            "require-provenance": { "type": "boolean", "default": false }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "required": ["image"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "description": "Container image to use"
+        },
+        "build": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": {
+                "context": { "type": "string" },
+                "dockerfile": { "type": "string" },
+                "args": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" }
+                }
+              }
+            }
+          ],
+          "description": "Build configuration (context path or object)"
+        },
+        "command": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Override default command"
+        },
+        "entrypoint": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Override default entrypoint"
+        },
+        "environment": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*=.*$" }
+            }
+          ],
+          "description": "Environment variables"
+        },
+        "env_file": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "Environment file(s) to load"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string", "pattern": "^(\\d+:)?\\d+(/tcp|/udp)?$" },
+              {
+                "type": "object",
+                "properties": {
+                  "target": { "type": "integer" },
+                  "published": { "type": "integer" },
+                  "protocol": { "type": "string", "enum": ["tcp", "udp"] },
+                  "host_ip": { "type": "string" }
+                },
+                "required": ["target"]
+              }
+            ]
+          },
+          "description": "Port mappings"
+        },
+        "expose": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Ports to expose to linked services (not host)"
+        },
+        "volumes": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "properties": {
+                  "source": { "type": "string" },
+                  "target": { "type": "string" },
+                  "type": { "type": "string", "enum": ["bind", "volume", "tmpfs"] },
+                  "read_only": { "type": "boolean" }
+                },
+                "required": ["target"]
+              }
+            ]
+          },
+          "description": "Volume mounts"
+        },
+        "networks": {
+          "oneOf": [
+            { "type": "array", "items": { "type": "string" } },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "aliases": { "type": "array", "items": { "type": "string" } },
+                  "ipv4_address": { "type": "string" },
+                  "ipv6_address": { "type": "string" }
+                }
+              }
+            }
+          ],
+          "description": "Networks to attach"
+        },
+        "depends_on": {
+          "oneOf": [
+            { "type": "array", "items": { "type": "string" } },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "type": "string",
+                    "enum": ["service_started", "service_healthy", "service_completed_successfully"]
+                  }
+                },
+                "required": ["condition"]
+              }
+            }
+          ],
+          "description": "Service dependencies"
+        },
+        "healthcheck": {
+          "type": "object",
+          "properties": {
+            "test": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "interval": { "type": "string", "pattern": "^\\d+[smh]$" },
+            "timeout": { "type": "string", "pattern": "^\\d+[smh]$" },
+            "retries": { "type": "integer", "minimum": 0 },
+            "start_period": { "type": "string", "pattern": "^\\d+[smh]$" }
+          }
+        },
+        "restart": {
+          "type": "string",
+          "enum": ["no", "always", "on-failure", "unless-stopped"],
+          "default": "no"
+        },
+        "deploy": {
+          "type": "object",
+          "properties": {
+            "replicas": { "type": "integer", "minimum": 0 },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "limits": { "$ref": "#/$defs/resources" },
+                "reservations": { "$ref": "#/$defs/resources" }
+              }
+            },
+            "restart_policy": {
+              "type": "object",
+              "properties": {
+                "condition": { "type": "string", "enum": ["none", "on-failure", "any"] },
+                "delay": { "type": "string" },
+                "max_attempts": { "type": "integer" },
+                "window": { "type": "string" }
+              }
+            }
+          }
+        },
+        "labels": {
+          "oneOf": [
+            { "type": "object", "additionalProperties": { "type": "string" } },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "logging": {
+          "type": "object",
+          "properties": {
+            "driver": { "type": "string" },
+            "options": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "properties": {
+                  "source": { "type": "string" },
+                  "target": { "type": "string" },
+                  "uid": { "type": "string" },
+                  "gid": { "type": "string" },
+                  "mode": { "type": "integer" }
+                },
+                "required": ["source"]
+              }
+            ]
+          }
+        },
+        "x-svalinn": {
+          "type": "object",
+          "properties": {
+            "policy": { "type": "string", "enum": ["strict", "standard", "permissive"] },
+            "verify": { "type": "boolean" },
+            "ctp-bundle": { "type": "string", "description": "Path to .ctp bundle (Cerro Torre)" }
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "driver": { "type": "string", "default": "bridge" },
+        "driver_opts": { "type": "object", "additionalProperties": { "type": "string" } },
+        "external": { "type": "boolean", "default": false },
+        "internal": { "type": "boolean", "default": false },
+        "ipam": {
+          "type": "object",
+          "properties": {
+            "driver": { "type": "string" },
+            "config": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "subnet": { "type": "string" },
+                  "gateway": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "volume": {
+      "type": "object",
+      "properties": {
+        "driver": { "type": "string", "default": "local" },
+        "driver_opts": { "type": "object", "additionalProperties": { "type": "string" } },
+        "external": { "type": "boolean", "default": false },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "secret": {
+      "type": "object",
+      "properties": {
+        "file": { "type": "string" },
+        "environment": { "type": "string" },
+        "external": { "type": "boolean", "default": false }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "cpus": { "type": "string", "pattern": "^\\d+(\\.\\d+)?$" },
+        "memory": { "type": "string", "pattern": "^\\d+[bkmg]?$" },
+        "pids": { "type": "integer" }
+      }
+    }
+  }
+}

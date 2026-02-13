@@ -1,0 +1,307 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Svalinn Security Configuration
+:toc: left
+
+== Overview
+
+This directory contains security configurations for Svalinn edge gateway:
+
+- **firewalld/** - Firewall zones and policies
+- **modsecurity/** - Web Application Firewall (WAF) rules
+
+== Firewalld Configuration
+
+=== Zone Descriptions
+
+[cols="1,2,2",options="header"]
+|===
+| Zone | Purpose | Network
+
+| **svalinn-edge**
+| Public-facing HTTPS gateway
+| External internet (0.0.0.0/0, ::/0)
+
+| **svalinn-internal**
+| Internal IPC to Vörðr via selur
+| Loopback + private networks (127.0.0.0/8, 10.0.0.0/8)
+
+|===
+
+=== Deployment
+
+**Step 1: Install firewalld**
+[source,bash]
+----
+# Fedora/RHEL
+sudo dnf install firewalld
+
+# Debian/Ubuntu
+sudo apt install firewalld
+----
+
+**Step 2: Copy zone files**
+[source,bash]
+----
+sudo cp firewalld/zones/*.xml /etc/firewalld/zones/
+sudo firewall-cmd --reload
+----
+
+**Step 3: Apply zones to interfaces**
+[source,bash]
+----
+# External interface (public internet)
+sudo firewall-cmd --zone=svalinn-edge --change-interface=eth0 --permanent
+
+# Internal interface (to Vörðr)
+sudo firewall-cmd --zone=svalinn-internal --change-interface=lo --permanent
+
+sudo firewall-cmd --reload
+----
+
+**Step 4: Verify**
+[source,bash]
+----
+sudo firewall-cmd --get-active-zones
+sudo firewall-cmd --zone=svalinn-edge --list-all
+sudo firewall-cmd --zone=svalinn-internal --list-all
+----
+
+== ModSecurity Configuration
+
+=== OWASP Core Rule Set (CRS)
+
+The `svalinn-modsecurity.conf` file includes:
+
+- SQL injection protection
+- XSS (Cross-Site Scripting) protection
+- SSRF (Server-Side Request Forgery) protection
+- Path traversal protection
+- Command injection protection
+- Rate limiting (100 req/min per IP)
+- Security scanner detection
+
+=== Deployment (with nginx)
+
+**Step 1: Install ModSecurity**
+[source,bash]
+----
+# Fedora
+sudo dnf install nginx nginx-mod-modsecurity
+
+# Debian/Ubuntu
+sudo apt install nginx libnginx-mod-security2
+----
+
+**Step 2: Download OWASP CRS**
+[source,bash]
+----
+cd /etc/nginx/modsecurity
+sudo git clone https://github.com/coreruleset/coreruleset.git owasp-crs
+cd owasp-crs
+sudo cp crs-setup.conf.example crs-setup.conf
+----
+
+**Step 3: Configure nginx**
+[source,nginx]
+----
+# /etc/nginx/nginx.conf
+http {
+    # Enable ModSecurity
+    modsecurity on;
+    modsecurity_rules_file /etc/nginx/modsecurity/svalinn-modsecurity.conf;
+
+    server {
+        listen 443 ssl http2;
+        server_name svalinn.example.com;
+
+        ssl_certificate /etc/ssl/certs/svalinn.crt;
+        ssl_certificate_key /etc/ssl/private/svalinn.key;
+
+        # Proxy to Deno backend
+        location / {
+            proxy_pass http://127.0.0.1:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
+----
+
+**Step 4: Copy Svalinn config**
+[source,bash]
+----
+sudo cp modsecurity/svalinn-modsecurity.conf /etc/nginx/modsecurity/
+sudo nginx -t
+sudo systemctl restart nginx
+----
+
+=== Deployment (with Apache)
+
+**Step 1: Install ModSecurity**
+[source,bash]
+----
+# Fedora
+sudo dnf install httpd mod_security mod_security_crs
+
+# Debian/Ubuntu
+sudo apt install apache2 libapache2-mod-security2 modsecurity-crs
+----
+
+**Step 2: Configure Apache**
+[source,apache]
+----
+# /etc/httpd/conf.d/svalinn.conf
+<VirtualHost *:443>
+    ServerName svalinn.example.com
+
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/svalinn.crt
+    SSLCertificateKeyFile /etc/ssl/private/svalinn.key
+
+    # ModSecurity
+    SecRuleEngine On
+    Include /etc/httpd/modsecurity.d/svalinn-modsecurity.conf
+
+    # Proxy to Deno backend
+    ProxyPass / http://127.0.0.1:8000/
+    ProxyPassReverse / http://127.0.0.1:8000/
+</VirtualHost>
+----
+
+**Step 3: Restart Apache**
+[source,bash]
+----
+sudo systemctl restart httpd
+----
+
+== Security Headers
+
+Security headers are applied by ReScript middleware: `src/gateway/SecurityHeaders.res`
+
+Headers applied:
+
+[cols="1,2",options="header"]
+|===
+| Header | Value
+
+| **Strict-Transport-Security**
+| `max-age=31536000; includeSubDomains; preload`
+
+| **X-Frame-Options**
+| `DENY`
+
+| **X-Content-Type-Options**
+| `nosniff`
+
+| **X-XSS-Protection**
+| `1; mode=block`
+
+| **Content-Security-Policy**
+| `default-src 'self'; script-src 'self'; ...`
+
+| **Referrer-Policy**
+| `strict-origin-when-cross-origin`
+
+| **Permissions-Policy**
+| `geolocation=(), microphone=(), camera=()`
+
+|===
+
+== Testing
+
+=== Test Firewall Rules
+
+[source,bash]
+----
+# Should succeed (HTTPS)
+curl https://svalinn.example.com
+
+# Should fail (blocked by firewall)
+nmap -p 22,3306,5432 svalinn.example.com
+----
+
+=== Test ModSecurity
+
+[source,bash]
+----
+# SQL injection (should be blocked)
+curl "https://svalinn.example.com/api?id=1' OR '1'='1"
+
+# XSS (should be blocked)
+curl "https://svalinn.example.com/api?name=<script>alert(1)</script>"
+
+# SSRF (should be blocked)
+curl "https://svalinn.example.com/api?url=http://127.0.0.1"
+
+# Rate limit (should be blocked after 100 requests)
+for i in {1..150}; do curl https://svalinn.example.com; done
+----
+
+=== Test Security Headers
+
+[source,bash]
+----
+curl -I https://svalinn.example.com
+
+# Should see:
+# Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+# X-Frame-Options: DENY
+# Content-Security-Policy: default-src 'self'; ...
+----
+
+== Monitoring
+
+=== ModSecurity Audit Logs
+
+[source,bash]
+----
+# View blocked requests
+sudo tail -f /var/log/svalinn/modsec_audit.log
+
+# Count attacks by type
+sudo grep -c "SQL Injection" /var/log/svalinn/modsec_audit.log
+sudo grep -c "XSS Attack" /var/log/svalinn/modsec_audit.log
+sudo grep -c "SSRF Attack" /var/log/svalinn/modsec_audit.log
+----
+
+=== Firewalld Logs
+
+[source,bash]
+----
+# View dropped packets
+sudo journalctl -u firewalld | grep DROP
+
+# Count drops by source IP
+sudo journalctl -u firewalld | grep DROP | awk '{print $NF}' | sort | uniq -c | sort -nr
+----
+
+== Compliance
+
+These configurations implement defenses against:
+
+- **OWASP Top 10 2021:**
+  - A01:2021 - Broken Access Control (RBAC + JWT)
+  - A02:2021 - Cryptographic Failures (TLS 1.3)
+  - A03:2021 - Injection (ModSecurity rules)
+  - A04:2021 - Insecure Design (Threat modeling)
+  - A05:2021 - Security Misconfiguration (Hardened configs)
+  - A06:2021 - Vulnerable Components (Dependency scanning)
+  - A07:2021 - Identification Failures (OAuth2)
+  - A08:2021 - Software Integrity Failures (SBOM)
+  - A09:2021 - Logging Failures (Audit logs)
+  - A10:2021 - SSRF (ModSecurity rule 1003)
+
+- **CIS Benchmarks:**
+  - Firewall enabled and configured
+  - Default-deny policy
+  - Rate limiting enabled
+  - Security headers applied
+
+== References
+
+- **OWASP ModSecurity CRS:** https://github.com/coreruleset/coreruleset
+- **OWASP Top 10:** https://owasp.org/www-project-top-ten/
+- **Firewalld Documentation:** https://firewalld.org/documentation/
+- **Security Headers:** https://securityheaders.com/
