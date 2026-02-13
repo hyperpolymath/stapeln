@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run --allow-net --allow-read --allow-env
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// dev-server.ts - Deno development server with hot reload
+// dev-server.js - Deno development server with hot reload
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { serveFile } from "https://deno.land/std@0.224.0/http/file_server.ts";
@@ -9,8 +9,7 @@ import { extname } from "https://deno.land/std@0.224.0/path/mod.ts";
 const PORT = 8080;
 const ROOT_DIR = Deno.cwd();
 
-// MIME types
-const MIME_TYPES: Record<string, string> = {
+const MIME_TYPES = {
   ".html": "text/html",
   ".js": "application/javascript",
   ".mjs": "application/javascript",
@@ -25,38 +24,33 @@ const MIME_TYPES: Record<string, string> = {
   ".wasm": "application/wasm",
 };
 
-// Get MIME type from file extension
-function getMimeType(path: string): string {
+function getMimeType(path) {
   const ext = extname(path);
   return MIME_TYPES[ext] || "application/octet-stream";
 }
 
-// Hot reload script injection
 const HOT_RELOAD_SCRIPT = `
 <script>
-  // Hot reload WebSocket client
   (function() {
     const ws = new WebSocket('ws://localhost:${PORT}/ws');
     ws.onmessage = (event) => {
       if (event.data === 'reload') {
-        console.log('🔄 Hot reload triggered - reloading page...');
+        console.log('Hot reload triggered');
         window.location.reload();
       }
     };
-    ws.onerror = () => console.log('⚠️  Hot reload disconnected');
+    ws.onerror = () => console.log('Hot reload disconnected');
     ws.onclose = () => {
-      console.log('🔌 Hot reload connection closed - reconnecting in 1s...');
+      console.log('Hot reload connection closed - reconnecting in 1s...');
       setTimeout(() => window.location.reload(), 1000);
     };
-    console.log('✓ Hot reload enabled');
+    console.log('Hot reload enabled');
   })();
 </script>
 `;
 
-// Active WebSocket connections for hot reload
-const wsClients = new Set<WebSocket>();
+const wsClients = new Set();
 
-// File watcher for hot reload
 async function watchFiles() {
   const watcher = Deno.watchFs([
     `${ROOT_DIR}/src`,
@@ -64,14 +58,13 @@ async function watchFiles() {
     `${ROOT_DIR}/index.html`,
   ]);
 
-  console.log("👁️  Watching for file changes...");
+  console.log("Watching for file changes...");
 
   for await (const event of watcher) {
     if (event.kind === "modify" || event.kind === "create") {
       const paths = event.paths.map((p) => p.replace(ROOT_DIR, ""));
-      console.log(`🔄 File changed: ${paths.join(", ")}`);
+      console.log(`File changed: ${paths.join(", ")}`);
 
-      // Notify all connected clients
       wsClients.forEach((client) => {
         try {
           client.send("reload");
@@ -84,12 +77,10 @@ async function watchFiles() {
   }
 }
 
-// Request handler
-async function handler(req: Request): Promise<Response> {
+async function handler(req) {
   const url = new URL(req.url);
   let pathname = url.pathname;
 
-  // Handle WebSocket upgrade for hot reload
   if (pathname === "/ws") {
     const upgrade = req.headers.get("upgrade") || "";
     if (upgrade.toLowerCase() !== "websocket") {
@@ -110,23 +101,18 @@ async function handler(req: Request): Promise<Response> {
     return response;
   }
 
-  // Serve index.html for root
   if (pathname === "/") {
     pathname = "/index.html";
   }
 
-  // Construct file path
   const filePath = `${ROOT_DIR}${pathname}`;
 
   try {
-    // Check if file exists
     const fileInfo = await Deno.stat(filePath);
 
     if (fileInfo.isFile) {
-      // Serve file
       const response = await serveFile(req, filePath);
 
-      // Inject hot reload script into HTML files
       if (pathname.endsWith(".html")) {
         const content = await Deno.readTextFile(filePath);
         const withHotReload = content.replace(
@@ -143,7 +129,6 @@ async function handler(req: Request): Promise<Response> {
         });
       }
 
-      // Add no-cache headers for development
       const headers = new Headers(response.headers);
       headers.set("cache-control", "no-cache");
 
@@ -153,9 +138,7 @@ async function handler(req: Request): Promise<Response> {
       });
     }
   } catch (err) {
-    // File not found
     if (err instanceof Deno.errors.NotFound) {
-      // Try to serve index.html for SPA routing
       try {
         const indexPath = `${ROOT_DIR}/index.html`;
         const content = await Deno.readTextFile(indexPath);
@@ -183,32 +166,11 @@ async function handler(req: Request): Promise<Response> {
   return new Response("404 Not Found", { status: 404 });
 }
 
-// Start server
-console.log(`
-╔════════════════════════════════════════════════════════════╗
-║                                                            ║
-║  🚀 stapeln Development Server                             ║
-║  ⚡ Powered by Deno                                        ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
+console.log(`stapeln dev server running at http://localhost:${PORT}`);
+console.log("Hot reload: ENABLED");
 
-📍 Server running at: http://localhost:${PORT}
-👁️  Hot reload: ENABLED
-🔄 File watcher: ACTIVE
-
-Features:
-  ✓ Automatic page reload on file changes
-  ✓ SPA routing fallback
-  ✓ No-cache headers for development
-  ✓ WebSocket-based hot reload
-
-Press Ctrl+C to stop the server
-`);
-
-// Start file watcher in background
 watchFiles().catch((err) => {
   console.error("File watcher error:", err);
 });
 
-// Start HTTP server
 await serve(handler, { port: PORT });

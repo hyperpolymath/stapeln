@@ -40,3 +40,8 @@ type msg =
   | LoadStack(string)
   | StackSaved(Result.t<string, string>)
   | StackLoaded(Result.t<model, string>)
+  // Security
+  | RunSecurityScan
+  | SecurityScanResult(validationResult)
+  | RunGapAnalysis
+  | GapAnalysisResult(validationResult)

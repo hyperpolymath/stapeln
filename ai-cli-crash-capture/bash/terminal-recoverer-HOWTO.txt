@@ -1,0 +1,19 @@
+Terminal recoverer installed.
+
+Start at login (systemd user):
+  systemctl --user enable --now terminal-recoverer.service
+
+Enable coredump watcher (best-effort):
+  systemctl --user enable --now terminal-recoverer-coredump.service
+
+Optional session logging (bash):
+  export ENABLE_TERMINAL_LOGGING=1
+  # add to ~/.bashrc or ~/.bash_profile if you want it always on
+
+Using tmux recovery session:
+  tmux attach -t recovery
+
+Logs:
+  ~/Documents/terminal-logs/
+Crash captures:
+  ~/Documents/crash-captures/

@@ -46,3 +46,25 @@ type htmlInputElement
 // Casts
 external elementToHtml: element => option<htmlElement> = "%identity"
 external htmlToInput: htmlElement => option<htmlInputElement> = "%identity"
+
+// Fetch API
+type fetchResponse
+
+@send external json: fetchResponse => promise<JSON.t> = "json"
+@send external text: fetchResponse => promise<string> = "text"
+@get external fetchOk: fetchResponse => bool = "ok"
+@get external fetchStatus: fetchResponse => int = "status"
+
+type fetchInit = {method?: string, headers?: dict<string>, body?: string}
+
+@val external fetch: (string, fetchInit) => promise<fetchResponse> = "fetch"
+
+// LocalStorage
+@val @scope(("window", "localStorage"))
+external getItem: string => Nullable.t<string> = "getItem"
+
+@val @scope(("window", "localStorage"))
+external setItem: (string, string) => unit = "setItem"
+
+@val @scope(("window", "localStorage"))
+external removeItem: string => unit = "removeItem"

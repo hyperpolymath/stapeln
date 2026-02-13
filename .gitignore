@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # RSR-compliant .gitignore
 
 # OS & Editor
@@ -16,7 +16,7 @@ Thumbs.db
 /build/
 /dist/
 /out/
-/zig-out/
+**/zig-out/
 **/.zig-cache/
 
 # Dependencies

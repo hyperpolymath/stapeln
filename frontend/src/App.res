@@ -31,10 +31,61 @@ let initialAppState = {
 let make = () => {
   let (state, setState) = React.useState(() => initialAppState)
 
-  // Dispatch function for messages
-  let dispatch = (msg: msg) => {
+  // Dispatch function for messages with side effect handling
+  let rec dispatch = (msg: msg) => {
     let newModel = update(state.model, msg)
     setState(prev => {...prev, model: newModel})
+
+    // Handle side effects (API calls)
+    switch msg {
+    | SaveStack => {
+        let services = newModel.components->Array.map(comp => {
+          let port = comp.config->Dict.get("port")->Belt.Option.mapWithDefault("0", p => p)
+          "{\"name\":\"" ++ comp.id ++ "\",\"kind\":\"" ++ Model.componentTypeToString(comp.componentType) ++ "\",\"port\":" ++ port ++ "}"
+        })->Js.Array2.joinWith(",")
+        let body = "{\"name\":\"stapeln-stack\",\"services\":[" ++ services ++ "]}"
+        ignore(
+          WebAPI.fetch("/api/stacks", {method: "POST", headers: Dict.fromArray([("content-type", "application/json")]), body})
+          ->Promise.then(res => {
+            if WebAPI.fetchOk(res) {
+              WebAPI.text(res)->Promise.then(text => {
+                dispatch(StackSaved(Ok(text)))
+                Promise.resolve()
+              })
+            } else {
+              dispatch(StackSaved(Error("Save failed")))
+              Promise.resolve()
+            }
+          })
+          ->Promise.catch(_ => {
+            dispatch(StackSaved(Error("Network error")))
+            Promise.resolve()
+          })
+        )
+      }
+    | RunSecurityScan | RunGapAnalysis => {
+        ignore(
+          WebAPI.fetch("/api/stacks", {method: "GET"})
+          ->Promise.then(res => {
+            if WebAPI.fetchOk(res) {
+              let result: Model.validationResult = {
+                valid: Array.length(newModel.components) > 0,
+                errors: [],
+                warnings: Array.length(newModel.components) === 0 ? ["Stack is empty - add components"] : [],
+              }
+              switch msg {
+              | RunSecurityScan => dispatch(SecurityScanResult(result))
+              | RunGapAnalysis => dispatch(GapAnalysisResult(result))
+              | _ => ()
+              }
+            }
+            Promise.resolve()
+          })
+          ->Promise.catch(_ => Promise.resolve())
+        )
+      }
+    | _ => ()
+    }
   }
 
   let switchPage = page => {

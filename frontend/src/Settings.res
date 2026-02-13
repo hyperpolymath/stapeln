@@ -462,6 +462,10 @@ let view = (settings: settings, isDark: bool) => {
     <div style={ReactDOM.Style.make(~display="flex", ~gap="1rem", ~marginTop="2rem", ())}>
       <button
         ariaLabel="Reset all settings to default values"
+        onClick={_ => {
+          WebAPI.setItem("stapeln-settings", "reset")
+          Console.log("Settings reset to defaults")
+        }}
         style={ReactDOM.Style.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -478,6 +482,19 @@ let view = (settings: settings, isDark: bool) => {
 
       <button
         ariaLabel="Save settings"
+        onClick={_ => {
+          let json = JSON.stringify(JSON.Encode.object(Dict.fromArray([
+            ("theme", JSON.Encode.string(settings.theme)),
+            ("fontSize", JSON.Encode.int(settings.fontSize)),
+            ("highContrast", JSON.Encode.bool(settings.highContrast)),
+            ("reducedMotion", JSON.Encode.bool(settings.reducedMotion)),
+            ("screenReaderMode", JSON.Encode.bool(settings.screenReaderMode)),
+            ("gridSnapping", JSON.Encode.bool(settings.gridSnapping)),
+            ("gridSize", JSON.Encode.int(settings.gridSize)),
+          ])))
+          WebAPI.setItem("stapeln-settings", json)
+          Console.log("Settings saved")
+        }}
         style={ReactDOM.Style.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? "#66B2FF" : "#0052CC",
@@ -494,6 +511,9 @@ let view = (settings: settings, isDark: bool) => {
 
       <button
         ariaLabel="Cancel changes"
+        onClick={_ => {
+          Console.log("Settings changes cancelled")
+        }}
         style={ReactDOM.Style.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",

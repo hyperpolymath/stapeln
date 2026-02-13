@@ -20,16 +20,37 @@ _"Containers for People Who Hate Containers"_
 **A 12-year-old who is reasonably IT-capable can help their parents build a secure container stack.**
 That means no prior container knowledge is required, and security guidance is clear, visual, and actionable.
 
-== Current Status (as of 2026-02-09)
+== Current Status (as of 2026-02-13)
 
-* **UI Prototype**: 8 views implemented (Network, Stack, Lago Grey, Ports, Security, Gaps, Simulation, Settings)
-* **Backend**: MVP implemented (Phoenix REST + GraphQL via Absinthe)
-* **Validation Engine**: MVP checks implemented; full roadmap rules still pending
-* **Persistence**: Local import/export hooks exist; durable storage not wired
-* **Docs**: Some documents are aspirational; see `STATUS.md` for the source of truth
+**Honest completion: ~35%**
+
+[cols="2,1,3"]
+|===
+| Component | Status | Notes
+
+| UI (8 views) | Working | All render, navigate, TEA pattern solid
+| Backend (Phoenix REST + GraphQL) | Working | CRUD + basic validation live
+| Zig FFI shared library | Working | Real CRUD + validation (not stubs)
+| Zig CLI bridge | Working | JSON store persistence, full validation
+| Export (JSON + compose files) | Working | Real container images, not `image: TODO`
+| Import (JSON designs) | Working | Validation + round-trip support
+| Simulation mode | Partial | WASM/JS packet kernel, sample data only
+| Security inspector | Partial | UI renders with sample data, no backend calls
+| Gap analysis | Partial | UI renders with sample data, no backend calls
+| Settings | Partial | Form renders, localStorage save added
+| Frontend-backend wiring | Partial | SaveStack/LoadStack wired, data model mismatch remains
+| Idris2 proofs | Stubs | Declarations only, zero actual proofs
+| miniKanren engine | Not started | Documentation only
+| VeriSimDB integration | Not started | Documentation only
+| Authentication | Not started | No PAM, JWT, or auth flow
+| Database | Not started | In-memory GenServer only, no Ecto/PostgreSQL
+| Post-quantum crypto | Not started | 0%
+|===
+
+See `STATUS.md` for the canonical source of truth.
 
 This repo focuses on the stapeln app UI.
-The DOM‑mounter workstream has been extracted to a separate repo:
+The DOM-mounter workstream has been extracted to a separate repo:
 `/var/mnt/eclipse/repos/stapeln-dom-mounter`.
 
 == What is stapeln?

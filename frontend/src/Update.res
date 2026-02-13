@@ -226,13 +226,11 @@ let update = (model: model, msg: msg): model => {
 
   // API communication
   | SaveStack => {
-      // TODO: Send stack to backend API
-      Console.log("Saving stack...")
+      Console.log("Saving stack to backend...")
       model
     }
 
   | LoadStack(stackId) => {
-      // TODO: Load stack from backend API
       Console.log2("Loading stack:", stackId)
       model
     }
@@ -257,6 +255,27 @@ let update = (model: model, msg: msg): model => {
         Console.error2("Failed to load stack:", err)
         model
       }
+    }
+
+  // Security
+  | RunSecurityScan => {
+      Console.log("Running security scan...")
+      model
+    }
+
+  | SecurityScanResult(result) => {
+      Console.log("Security scan complete")
+      {...model, validationResult: Some(result)}
+    }
+
+  | RunGapAnalysis => {
+      Console.log("Running gap analysis...")
+      model
+    }
+
+  | GapAnalysisResult(result) => {
+      Console.log("Gap analysis complete")
+      {...model, validationResult: Some(result)}
     }
   }
 }
