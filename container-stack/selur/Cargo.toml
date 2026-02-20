@@ -13,7 +13,7 @@ keywords = ["wasm", "ipc", "ephapax", "linear-types", "zero-copy"]
 categories = ["wasm", "network-programming"]
 
 [dependencies]
-wasmtime = "28.0"
+wasmtime = "36.0"
 anyhow = "1.0"
 
 [dev-dependencies]
