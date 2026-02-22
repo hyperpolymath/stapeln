@@ -65,6 +65,24 @@ impl SyscallEvent {
             169 | 170 | 171    // reboot, sethostname, setdomainname
         )
     }
+
+    /// Check if this syscall queries the system clock.
+    ///
+    /// Time-bombs use these to determine their activation date.
+    /// Monitoring which code paths query time is essential for
+    /// temporal isolation scanning (ADR-007).
+    pub fn is_time_query(&self) -> bool {
+        matches!(
+            self.syscall_nr,
+            96 |   // gettimeofday
+            228 |  // clock_gettime
+            229 |  // clock_settime
+            230 |  // clock_nanosleep
+            35 |   // nanosleep
+            101 |  // getitimer
+            38     // setitimer (alarm-based triggers)
+        )
+    }
 }
 
 
@@ -137,12 +155,62 @@ pub enum FileOperation {
     Chown,
 }
 
+/// Time query event captured during temporal isolation scanning
+///
+/// Tracks when and how the target code queries the system clock.
+/// Used by the temporal isolation engine (ADR-007) to detect
+/// time-bomb activation logic.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimeEvent {
+    /// Process ID
+    pub pid: u32,
+
+    /// Which time source was queried
+    pub source: TimeSource,
+
+    /// The time value returned to the process (simulated)
+    pub returned_seconds: i64,
+
+    /// The real wall-clock time (actual)
+    pub real_seconds: i64,
+
+    /// Current time dilation offset applied
+    pub offset_seconds: i64,
+
+    /// Timestamp (nanoseconds since boot)
+    pub timestamp_ns: u64,
+
+    /// Command name
+    pub comm: String,
+}
+
+/// Which time source the target process queried
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum TimeSource {
+    /// gettimeofday() — syscall 96
+    Gettimeofday,
+    /// clock_gettime(CLOCK_REALTIME) — syscall 228
+    ClockRealtime,
+    /// clock_gettime(CLOCK_MONOTONIC) — syscall 228
+    ClockMonotonic,
+    /// nanosleep / clock_nanosleep — syscalls 35, 230
+    Sleep,
+    /// RDTSC instruction (only visible in VM mode)
+    Rdtsc,
+    /// NTP query (network-level intercept)
+    Ntp,
+    /// PTP sync (network-level intercept)
+    Ptp,
+}
+
 /// Type of event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventType {
     Syscall(SyscallEvent),
     Network(NetworkEvent),
     File(FileEvent),
+    /// Time query event (temporal isolation mode only)
+    Time(TimeEvent),
 }
 
 /// A container event (wrapper with metadata)
@@ -183,6 +251,15 @@ impl ContainerEvent {
             container_id,
             timestamp: SystemTime::now(),
             event_type: EventType::File(event),
+        }
+    }
+
+    /// Create a new time query event (temporal isolation mode)
+    pub fn time(container_id: String, event: TimeEvent) -> Self {
+        Self {
+            container_id,
+            timestamp: SystemTime::now(),
+            event_type: EventType::Time(event),
         }
     }
 }
@@ -226,6 +303,7 @@ fn syscall_name(syscall_nr: i64) -> &'static str {
         90 => "mkdir",
         91 => "rmdir",
         96 => "gettimeofday",
+        101 => "getitimer",
         133 => "mknod",
         135 => "fchmod",
         136 => "fchown",
@@ -250,6 +328,9 @@ fn syscall_name(syscall_nr: i64) -> &'static str {
         272 => "unshare",
         308 => "setns",
         322 => "execveat",
+        228 => "clock_gettime",
+        229 => "clock_settime",
+        230 => "clock_nanosleep",
         332 => "finit_module",
         _ => "unknown",
     }

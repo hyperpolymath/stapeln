@@ -54,7 +54,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub use anomaly::{AnomalyDetector, AnomalyReport};
-pub use events::{ContainerEvent, EventType};
+pub use events::{ContainerEvent, EventType, TimeEvent, TimeSource};
 pub use syscall::SyscallPolicy;
 
 /// Configuration for the eBPF monitor

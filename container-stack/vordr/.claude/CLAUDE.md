@@ -48,12 +48,12 @@ The following files in `.machine_readable/` contain structured project metadata:
 ### Idris2
 - Dependent types are documentation — name them clearly
 - Proofs in `src/idris2/proofs/` with literate comments
-- SPDX header: `-- SPDX-License-Identifier: AGPL-3.0-or-later`
+- SPDX header: `-- SPDX-License-Identifier: PMPL-1.0-or-later`
 
 ### Rust
 - `rustfmt` + `clippy` mandatory
 - No `unsafe` except in eBPF bindings (document why)
-- SPDX header: `// SPDX-License-Identifier: AGPL-3.0-or-later`
+- SPDX header: `// SPDX-License-Identifier: PMPL-1.0-or-later`
 
 ### Elixir
 - `mix format` mandatory
@@ -75,6 +75,12 @@ See `META.scm` for ADRs. Key decisions:
 4. **ADR-004**: eBPF for runtime monitoring
 5. **ADR-005**: Threshold signatures for multi-stakeholder trust
 6. **ADR-006**: RISC-V as primary edge target
+7. **ADR-007**: Temporal isolation engine (see `docs/ADR-007-temporal-isolation.md`)
+   - Time dilation as primary security primitive (not containers/VMs)
+   - BEAM port interceptor swarm (65,535 processes, ~20MB)
+   - eBPF + PTP/NTP clock manipulation for undetectable observation
+   - CT-scan tomographic mode: distributed across 1,000–100,000 instances
+   - Integration with panic-attack abduct subcommand
 
 ## Key Files
 
@@ -131,6 +137,8 @@ just prove container_lifecycle.idr # Generate proofs
 - **Cerro Torre**: Consumes build attestations
 - **Oblibeny**: Orchestration handoff
 - **poly-ssg-mcp**: MCP interface exposure
+- **panic-attack**: `abduct` subcommand consumes temporal isolation engine
+- **selur**: IPC bridge between Rust eBPF and BEAM orchestrator
 
 ## Commit Style
 

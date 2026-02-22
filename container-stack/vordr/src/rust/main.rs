@@ -19,6 +19,7 @@ mod mcp;
 mod network;
 mod registry;
 mod runtime;
+mod temporal;
 
 use cli::Cli;
 
