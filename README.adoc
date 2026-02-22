@@ -555,3 +555,8 @@ Designed to convert container-haters into container-users. 🎯
 ---
 
 _Built with ❤️  and formal verification_
+
+
+== Architecture
+
+See link:TOPOLOGY.md[TOPOLOGY.md] for a visual architecture map and completion dashboard.
