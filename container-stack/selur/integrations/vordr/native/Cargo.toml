@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.34"
-wasmtime = "28.0"
+wasmtime = "41.0"
 anyhow = "1.0"
 
 [dependencies.selur]
