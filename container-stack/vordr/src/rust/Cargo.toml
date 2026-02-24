@@ -45,7 +45,7 @@ serde_json = "1"
 serde_yaml = "0.9"
 base64 = "0.22"
 toml = "0.8"
-protobuf = "2" # Already present
+protobuf = "3" # Already present
 
 # XDG paths
 dirs = "5"
