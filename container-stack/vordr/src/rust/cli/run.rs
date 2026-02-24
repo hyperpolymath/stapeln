@@ -73,6 +73,14 @@ pub struct RunArgs {
     #[arg(long)]
     pub no_network: bool,
 
+    /// Memory limit (e.g., 512M, 2G)
+    #[arg(long)]
+    pub memory_limit: Option<String>,
+
+    /// CPU limit (percentage of one core, e.g., 50 for 50%)
+    #[arg(long)]
+    pub cpu_limit: Option<u32>,
+
     /// Command and arguments to run
     #[arg(trailing_var_arg = true)]
     pub command: Vec<String>,
@@ -215,6 +223,14 @@ pub async fn execute(args: RunArgs, cli: &Cli) -> Result<()> {
     // Set read-only rootfs
     if args.read_only {
         oci_builder = oci_builder.readonly_rootfs(true);
+    }
+
+    // Set resource limits
+    if let Some(ref memory) = args.memory_limit {
+        oci_builder = oci_builder.memory_limit(memory);
+    }
+    if let Some(cpu) = args.cpu_limit {
+        oci_builder = oci_builder.cpu_limit(cpu);
     }
 
     // Write OCI config.json

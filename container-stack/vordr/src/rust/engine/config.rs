@@ -5,6 +5,7 @@ use oci_spec::runtime::{
     Capability, LinuxBuilder, LinuxCapabilitiesBuilder, LinuxIdMapping, LinuxIdMappingBuilder,
     LinuxNamespace, LinuxNamespaceBuilder, LinuxNamespaceType, MountBuilder, ProcessBuilder,
     RootBuilder, Spec, SpecBuilder, UserBuilder,
+    LinuxResourcesBuilder, LinuxMemoryBuilder, LinuxCpuBuilder,
 };
 use std::collections::HashSet;
 use std::path::Path;
@@ -62,6 +63,10 @@ pub struct OciConfigBuilder {
     uid_mappings: Vec<(u32, u32, u32)>,
     /// GID mappings for user namespace
     gid_mappings: Vec<(u32, u32, u32)>,
+    /// Memory limit
+    memory_limit: Option<String>,
+    /// CPU limit (percentage)
+    cpu_limit: Option<u32>,
 }
 
 /// Mount specification
@@ -109,7 +114,21 @@ impl OciConfigBuilder {
             no_new_privileges: true,
             uid_mappings: Vec::new(),
             gid_mappings: Vec::new(),
+            memory_limit: None,
+            cpu_limit: None,
         }
+    }
+
+    /// Set memory limit (e.g. "512M", "2G")
+    pub fn memory_limit(mut self, limit: impl Into<String>) -> Self {
+        self.memory_limit = Some(limit.into());
+        self
+    }
+
+    /// Set CPU limit (percentage of one core)
+    pub fn cpu_limit(mut self, limit: u32) -> Self {
+        self.cpu_limit = Some(limit);
+        self
     }
 
     /// Create from a validated configuration
@@ -331,7 +350,39 @@ impl OciConfigBuilder {
             .collect();
 
         // Build linux config
+        let mut resources_builder = LinuxResourcesBuilder::default();
+        let mut has_resources = false;
+
+        if let Some(ref mem_limit) = self.memory_limit {
+            let bytes = parse_memory(mem_limit)?;
+            let memory = LinuxMemoryBuilder::default()
+                .limit(bytes as i64)
+                .build()
+                .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
+            resources_builder = resources_builder.memory(memory);
+            has_resources = true;
+        }
+
+        if let Some(cpu_pct) = self.cpu_limit {
+            // quota = (period * percentage) / 100
+            let period = 100000u64; // default 100ms
+            let quota = (period * cpu_pct as u64) / 100;
+            let cpu = LinuxCpuBuilder::default()
+                .period(period)
+                .quota(quota as i64)
+                .build()
+                .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
+            resources_builder = resources_builder.cpu(cpu);
+            has_resources = true;
+        }
+
         let mut linux_builder = LinuxBuilder::default().namespaces(namespaces);
+
+        if has_resources {
+            let resources = resources_builder.build()
+                .map_err(|e| ConfigError::OciSpec(e.to_string()))?;
+            linux_builder = linux_builder.resources(resources);
+        }
 
         if !uid_mappings.is_empty() {
             linux_builder = linux_builder.uid_mappings(uid_mappings);
@@ -583,6 +634,26 @@ impl OciConfigBuilder {
                 .unwrap(),
         ]
     }
+}
+
+/// Parse memory string (e.g. "512M", "2G") into bytes
+fn parse_memory(s: &str) -> Result<u64, ConfigError> {
+    let s = s.trim().to_uppercase();
+    let (num_str, unit) = if s.ends_with('K') {
+        (&s[..s.len() - 1], 1024u64)
+    } else if s.ends_with('M') {
+        (&s[..s.len() - 1], 1024 * 1024u64)
+    } else if s.ends_with('G') {
+        (&s[..s.len() - 1], 1024 * 1024 * 1024u64)
+    } else {
+        (s.as_str(), 1u64)
+    };
+
+    let num: u64 = num_str.parse().map_err(|_| {
+        ConfigError::Invalid(format!("Invalid memory limit format: {}", s))
+    })?;
+
+    Ok(num * unit)
 }
 
 #[cfg(test)]

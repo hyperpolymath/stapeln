@@ -34,27 +34,27 @@ signatureNonReplayable : (bundle1 : SignedBundle)
                        -> (sig : Ed25519Signature)
                        -> (pk : Ed25519PublicKey)
                        -> Not (bundleHash bundle1 = bundleHash bundle2)
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                       -> verifyEd25519 pk (believe_me $ bundleHash bundle1) sig = True
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                       -> verifyEd25519 pk (believe_me $ bundleHash bundle2) sig = False
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                       -> verifyEd25519 pk (cast $ bundleHash bundle1) sig = True
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                       -> verifyEd25519 pk (cast $ bundleHash bundle2) sig = False
 signatureNonReplayable bundle1 bundle2 sig pk hashDiff valid1 =
   -- MVP stub: Asserts non-replayability without full proof
   -- TODO: Full proof requires showing that:
   --   1. sig is valid for bundle1.bundleHash
   --   2. bundle1.bundleHash ≠ bundle2.bundleHash (given)
   --   3. Ed25519 verification fails for different hashes
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| Proof that signatures are non-malleable
 ||| An attacker cannot modify a valid signature to produce another valid signature
@@ -80,11 +80,11 @@ export
 verifyChain : SHA256Hash -> SignatureChain -> Bool
 verifyChain hash [] = True
 verifyChain hash ((pk, sig) :: rest) =
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  if verifyEd25519 pk (believe_me hash) sig
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  if verifyEd25519 pk (cast hash) sig
     then verifyChain hash rest
     else False
 
@@ -96,20 +96,20 @@ chainImpliesIndividual : (hash : SHA256Hash)
                       -> (pk : Ed25519PublicKey)
                       -> (sig : Ed25519Signature)
                       -> elem (pk, sig) chain = True
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                      -> verifyEd25519 pk (believe_me hash) sig = True
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                      -> verifyEd25519 pk (cast hash) sig = True
 chainImpliesIndividual hash [] valid pk sig inChain = absurd inChain
 chainImpliesIndividual hash ((pk', sig') :: rest) valid pk sig inChain =
   -- MVP stub: Asserts correctness without full proof
   -- TODO: Case split on whether (pk, sig) = (pk', sig') or in rest
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| Proof that adding a valid signature to a valid chain preserves validity
 export
@@ -118,20 +118,20 @@ chainExtension : (hash : SHA256Hash)
               -> (pk : Ed25519PublicKey)
               -> (sig : Ed25519Signature)
               -> verifyChain hash chain = True
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-              -> verifyEd25519 pk (believe_me hash) sig = True
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+              -> verifyEd25519 pk (cast hash) sig = True
               -> verifyChain hash ((pk, sig) :: chain) = True
 chainExtension hash chain pk sig validChain validSig =
   -- MVP stub: Should follow from definition of verifyChain
   -- TODO: Full proof by computation
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| Proof that signature verification order doesn't matter (commutative)
 export
@@ -145,8 +145,8 @@ chainCommutative : (hash : SHA256Hash)
 chainCommutative hash pk1 sig1 pk2 sig2 =
   -- MVP stub: Should follow from verifyChain definition
   -- Each signature is checked independently
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl

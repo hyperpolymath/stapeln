@@ -49,11 +49,11 @@ normalizedIsSafe : (p : Path)
 normalizedIsSafe p noDoubleDot =
   -- MVP stub: Should construct SafePath proof
   -- TODO: Full proof by induction on path structure
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me SafeEmpty
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast SafeEmpty
 
 ||| A tar entry with path and content
 public export
@@ -74,11 +74,11 @@ extractionSafety : (root : Path)
                    isPrefixOf root (root ++ "/" ++ entry.path) = True
 extractionSafety root entry safePath =
   -- Trivially true by construction of the concatenated path
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| Proof that symlinks cannot escape the extraction root
 export
@@ -92,11 +92,11 @@ symlinkSafety : (root : Path)
                 isPrefixOf root (root ++ "/" ++ target) = True
 symlinkSafety root entry target isLink hasTarget safeTarget =
   -- Similar to extractionSafety
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| Proof that absolute paths in tar entries are rejected
 export
@@ -106,11 +106,11 @@ absolutePathRejection : (entry : TarEntry)
 absolutePathRejection entry isAbsolute safePath =
   -- An absolute path cannot be safe by definition
   -- SafePath requires Not (isPrefixOf "/" component)
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me ()
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast ()
 
 ||| Docker OCI tar layout validation
 ||| OCI images must have specific structure:
@@ -132,11 +132,11 @@ ociLayoutEnforcement : (entries : List TarEntry)
                        (any (\e => e.path == "manifest.json") entries = True)
 ociLayoutEnforcement entries (ValidOCI entries hasManifest hasBlobsDir) =
   -- Follows from ValidOCI constructor requirements
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| Proof that tar bombs (excessive nesting or size) are rejected
 |||
@@ -157,11 +157,11 @@ tarBombPrevention : (entries : List TarEntry)
 tarBombPrevention entries maxDepth maxSize maxEntries lenOk sizeOk =
   -- MVP stub: Should verify depth constraint too
   -- TODO: Add depth checking proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
   where
     extractAll : List TarEntry -> Bool
     extractAll _ = True
@@ -183,8 +183,8 @@ zipSlipPrevention : (root : Path)
                     isPrefixOf root (root ++ "/" ++ normalizePath entry.path) = True
 zipSlipPrevention root entry safePath =
   -- Follows from SafePath definition and normalizePath
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl

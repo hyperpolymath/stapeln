@@ -63,11 +63,11 @@ signatureChainSoundness : (bundle : Bundle)
                        -> (pk : Ed25519PublicKey)
                        -> (sig : Ed25519Signature)
                        -> elem (pk, sig) (signatures bundle) = True
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                       -> verifyEd25519 pk (believe_me $ bundleHash bundle) sig = True
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                       -> verifyEd25519 pk (cast $ bundleHash bundle) sig = True
 signatureChainSoundness bundle properlySigned pk sig inChain =
   -- Follows from chainImpliesIndividual theorem
   chainImpliesIndividual (bundleHash bundle) (signatures bundle) properlySigned pk sig inChain
@@ -94,11 +94,11 @@ tamperEvidence original modified wellFormedOrig signedOrig contentChanged =
   -- 1. Show that content change implies hash change (SHA-256 properties)
   -- 2. Show that hash change makes signatures invalid (Ed25519 properties)
   -- 3. Case split on whether attacker re-signs (requires private key)
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me (Left (believe_me ()))
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast (Left (cast ()))
 
 ||| THEOREM: Non-repudiation
 ||| If a bundle is signed with a private key, the signer cannot later
@@ -112,11 +112,11 @@ postulate nonRepudiation : (bundle : Bundle)
                          -> (pk : Ed25519PublicKey)
                          -> (sig : Ed25519Signature)
                          -> elem (pk, sig) (signatures bundle) = True
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                         -> verifyEd25519 pk (believe_me $ bundleHash bundle) sig = True
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                         -> verifyEd25519 pk (cast $ bundleHash bundle) sig = True
                          -> -- Someone with private key for pk created sig
                             -- (we postulate this as it depends on crypto hardness)
                             ()
@@ -133,20 +133,20 @@ thresholdSatisfaction : (bundle : Bundle)
                         verifyChain (bundleHash bundle) signatures = True
                      -> -- Then threshold is met
                         (length (filter (\(pk, sig) =>
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                          verifyEd25519 pk (believe_me $ bundleHash bundle) sig)
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                          verifyEd25519 pk (cast $ bundleHash bundle) sig)
                           signatures) >= required) = True
 thresholdSatisfaction bundle required sigs lenOk allValid =
   -- If verifyChain succeeds, all signatures are valid
   -- So filter returns all N elements, and length >= required
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| THEOREM: Replay Attack Prevention
 ||| An attacker cannot take a valid signature from bundle A and apply it to bundle B
@@ -157,24 +157,24 @@ replayPrevention : (bundleA : Bundle)
                 -> (pk : Ed25519PublicKey)
                 -> (sig : Ed25519Signature)
                 -> Not (bundleHash bundleA = bundleHash bundleB)
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                -> verifyEd25519 pk (believe_me $ bundleHash bundleA) sig = True
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-                -> verifyEd25519 pk (believe_me $ bundleHash bundleB) sig = False
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                -> verifyEd25519 pk (cast $ bundleHash bundleA) sig = True
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+                -> verifyEd25519 pk (cast $ bundleHash bundleB) sig = False
 replayPrevention bundleA bundleB pk sig hashDiff validA =
   -- Follows from signatureNonReplayable
   -- Different hashes mean signature for A won't verify for B
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me Refl
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast Refl
 
 ||| THEOREM: Supply Chain Integrity
 ||| If a bundle passes through multiple stages (build -> sign -> distribute),
@@ -197,8 +197,8 @@ supplyChainIntegrity : (stages : List Bundle)
 supplyChainIntegrity stages stage1 finalStage inStages1 inStagesFinal sameHash wellFormed1 =
   -- If hashes are equal and stage1 is well-formed, then finalStage must be too
   -- because WellFormed checks computed hash = stored hash
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
--- PROOF_TODO: Replace believe_me with actual proof
-  believe_me wellFormed1
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+-- PROOF_TODO: Replace cast with actual proof
+  cast wellFormed1

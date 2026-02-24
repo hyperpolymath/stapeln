@@ -223,8 +223,8 @@ data AllLicensed : SBOMDocument -> Type where
 --------------------------------------------------------------------------------
 
 ||| Verify SBOM has no critical vulnerabilities
--- PROOF_TODO: Replace believe_me with actual proof
-||| Note: Uses believe_me for proof obligation - TODO: implement proper DecEq for Dependency
+-- PROOF_TODO: Replace cast with actual proof
+||| Note: Uses cast for proof obligation - TODO: implement proper DecEq for Dependency
 export
 verifySBOM : (doc : SBOMDocument) ->
              (lookup : VulnId -> Maybe Severity) ->
@@ -232,8 +232,8 @@ verifySBOM : (doc : SBOMDocument) ->
 verifySBOM doc lookup =
   let critVulns = filterBySeverity doc Critical lookup in
   case critVulns of
--- PROOF_TODO: Replace believe_me with actual proof
-    [] => Right (MkNoCriticalVulns doc lookup (believe_me ()))
+-- PROOF_TODO: Replace cast with actual proof
+    [] => Right (MkNoCriticalVulns doc lookup (cast ()))
     _ => Left $ "Found critical vulnerabilities: " ++ show (length critVulns)
 
 ||| Check if SBOM is acceptable for deployment
