@@ -14,8 +14,10 @@ use serde_json::json;
 
 #[derive(Error, Debug)]
 pub enum LifecycleError {
+    #[allow(dead_code)]
     #[error("Container not found: {0}")]
     NotFound(String),
+    #[allow(dead_code)]
     #[error("Container already exists: {0}")]
     AlreadyExists(String),
     #[error("Invalid state transition: {from:?} -> {to:?}")]
@@ -35,7 +37,7 @@ pub enum LifecycleError {
 
 /// Container lifecycle manager
 pub struct ContainerLifecycle {
-    state: StateManager,
+    db_path: PathBuf,
     root_dir: PathBuf,
     runtime_path: String,
 }
@@ -73,10 +75,11 @@ impl ContainerLifecycle {
     pub fn new(db_path: &Path, root_dir: &Path, runtime: &str) -> Result<Self, LifecycleError> {
         std::fs::create_dir_all(root_dir)?;
 
-        let state = StateManager::open(db_path)?;
+        // Verify we can open the state
+        let _ = StateManager::open(db_path)?;
 
         Ok(Self {
-            state,
+            db_path: db_path.to_path_buf(),
             root_dir: root_dir.to_path_buf(),
             runtime_path: runtime.to_string(),
         })
@@ -151,20 +154,23 @@ impl ContainerLifecycle {
         });
 
         // Create database record
-        self.state.create_container(
-            id,
-            name,
-            image_id,
-            bundle_path.to_str().unwrap(),
-            Some(&config_json.to_string()),
-        )?;
+        {
+            let state = StateManager::open(&self.db_path)?;
+            state.create_container(
+                id,
+                name,
+                image_id,
+                bundle_path.to_str().unwrap(),
+                Some(&config_json.to_string()),
+            )?;
+        }
 
-        self.state.get_container(id).map_err(|e| e.into())
+        self.get(id)
     }
 
     /// Start a container
     pub async fn start(&self, id: &str) -> Result<u32, LifecycleError> {
-        let container = self.state.get_container(id)?;
+        let container = self.get(id)?;
 
         // Validate state transition
         if container.state != ContainerState::Created {
@@ -184,15 +190,17 @@ impl ContainerLifecycle {
             .map_err(|e| LifecycleError::Runtime(e.to_string()))?;
 
         // Update state
-        self.state
-            .set_container_state(id, ContainerState::Running, Some(pid as i32))?;
+        {
+            let state = StateManager::open(&self.db_path)?;
+            state.set_container_state(id, ContainerState::Running, Some(pid as i32))?;
+        }
 
         Ok(pid)
     }
 
     /// Stop a container
     pub async fn stop(&self, id: &str, timeout_secs: u32) -> Result<(), LifecycleError> {
-        let container = self.state.get_container(id)?;
+        let container = self.get(id)?;
 
         if container.state != ContainerState::Running {
             return Err(LifecycleError::InvalidTransition {
@@ -236,15 +244,18 @@ impl ContainerLifecycle {
         }
 
         // Update state
-        self.state
-            .set_container_state(id, ContainerState::Stopped, None)?;
+        {
+            let state = StateManager::open(&self.db_path)?;
+            state.set_container_state(id, ContainerState::Stopped, None)?;
+        }
 
         Ok(())
     }
 
     /// Kill a container with a signal
+    #[allow(dead_code)]
     pub fn kill(&self, id: &str, signal: i32) -> Result<(), LifecycleError> {
-        let container = self.state.get_container(id)?;
+        let container = self.get(id)?;
 
         if container.state != ContainerState::Running {
             return Err(LifecycleError::InvalidTransition {
@@ -265,7 +276,7 @@ impl ContainerLifecycle {
 
     /// Delete a container
     pub fn delete(&self, id: &str, force: bool) -> Result<(), LifecycleError> {
-        let container = self.state.get_container(id)?;
+        let container = self.get(id)?;
 
         // Check if container can be deleted
         if container.state == ContainerState::Running && !force {
@@ -294,14 +305,18 @@ impl ContainerLifecycle {
         }
 
         // Remove from database
-        self.state.delete_container(id)?;
+        {
+            let state = StateManager::open(&self.db_path)?;
+            state.delete_container(id)?;
+        }
 
         Ok(())
     }
 
     /// Pause a container
+    #[allow(dead_code)]
     pub fn pause(&self, id: &str) -> Result<(), LifecycleError> {
-        let container = self.state.get_container(id)?;
+        let container = self.get(id)?;
 
         if container.state != ContainerState::Running {
             return Err(LifecycleError::InvalidTransition {
@@ -316,15 +331,18 @@ impl ContainerLifecycle {
             // TODO: Implement cgroup freezer
         }
 
-        self.state
-            .set_container_state(id, ContainerState::Paused, container.pid)?;
+        {
+            let state = StateManager::open(&self.db_path)?;
+            state.set_container_state(id, ContainerState::Paused, container.pid)?;
+        }
 
         Ok(())
     }
 
     /// Resume a paused container
+    #[allow(dead_code)]
     pub fn resume(&self, id: &str) -> Result<(), LifecycleError> {
-        let container = self.state.get_container(id)?;
+        let container = self.get(id)?;
 
         if container.state != ContainerState::Paused {
             return Err(LifecycleError::InvalidTransition {
@@ -339,15 +357,18 @@ impl ContainerLifecycle {
             // TODO: Implement cgroup freezer
         }
 
-        self.state
-            .set_container_state(id, ContainerState::Running, container.pid)?;
+        {
+            let state = StateManager::open(&self.db_path)?;
+            state.set_container_state(id, ContainerState::Running, container.pid)?;
+        }
 
         Ok(())
     }
 
     /// Get container state
     pub fn get(&self, id: &str) -> Result<ContainerInfo, LifecycleError> {
-        self.state.get_container(id).map_err(|e| e.into())
+        let state = StateManager::open(&self.db_path)?;
+        state.get_container(id).map_err(|e| e.into())
     }
 
     /// List containers
@@ -355,7 +376,8 @@ impl ContainerLifecycle {
         &self,
         state_filter: Option<ContainerState>,
     ) -> Result<Vec<ContainerInfo>, LifecycleError> {
-        self.state.list_containers(state_filter).map_err(|e| e.into())
+        let state = StateManager::open(&self.db_path)?;
+        state.list_containers(state_filter).map_err(|e| e.into())
     }
 }
 

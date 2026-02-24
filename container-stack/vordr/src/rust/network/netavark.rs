@@ -9,12 +9,14 @@ use tracing::{debug, info};
 
 #[derive(Error, Debug)]
 pub enum NetworkError {
+    #[allow(dead_code)]
     #[error("Netavark not found in PATH")]
     NotFound,
     #[error("Netavark execution failed: {0}")]
     ExecutionFailed(String),
     #[error("Invalid network configuration: {0}")]
     InvalidConfig(String),
+    #[allow(dead_code)]
     #[error("Network already exists: {0}")]
     AlreadyExists(String),
     #[error("Network not found: {0}")]
@@ -58,21 +60,27 @@ pub struct PortMapping {
 /// Result of network setup
 #[derive(Debug, Clone, Deserialize)]
 pub struct NetworkResult {
+    #[allow(dead_code)]
     pub interfaces: Vec<InterfaceResult>,
 }
 
 /// Result for a single interface
 #[derive(Debug, Clone, Deserialize)]
 pub struct InterfaceResult {
+    #[allow(dead_code)]
     pub name: String,
+    #[allow(dead_code)]
     pub mac_address: String,
+    #[allow(dead_code)]
     pub subnets: Vec<SubnetResult>,
 }
 
 /// Result for a subnet
 #[derive(Debug, Clone, Deserialize)]
 pub struct SubnetResult {
+    #[allow(dead_code)]
     pub ipnet: String,
+    #[allow(dead_code)]
     pub gateway: Option<String>,
 }
 
@@ -124,9 +132,8 @@ impl NetworkManager {
     /// Create a new network manager
     pub fn new(config_dir: impl Into<String>, run_dir: impl Into<String>) -> Result<Self, NetworkError> {
         let netavark_path = which::which("netavark")
-            .map_err(|_| NetworkError::NotFound)?
-            .to_string_lossy()
-            .into_owned();
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| "none".to_string());
 
         Ok(Self {
             netavark_path,
@@ -136,6 +143,7 @@ impl NetworkManager {
     }
 
     /// Create a new network manager with a custom netavark path
+    #[allow(dead_code)]
     pub fn with_path(
         netavark_path: impl Into<String>,
         config_dir: impl Into<String>,
@@ -150,6 +158,11 @@ impl NetworkManager {
 
     /// Set up networking for a container
     pub fn setup(&self, config: &NetworkConfig, netns_path: &str) -> Result<NetworkResult, NetworkError> {
+        if self.netavark_path == "none" {
+            info!("Sovereign Mode: Skipping network setup for {}", config.container_id);
+            return Ok(NetworkResult { interfaces: vec![] });
+        }
+
         info!(
             "Setting up network for container {} at {}",
             config.container_id, netns_path
@@ -186,7 +199,12 @@ impl NetworkManager {
     }
 
     /// Tear down networking for a container
+    #[allow(dead_code)]
     pub fn teardown(&self, config: &NetworkConfig, netns_path: &str) -> Result<(), NetworkError> {
+        if self.netavark_path == "none" {
+            return Ok(());
+        }
+
         info!(
             "Tearing down network for container {}",
             config.container_id
@@ -269,6 +287,7 @@ impl NetworkManager {
     }
 
     /// Get network configuration directory
+    #[allow(dead_code)]
     pub fn config_dir(&self) -> &str {
         &self.config_dir
     }

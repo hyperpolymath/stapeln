@@ -355,13 +355,13 @@ async fn handle_run(state: &AppState, args: Value) -> Result<Value, String> {
                     tokio::spawn(async move {
                         if let Err(e) = monitor_container(
                             monitor_state,
-                            container_id_clone,
+                            container_id_clone.clone(),
                             bundle_path_clone,
                             monitor_config,
                         )
                         .await
                         {
-                            warn!("Health monitor for {} terminated: {}", container_id, e);
+                            warn!("Health monitor for {} terminated: {}", container_id_clone, e);
                         }
                     });
                 }

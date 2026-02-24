@@ -308,6 +308,7 @@ pub fn get_tool_definitions() -> Vec<McpToolDefinition> {
 }
 
 /// MCP tool call result
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpToolResult {
     pub success: bool,
@@ -316,6 +317,7 @@ pub struct McpToolResult {
 }
 
 impl McpToolResult {
+    #[allow(dead_code)]
     pub fn success(output: impl Into<String>) -> Self {
         Self {
             success: true,
@@ -324,6 +326,7 @@ impl McpToolResult {
         }
     }
 
+    #[allow(dead_code)]
     pub fn error(message: impl Into<String>) -> Self {
         Self {
             success: false,

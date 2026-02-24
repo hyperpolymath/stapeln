@@ -10,6 +10,10 @@ import Config
 config :stapeln,
   generators: [timestamp_type: :utc_datetime]
 
+config :stapeln, :api_auth,
+  enabled: true,
+  token: nil
+
 # Configure the endpoint
 config :stapeln, StapelnWeb.Endpoint,
   url: [host: "localhost"],

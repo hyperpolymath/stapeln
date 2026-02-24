@@ -77,4 +77,13 @@ defmodule StapelnWeb.GraphqlApiTest do
     assert is_integer(report["score"])
     assert is_list(report["findings"])
   end
+
+  test "rejects graphql requests without API token" do
+    conn =
+      post(Phoenix.ConnTest.build_conn(), ~p"/api/graphql", %{
+        query: "{ stacks { id name } }"
+      })
+
+    assert %{"error" => "missing or invalid API token"} = json_response(conn, 401)
+  end
 end

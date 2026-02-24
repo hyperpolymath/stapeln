@@ -32,6 +32,7 @@ pub enum GatekeeperError {
     #[error("Null byte found in JSON string")]
     NullByte,
 
+    #[allow(dead_code)]
     #[error("Gatekeeper not initialized")]
     NotInitialized,
 }
@@ -123,6 +124,7 @@ pub fn validate_oci_config(json_content: &str) -> Result<(), GatekeeperError> {
 ///
 /// # Returns
 /// A string describing the error
+#[allow(dead_code)]
 pub fn get_error_description(code: i32) -> String {
     // Safety: get_error_message returns a pointer to a static string
     unsafe {
@@ -142,6 +144,7 @@ pub fn get_error_description(code: i32) -> String {
 /// # Returns
 /// * `Ok(String)` containing the sanitised configuration
 /// * `Err(GatekeeperError)` if sanitisation failed
+#[allow(dead_code)]
 pub fn sanitise_oci_config(json_content: &str) -> Result<String, GatekeeperError> {
     let c_str = CString::new(json_content).map_err(|_| GatekeeperError::NullByte)?;
 
@@ -252,6 +255,7 @@ impl ConfigValidator {
     }
 
     /// Set no_new_privileges flag.
+    #[allow(dead_code)]
     pub fn no_new_privileges(mut self, enabled: bool) -> Self {
         self.no_new_privileges = enabled;
         self
@@ -320,6 +324,7 @@ pub struct ValidatedConfig {
     pub privileged: bool,
     pub user_namespace: bool,
     pub user_id: u32,
+    #[allow(dead_code)]
     pub network_mode: NetworkMode,
     pub capabilities: Vec<String>,
     pub no_new_privileges: bool,

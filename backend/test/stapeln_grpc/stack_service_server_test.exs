@@ -21,11 +21,11 @@ defmodule StapelnGrpc.StackService.ServerTest do
       services: [%ServicePayload{name: "api", kind: "web", port: 8080}]
     }
 
-    created = Server.create_stack(create_request, nil)
+    created = Server.create_stack(create_request, authorized_stream())
     assert created.stack.name == "grpc-stack"
     assert created.stack.id != ""
 
-    fetched = Server.get_stack(%GetStackRequest{id: created.stack.id}, nil)
+    fetched = Server.get_stack(%GetStackRequest{id: created.stack.id}, authorized_stream())
     assert fetched.stack.id == created.stack.id
     assert fetched.stack.services |> Enum.at(0) |> Map.get(:name) == "api"
   end
@@ -37,14 +37,14 @@ defmodule StapelnGrpc.StackService.ServerTest do
           name: "validate-me",
           services: [%ServicePayload{name: "db", kind: "db", port: 5432}]
         },
-        nil
+        authorized_stream()
       )
 
-    list_response = Server.list_stacks(%ListStacksRequest{}, nil)
+    list_response = Server.list_stacks(%ListStacksRequest{}, authorized_stream())
     assert Enum.count(list_response.stacks) == 1
 
     id = list_response.stacks |> Enum.at(0) |> Map.get(:id)
-    validation = Server.validate_stack(%ValidateStackRequest{id: id}, nil)
+    validation = Server.validate_stack(%ValidateStackRequest{id: id}, authorized_stream())
     assert is_integer(validation.score)
     assert is_list(validation.findings)
     assert validation.stack.id == id
@@ -52,7 +52,7 @@ defmodule StapelnGrpc.StackService.ServerTest do
 
   test "invalid id raises grpc rpc error" do
     assert_raise GRPC.RPCError, fn ->
-      Server.get_stack(%GetStackRequest{id: "invalid"}, nil)
+      Server.get_stack(%GetStackRequest{id: "invalid"}, authorized_stream())
     end
   end
 
@@ -63,7 +63,7 @@ defmodule StapelnGrpc.StackService.ServerTest do
           name: "before",
           services: [%ServicePayload{name: "api", kind: "web", port: 8080}]
         },
-        nil
+        authorized_stream()
       )
 
     update_request = %UpdateStackRequest{
@@ -72,9 +72,27 @@ defmodule StapelnGrpc.StackService.ServerTest do
       description: "updated"
     }
 
-    updated = Server.update_stack(update_request, nil)
+    updated = Server.update_stack(update_request, authorized_stream())
     assert updated.stack.name == "after"
     assert updated.stack.description == "updated"
   end
-end
 
+  test "missing auth metadata raises unauthenticated grpc error" do
+    error =
+      assert_raise GRPC.RPCError, fn ->
+        Server.list_stacks(%ListStacksRequest{}, nil)
+      end
+
+    assert error.status == :unauthenticated
+  end
+
+  defp authorized_stream do
+    %{http_request_headers: %{"authorization" => "Bearer #{api_token()}"}}
+  end
+
+  defp api_token do
+    :stapeln
+    |> Application.fetch_env!(:api_auth)
+    |> Keyword.fetch!(:token)
+  end
+end

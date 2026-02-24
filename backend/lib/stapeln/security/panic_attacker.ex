@@ -55,7 +55,9 @@ defmodule Stapeln.Security.PanicAttacker do
 
   def handle_call({:start, command, target, schedule}, _from, state) do
     %State{} = state = set_command(state, command, target, schedule)
-    {%State{} = state, _} = append_event(state, :info, "Scheduling panic-attack #{command} #{target}")
+
+    {%State{} = state, _} =
+      append_event(state, :info, "Scheduling panic-attack #{command} #{target}")
 
     task = Task.Supervisor.async_nolink(TaskSupervisor, fn -> execute(command, target) end)
     new_state = %State{state | status: :running, task: task}
@@ -83,7 +85,9 @@ defmodule Stapeln.Security.PanicAttacker do
 
   @impl true
   def handle_info({ref, {:ok, output}}, state) when matches_task?(state, ref) do
-    {%State{} = state, _} = append_event(state, :success, "panic-attack completed: #{shorten(output)}")
+    {%State{} = state, _} =
+      append_event(state, :success, "panic-attack completed: #{shorten(output)}")
+
     new_state = %State{state | status: :completed, task: nil}
     {:noreply, new_state}
   end
@@ -97,7 +101,10 @@ defmodule Stapeln.Security.PanicAttacker do
   def handle_info({:DOWN, ref, :process, _pid, reason}, state) when matches_task?(state, ref) do
     status = if reason == :normal, do: :completed, else: :failed
     level = if reason == :normal, do: :success, else: :error
-    {%State{} = state, _} = append_event(state, level, "panic-attack process down: #{inspect(reason)}")
+
+    {%State{} = state, _} =
+      append_event(state, level, "panic-attack process down: #{inspect(reason)}")
+
     new_state = %State{state | status: status, task: nil}
     {:noreply, new_state}
   end
@@ -134,6 +141,7 @@ defmodule Stapeln.Security.PanicAttacker do
 
   defp limit_timeline(timeline) do
     len = length(timeline)
+
     if len <= @max_timeline do
       timeline
     else
@@ -142,14 +150,16 @@ defmodule Stapeln.Security.PanicAttacker do
     end
   end
 
-
   defp execute(command, target) do
     args = build_args(command, target)
 
     case System.find_executable("panic-attack") do
-      nil -> {:error, :not_found, "panic-attack binary not found in PATH"}
+      nil ->
+        {:error, :not_found, "panic-attack binary not found in PATH"}
+
       exe ->
         Logger.debug("Executing #{exe} #{Enum.join(args, " ")}")
+
         case System.cmd(exe, args, stderr_to_stdout: true) do
           {output, 0} -> {:ok, output}
           {output, code} -> {:error, {:exit, code, output}}

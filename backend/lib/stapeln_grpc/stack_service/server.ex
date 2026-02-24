@@ -2,9 +2,12 @@ defmodule StapelnGrpc.StackService.Server do
   @moduledoc false
   use GRPC.Server, service: StapelnGrpc.StackService.Service
 
+  alias Stapeln.Auth.ApiToken
   alias Stapeln.Stacks
 
-  def list_stacks(_request, _stream) do
+  def list_stacks(_request, stream) do
+    authorize_stream!(stream)
+
     with {:ok, stacks} <- Stacks.list() do
       %StapelnGrpc.ListStacksResponse{
         stacks: Enum.map(stacks, &to_stack_payload/1)
@@ -12,7 +15,9 @@ defmodule StapelnGrpc.StackService.Server do
     end
   end
 
-  def create_stack(request, _stream) do
+  def create_stack(request, stream) do
+    authorize_stream!(stream)
+
     attrs = %{
       "name" => normalize_blank(request.name),
       "description" => normalize_blank(request.description),
@@ -24,7 +29,9 @@ defmodule StapelnGrpc.StackService.Server do
     end
   end
 
-  def get_stack(request, _stream) do
+  def get_stack(request, stream) do
+    authorize_stream!(stream)
+
     with {:ok, id} <- parse_id(request.id),
          {:ok, stack} <- Stacks.fetch(id) do
       %StapelnGrpc.StackResponse{stack: to_stack_payload(stack)}
@@ -34,7 +41,9 @@ defmodule StapelnGrpc.StackService.Server do
     end
   end
 
-  def update_stack(request, _stream) do
+  def update_stack(request, stream) do
+    authorize_stream!(stream)
+
     with {:ok, id} <- parse_id(request.id),
          {:ok, stack} <- Stacks.update(id, update_attrs(request)) do
       %StapelnGrpc.StackResponse{stack: to_stack_payload(stack)}
@@ -44,7 +53,9 @@ defmodule StapelnGrpc.StackService.Server do
     end
   end
 
-  def validate_stack(request, _stream) do
+  def validate_stack(request, stream) do
+    authorize_stream!(stream)
+
     with {:ok, id} <- parse_id(request.id),
          {:ok, report} <- Stacks.validate(id) do
       %StapelnGrpc.ValidateStackResponse{
@@ -145,8 +156,20 @@ defmodule StapelnGrpc.StackService.Server do
 
   defp normalize_blank(value), do: value |> to_string() |> normalize_blank()
 
+  defp authorize_stream!(stream) do
+    case ApiToken.authorize_grpc_stream(stream) do
+      :ok ->
+        :ok
+
+      {:error, :token_not_configured} ->
+        raise_rpc_error(:internal, "api authentication is not configured")
+
+      {:error, _reason} ->
+        raise_rpc_error(:unauthenticated, "missing or invalid API token")
+    end
+  end
+
   defp raise_rpc_error(status, message) do
     raise GRPC.RPCError, status: status, message: message
   end
 end
-

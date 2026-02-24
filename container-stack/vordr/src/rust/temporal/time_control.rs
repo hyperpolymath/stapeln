@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use super::TemporalConfig;
 
 /// A time manipulation layer
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TimeLayer {
     /// Fake NTP server responding to time queries
@@ -62,6 +63,7 @@ impl TimeLayer {
 }
 
 /// Configuration for a single time layer
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeLayerConfig {
     /// The layer type
@@ -84,17 +86,20 @@ pub struct TimeLayerConfig {
 /// all layers must agree — if NTP says 2038-01-19 but
 /// CLOCK_MONOTONIC says uptime is 30 seconds, sophisticated
 /// code will detect the inconsistency.
+#[allow(dead_code)]
 pub struct TimeController {
     /// Active time layers
     layers: Vec<TimeLayerConfig>,
 
     /// Base real time when controller started
+    #[allow(dead_code)]
     base_real_time: std::time::SystemTime,
 
     /// Current simulated time offset from base
     offset_seconds: i64,
 
     /// Current dilation ratio
+    #[allow(dead_code)]
     dilation_ratio: f64,
 }
 
@@ -166,26 +171,31 @@ impl TimeController {
     }
 
     /// Advance the simulated time by a step
+    #[allow(dead_code)]
     pub fn advance(&mut self, step_seconds: i64) {
         self.set_time_offset(self.offset_seconds + step_seconds);
     }
 
     /// Reverse the simulated time by a step
+    #[allow(dead_code)]
     pub fn reverse(&mut self, step_seconds: i64) {
         self.set_time_offset(self.offset_seconds - step_seconds);
     }
 
     /// Get the current simulated time offset
+    #[allow(dead_code)]
     pub fn current_offset(&self) -> i64 {
         self.offset_seconds
     }
 
     /// Get the dilation ratio
+    #[allow(dead_code)]
     pub fn dilation_ratio(&self) -> f64 {
         self.dilation_ratio
     }
 
     /// Get active layers
+    #[allow(dead_code)]
     pub fn active_layers(&self) -> Vec<&TimeLayerConfig> {
         self.layers.iter().filter(|l| l.enabled).collect()
     }
@@ -201,6 +211,7 @@ impl TimeController {
     }
 
     /// Check if VM-dependent layers are active without a VM
+    #[allow(dead_code)]
     pub fn requires_vm(&self) -> bool {
         self.layers
             .iter()
@@ -211,6 +222,7 @@ impl TimeController {
     ///
     /// Returns the env vars needed to inject time manipulation
     /// via LD_PRELOAD into the target process.
+    #[allow(dead_code)]
     pub fn libfaketime_env(&self) -> Vec<(String, String)> {
         let libfaketime_layer = self.layers.iter().find(|l| {
             l.enabled && l.layer == TimeLayer::Libfaketime

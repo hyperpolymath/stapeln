@@ -31,7 +31,7 @@ pub struct DeployResponse {
     pub status: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct RunConfigV2 {
     pub env: std::collections::HashMap<String, String>,
     pub ports: Vec<String>,
@@ -46,7 +46,7 @@ pub struct RunConfigV2 {
     pub command: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct HealthCheckV2 {
     pub test: String,
     pub interval: String,

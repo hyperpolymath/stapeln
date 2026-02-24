@@ -1,1 +1,1 @@
-{ "dirs" : [ "src" ] , "pkgs" : [ [ "@rescript/core" , "/var/mnt/eclipse/repos/vordr/src/mcp-adapter/node_modules/@rescript/core" ] ] , "generated" : [] }
+{ "dirs" : [ "src" ] , "pkgs" : [ [ "@rescript/core" , "/var/mnt/eclipse/repos/stapeln/container-stack/vordr/src/mcp-adapter/node_modules/@rescript/core" ] ] , "generated" : [] }

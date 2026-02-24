@@ -45,6 +45,7 @@ pub fn validate_container_id(id: &str) -> Result<()> {
 /// - 1-253 characters (DNS label limit)
 /// - Lowercase alphanumeric, hyphens, and underscores only
 /// - No path traversal sequences
+#[allow(dead_code)]
 pub fn validate_network_name(name: &str) -> Result<()> {
     if name.is_empty() {
         bail!("Network name cannot be empty");
@@ -66,6 +67,7 @@ pub fn validate_network_name(name: &str) -> Result<()> {
 }
 
 /// Validate a volume name or path
+#[allow(dead_code)]
 pub fn validate_volume_spec(spec: &str) -> Result<()> {
     // Split on : to get source and destination
     let parts: Vec<&str> = spec.split(':').collect();

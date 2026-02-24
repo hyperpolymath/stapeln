@@ -7,6 +7,7 @@ use thiserror::Error;
 use tracing::{debug, info};
 use tokio::task;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum ShimError {
     #[error("Failed to spawn shim: {0}")]
@@ -24,14 +25,17 @@ pub enum ShimError {
 }
 
 /// Client for communicating with container runtime shims
+#[allow(dead_code)]
 pub struct ShimClient {
     runtime: String,
     bundle_path: PathBuf,
+    #[allow(dead_code)]
     socket_path: Option<PathBuf>,
 }
 
 impl ShimClient {
     /// Create a new shim client
+    #[allow(dead_code)]
     pub fn new(runtime: &str, bundle_path: &str) -> Self {
         Self {
             runtime: runtime.to_string(),
@@ -41,6 +45,7 @@ impl ShimClient {
     }
 
     /// Create and start a container
+    #[allow(dead_code)]
     pub async fn create_and_start(&self, container_id: &str) -> Result<u32, ShimError> {
         info!("Creating container {} with {}", container_id, self.runtime);
 
@@ -88,6 +93,7 @@ impl ShimClient {
     }
 
     /// Get container state
+    #[allow(dead_code)]
     pub async fn state(&self, container_id: &str) -> Result<ContainerState, ShimError> {
         let runtime_path = self.find_runtime()?;
 
@@ -120,6 +126,7 @@ impl ShimClient {
     }
 
     /// Kill a container
+    #[allow(dead_code)]
     pub async fn kill(&self, container_id: &str, signal: u32, all: bool) -> Result<(), ShimError> {
         let runtime_path = self.find_runtime()?;
 
@@ -144,6 +151,7 @@ impl ShimClient {
     }
 
     /// Delete a container
+    #[allow(dead_code)]
     pub async fn delete(&self, container_id: &str, force: bool) -> Result<(), ShimError> {
         let runtime_path = self.find_runtime()?;
 
@@ -173,6 +181,7 @@ impl ShimClient {
     }
 
     /// Execute a process in a running container
+    #[allow(dead_code)]
     pub async fn exec(
         &self,
         container_id: &str,
@@ -205,6 +214,7 @@ impl ShimClient {
     }
 
     /// Execute a process in a running container and wait for completion.
+    #[allow(dead_code)]
     pub async fn exec_wait(&self, container_id: &str, process_spec: &str) -> Result<i32, ShimError> {
         let runtime_path = self.find_runtime()?;
         let exec_spec_path = self.bundle_path.join("exec.json");
@@ -240,6 +250,7 @@ impl ShimClient {
     }
 
     /// Wait for a container to exit
+    #[allow(dead_code)]
     pub async fn wait(&self, container_id: &str) -> Result<i32, ShimError> {
         // Poll state until container exits
         loop {
@@ -267,6 +278,7 @@ impl ShimClient {
     }
 
     /// Find the runtime binary in PATH
+    #[allow(dead_code)]
     fn find_runtime(&self) -> Result<PathBuf, ShimError> {
         // Check if runtime is an absolute path
         let path = Path::new(&self.runtime);
@@ -281,23 +293,31 @@ impl ShimClient {
 }
 
 /// Container state from runtime
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ContainerState {
+    #[allow(dead_code)]
     pub id: String,
     pub pid: u32,
     pub status: String,
+    #[allow(dead_code)]
     pub bundle: String,
 }
 
 /// Spawn a container with the shim (background process management)
+#[allow(dead_code)]
 pub struct ShimProcess {
+    #[allow(dead_code)]
     container_id: String,
+    #[allow(dead_code)]
     pid: u32,
+    #[allow(dead_code)]
     socket_path: PathBuf,
 }
 
 impl ShimProcess {
     /// Spawn a new shim process
+    #[allow(dead_code)]
     pub fn spawn(
         _runtime: &str,
         container_id: &str,
@@ -323,11 +343,13 @@ impl ShimProcess {
     }
 
     /// Get the shim socket path
+    #[allow(dead_code)]
     pub fn socket_path(&self) -> &Path {
         &self.socket_path
     }
 
     /// Get the container PID
+    #[allow(dead_code)]
     pub fn pid(&self) -> u32 {
         self.pid
     }

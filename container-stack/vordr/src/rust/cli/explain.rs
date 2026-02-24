@@ -55,7 +55,9 @@ pub struct PolicyEvent {
 pub enum Severity {
     Critical,
     High,
+    #[allow(dead_code)]
     Medium,
+    #[allow(dead_code)]
     Low,
 }
 

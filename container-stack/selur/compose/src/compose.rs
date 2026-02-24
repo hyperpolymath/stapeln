@@ -281,6 +281,21 @@ impl ComposeFile {
                 }
             }
 
+            // Check volumes exist
+            for volume_ref in &service.volumes {
+                // Handle both named volumes and bind mounts
+                if !volume_ref.starts_with("./") && !volume_ref.starts_with("/") {
+                    let volume_name = volume_ref.split(':').next().unwrap_or(volume_ref);
+                    if !self.volumes.contains_key(volume_name) {
+                        anyhow::bail!(
+                            "Service '{}' references unknown volume '{}'",
+                            name,
+                            volume_name
+                        );
+                    }
+                }
+            }
+
             // Check secrets exist
             for secret in &service.secrets {
                 if !self.secrets.contains_key(secret) {

@@ -52,11 +52,7 @@ pub async fn up(
 
     // Create networks and volumes upfront (fail-closed)
     for (network_name, network) in &compose.networks {
-        let driver = if network.driver == "selur" {
-            "bridge"
-        } else {
-            network.driver.as_str()
-        };
+        let driver = network.driver.as_str();
         let subnet = network.ipam.as_ref().map(|ipam| ipam.subnet.clone());
         vordr_mcp
             .create_network(network_name, driver, subnet)

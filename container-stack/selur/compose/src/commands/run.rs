@@ -104,6 +104,7 @@ pub async fn run(
         secrets: service_config.secrets.clone(),
         healthcheck,
         command: Some(command.clone()),
+        ..Default::default()
     };
 
     let image_digest = ct_client.bundle_digest(&service_config.image)?;

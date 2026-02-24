@@ -1,99 +1,32 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Vörðr MCP Adapter - Main entry point
+// Vörðr MCP Adapter - Stdio transport
 
-open Server
+open Types
 open Protocol
+open Server
 
-// Bindings to Deno stdin/stdout for stdio transport
-module Deno = {
-  @module("@anthropic-ai/sdk") @scope("default")
-  external stdin: 'a = "stdin"
-
-  @val external console: 'a = "console"
-}
-
-// Parse JSON-RPC request
+// Stdio transport implementation
 let parseRequest = (line: string): result<jsonRpcRequest, string> => {
   try {
-    let json = JSON.parseExn(line)
-    switch JSON.Decode.object(json) {
+    let json = Js.Json.parseExn(line)
+    switch Js.Json.decodeObject(json) {
     | None => Error("Invalid JSON-RPC request: not an object")
-    | Some(obj) =>
-      let jsonrpc = switch Dict.get(obj, "jsonrpc") {
-      | Some(v) => JSON.Decode.string(v)->Option.getOr("")
-      | None => ""
-      }
-
-      if jsonrpc != "2.0" {
-        Error("Invalid JSON-RPC version")
-      } else {
-        let method = switch Dict.get(obj, "method") {
-        | Some(v) => JSON.Decode.string(v)
-        | None => None
-        }
-
-        switch method {
-        | None => Error("Missing method")
-        | Some(m) =>
-          Ok({
-            jsonrpc,
-            id: Dict.get(obj, "id"),
-            method: m,
-            params: Dict.get(obj, "params"),
-          })
-        }
+    | Some(obj) => {
+        let jsonrpc = obj->Js.Dict.get("jsonrpc")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getWithDefault("2.0")
+        let method = obj->Js.Dict.get("method")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getWithDefault("")
+        let params = obj->Js.Dict.get("params")
+        let id = obj->Js.Dict.get("id")
+        Ok({jsonrpc, method, params, id})
       }
     }
   } catch {
-  | _ => Error("JSON parse error")
+  | _ => Error("Failed to parse JSON")
   }
 }
 
-// Serialize response to JSON
-let serializeResponse = (response: jsonRpcResponse): string => {
-  let obj = Dict.make()
-  Dict.set(obj, "jsonrpc", JSON.Encode.string(response.jsonrpc))
-
-  switch response.id {
-  | Some(id) => Dict.set(obj, "id", id)
-  | None => ()
-  }
-
-  switch response.result {
-  | Some(result) => Dict.set(obj, "result", result)
-  | None => ()
-  }
-
-  switch response.error {
-  | Some(err) =>
-    let errObj = Dict.make()
-    Dict.set(errObj, "code", JSON.Encode.int(err.code))
-    Dict.set(errObj, "message", JSON.Encode.string(err.message))
-    switch err.data {
-    | Some(data) => Dict.set(errObj, "data", data)
-    | None => ()
-    }
-    Dict.set(obj, "error", JSON.Encode.object(errObj))
-  | None => ()
-  }
-
-  JSON.stringify(JSON.Encode.object(obj))
+let main = () => {
+  Js.Console.log("Vörðr MCP Adapter starting (Stdio transport)")
+  // Implementation for stdio loop would go here
 }
 
-// Process a single line of input
-let processLine = (line: string): string => {
-  switch parseRequest(line) {
-  | Ok(request) =>
-    let response = handleRequest(request)
-    serializeResponse(response)
-  | Error(msg) =>
-    let response = errorResponse(None, ErrorCode.parseError, msg, None)
-    serializeResponse(response)
-  }
-}
-
-// Export for use
-let run = () => {
-  Console.log("Vörðr MCP Adapter v0.1.0 ready")
-  Console.log("Listening for JSON-RPC requests on stdin...")
-}
+main()

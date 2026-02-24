@@ -35,6 +35,7 @@ use super::{
 };
 
 /// Status of the temporal isolation engine
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EngineStatus {
     /// Not yet started
@@ -59,6 +60,7 @@ pub enum EngineStatus {
 ///
 /// Coordinates time manipulation, eBPF monitoring, and BEAM
 /// process swarm to observe code without detection.
+#[allow(dead_code)]
 pub struct TemporalIsolationEngine {
     config: TemporalConfig,
     time_controller: TimeController,
@@ -68,6 +70,7 @@ pub struct TemporalIsolationEngine {
 
 impl TemporalIsolationEngine {
     /// Create a new engine with the given configuration
+    #[allow(dead_code)]
     pub fn new(config: TemporalConfig) -> Self {
         let time_controller = TimeController::from_config(&config);
 
@@ -80,21 +83,25 @@ impl TemporalIsolationEngine {
     }
 
     /// Get current status
+    #[allow(dead_code)]
     pub fn status(&self) -> EngineStatus {
         self.status
     }
 
     /// Get the time controller for manual adjustment
+    #[allow(dead_code)]
     pub fn time_controller(&self) -> &TimeController {
         &self.time_controller
     }
 
     /// Get mutable time controller
+    #[allow(dead_code)]
     pub fn time_controller_mut(&mut self) -> &mut TimeController {
         &mut self.time_controller
     }
 
     /// Get collected results
+    #[allow(dead_code)]
     pub fn results(&self) -> &[TemporalScanResult] {
         &self.results
     }
@@ -107,6 +114,7 @@ impl TemporalIsolationEngine {
     /// 3. Diffs each sweep point against baseline
     /// 4. If anomaly found, narrows via binary search
     /// 5. Captures forensic detail of the trigger
+    #[allow(dead_code)]
     pub async fn run(&mut self) -> Result<TemporalScanResult> {
         info!(
             "Starting temporal isolation scan (tier: {}, dilation: {}:1)",
@@ -159,6 +167,7 @@ impl TemporalIsolationEngine {
     }
 
     /// Run baseline observation at current (real) time
+    #[allow(dead_code)]
     async fn run_baseline(&mut self) -> Result<TemporalScanResult> {
         debug!("Running baseline observation");
 
@@ -183,10 +192,11 @@ impl TemporalIsolationEngine {
     }
 
     /// Sweep through a time range looking for behavioural changes
+    #[allow(dead_code)]
     async fn run_sweep(
         &mut self,
         sweep: TimeSweepRange,
-        baseline: &TemporalScanResult,
+        _baseline: &TemporalScanResult,
     ) -> Result<TemporalScanResult> {
         info!(
             "Sweeping time range {} to {} (step: {}s, strategy: {:?})",
@@ -213,7 +223,6 @@ impl TemporalIsolationEngine {
         // 4. Assemble tomograph
 
         // Stub: report no triggers found
-        let _ = baseline; // Used for diff comparison in full implementation
         time_points_scanned = sweep.step_seconds; // Placeholder
 
         debug!("Sweep complete: {} points, {} anomalies", time_points_scanned, anomaly_count);
@@ -232,6 +241,7 @@ impl TemporalIsolationEngine {
     }
 
     /// Binary search to narrow the trigger window to exact second
+    #[allow(dead_code)]
     async fn narrow_trigger(
         &mut self,
         scan_result: &TemporalScanResult,
@@ -249,6 +259,7 @@ impl TemporalIsolationEngine {
     }
 
     /// Capture full forensic detail of the triggered behaviour
+    #[allow(dead_code)]
     async fn capture_trigger(
         &mut self,
         narrowed_result: &TemporalScanResult,

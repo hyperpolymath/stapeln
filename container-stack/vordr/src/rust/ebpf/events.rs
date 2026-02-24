@@ -43,6 +43,7 @@ pub struct SyscallEvent {
 
 impl SyscallEvent {
     /// Get the syscall name from the number
+    #[allow(dead_code)]
     pub fn syscall_name(&self) -> &'static str {
         syscall_name(self.syscall_nr)
     }
@@ -71,6 +72,7 @@ impl SyscallEvent {
     /// Time-bombs use these to determine their activation date.
     /// Monitoring which code paths query time is essential for
     /// temporal isolation scanning (ADR-007).
+    #[allow(dead_code)]
     pub fn is_time_query(&self) -> bool {
         matches!(
             self.syscall_nr,
@@ -228,6 +230,7 @@ pub struct ContainerEvent {
 
 impl ContainerEvent {
     /// Create a new syscall event
+    #[allow(dead_code)]
     pub fn syscall(container_id: String, event: SyscallEvent) -> Self {
         Self {
             container_id,
@@ -237,6 +240,7 @@ impl ContainerEvent {
     }
 
     /// Create a new network event
+    #[allow(dead_code)]
     pub fn network(container_id: String, event: NetworkEvent) -> Self {
         Self {
             container_id,
@@ -246,6 +250,7 @@ impl ContainerEvent {
     }
 
     /// Create a new file event
+    #[allow(dead_code)]
     pub fn file(container_id: String, event: FileEvent) -> Self {
         Self {
             container_id,
@@ -255,6 +260,7 @@ impl ContainerEvent {
     }
 
     /// Create a new time query event (temporal isolation mode)
+    #[allow(dead_code)]
     pub fn time(container_id: String, event: TimeEvent) -> Self {
         Self {
             container_id,
@@ -266,6 +272,7 @@ impl ContainerEvent {
 
 /// Returns the name of a syscall given its number.
 /// This is a minimal implementation and can be expanded as needed.
+#[allow(dead_code)]
 fn syscall_name(syscall_nr: i64) -> &'static str {
     match syscall_nr {
         1 => "write",

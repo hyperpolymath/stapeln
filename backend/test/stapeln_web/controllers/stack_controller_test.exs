@@ -47,4 +47,9 @@ defmodule StapelnWeb.StackControllerTest do
     assert %{"data" => stacks} = json_response(conn, 200)
     assert Enum.count(stacks) == 2
   end
+
+  test "rejects stack requests without API token" do
+    conn = get(Phoenix.ConnTest.build_conn(), ~p"/api/stacks")
+    assert %{"error" => "missing or invalid API token"} = json_response(conn, 401)
+  end
 end

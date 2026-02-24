@@ -54,6 +54,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub use anomaly::{AnomalyDetector, AnomalyReport};
+#[allow(unused_imports)]
 pub use events::{ContainerEvent, EventType, TimeEvent, TimeSource};
 pub use syscall::SyscallPolicy;
 
@@ -136,6 +137,7 @@ pub struct Monitor {
     config: MonitorConfig,
     status: MonitorStatus,
     stats: MonitorStats,
+    #[allow(dead_code)]
     event_tx: Option<mpsc::Sender<ContainerEvent>>,
     event_rx: Option<mpsc::Receiver<ContainerEvent>>,
     anomaly_detector: Option<Arc<AnomalyDetector>>,

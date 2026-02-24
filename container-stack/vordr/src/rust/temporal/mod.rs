@@ -48,6 +48,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Each tier increases the depth and undetectability of observation,
 /// at the cost of more compute resources.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IsolationTier {
     /// Tier 1: Filesystem isolation + libfaketime (current abduct level).
@@ -78,6 +79,7 @@ impl std::fmt::Display for IsolationTier {
 }
 
 /// Time sweep strategy for scanning through date ranges
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SweepStrategy {
     /// Linear sweep: fixed step increments through the range
@@ -95,6 +97,7 @@ pub enum SweepStrategy {
 }
 
 /// Time sweep range specification
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeSweepRange {
     /// Start of sweep range (ISO 8601)
@@ -115,6 +118,7 @@ pub struct TimeSweepRange {
 /// Provides target deployment characteristics so the analysis
 /// environment matches what the code expects. Prevents
 /// environment-fingerprinting evasion.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EnvironmentMirror {
     /// Contents of /etc/os-release from the target system
@@ -137,6 +141,7 @@ pub struct EnvironmentMirror {
 }
 
 /// Configuration for temporal isolation
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemporalConfig {
     /// Isolation tier
@@ -184,6 +189,7 @@ impl Default for TemporalConfig {
 }
 
 /// Result of a temporal isolation scan
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemporalScanResult {
     /// Whether any time-triggered behaviour was detected

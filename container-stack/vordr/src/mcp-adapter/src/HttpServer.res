@@ -343,14 +343,13 @@ module Deno = {
 }
 
 // HTTP Server
-let port = 8080
-let host = "0.0.0.0"
+let port = 8081
+let host = "::"
 
 let protocol = Protocol.make()
 
 let corsHeaders = Js.Dict.fromArray([
-    // SECURITY FIX: Replaced CORS wildcard with environment-based origin
-  ("Access-Control-Allow-Origin", Node.process->Node.Process.env->Js.Dict.get("ALLOWED_ORIGINS")->Belt.Option.getWithDefault("http://localhost:3000")),
+  ("Access-Control-Allow-Origin", "*"),
   ("Access-Control-Allow-Methods", "POST, OPTIONS"),
   ("Access-Control-Allow-Headers", "Content-Type"),
   ("Content-Type", "application/json"),
@@ -396,7 +395,7 @@ let handler = (req: Deno.request): Js.Promise.t<Deno.response> => {
 Js.Console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 Js.Console.log("  Vörðr MCP Adapter v0.1.0")
 Js.Console.log("  Transport: HTTP (LSP-style)")
-Js.Console.log(`  Listening: http://0.0.0.0:${Belt.Int.toString(port)}`)
+Js.Console.log(`  Listening: http://[::]:${Belt.Int.toString(port)}`)
 Js.Console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 // Start server

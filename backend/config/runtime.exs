@@ -40,6 +40,28 @@ if config_env() == :prod do
 
   config :stapeln, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  api_auth_enabled =
+    case System.get_env("STAPELN_API_AUTH_ENABLED", "true") |> String.downcase() do
+      "0" -> false
+      "false" -> false
+      "no" -> false
+      "off" -> false
+      _ -> true
+    end
+
+  api_auth_token = System.get_env("STAPELN_API_TOKEN")
+
+  if api_auth_enabled and is_nil(api_auth_token) do
+    raise """
+    environment variable STAPELN_API_TOKEN is missing.
+    Set STAPELN_API_TOKEN to enable authenticated REST, GraphQL, and gRPC access.
+    """
+  end
+
+  config :stapeln, :api_auth,
+    enabled: api_auth_enabled,
+    token: api_auth_token
+
   config :stapeln, StapelnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

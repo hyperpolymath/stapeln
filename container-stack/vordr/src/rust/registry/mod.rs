@@ -9,6 +9,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{debug, info};
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum RegistryError {
     #[error("Authentication required for {0}")]
@@ -34,6 +35,7 @@ pub enum RegistryError {
 }
 
 /// Parsed image reference
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ImageReference {
     pub registry: String,
@@ -49,6 +51,7 @@ impl ImageReference {
     /// - "alpine" -> docker.io/library/alpine:latest
     /// - "myregistry.com/myimage:v1" -> myregistry.com/myimage:v1
     /// - "ghcr.io/owner/repo@sha256:..." -> ghcr.io/owner/repo@sha256:...
+    #[allow(dead_code)]
     pub fn parse(reference: &str) -> Result<Self, RegistryError> {
         let reference = reference.trim();
 
@@ -117,6 +120,7 @@ impl ImageReference {
     }
 
     /// Get the full reference string
+    #[allow(dead_code)]
     pub fn full_reference(&self) -> String {
         let mut ref_str = format!("{}/{}", self.registry, self.repository);
 
@@ -133,6 +137,7 @@ impl ImageReference {
 }
 
 /// Authentication token response
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct AuthResponse {
     token: Option<String>,
@@ -140,6 +145,7 @@ struct AuthResponse {
 }
 
 /// OCI registry client
+#[allow(dead_code)]
 pub struct RegistryClient {
     http_client: reqwest::Client,
     auth_cache: std::collections::HashMap<String, String>,
@@ -147,6 +153,7 @@ pub struct RegistryClient {
 
 impl RegistryClient {
     /// Create a new registry client
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             http_client: reqwest::Client::builder()
@@ -158,6 +165,7 @@ impl RegistryClient {
     }
 
     /// Get authentication token for a registry
+    #[allow(dead_code)]
     async fn get_token(&mut self, registry: &str, repository: &str) -> Result<Option<String>, RegistryError> {
         // Check cache
         let cache_key = format!("{}/{}", registry, repository);
@@ -181,6 +189,7 @@ impl RegistryClient {
     }
 
     /// Perform token authentication
+    #[allow(dead_code)]
     async fn do_token_auth(
         &mut self,
         www_auth: &str,
@@ -227,6 +236,7 @@ impl RegistryClient {
     }
 
     /// Build headers with authentication
+    #[allow(dead_code)]
     fn build_headers(&self, token: Option<&str>) -> HeaderMap {
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -246,6 +256,7 @@ impl RegistryClient {
     }
 
     /// Pull an image manifest
+    #[allow(dead_code)]
     pub async fn get_manifest(&mut self, reference: &ImageReference) -> Result<ImageManifest, RegistryError> {
         let token = self.get_token(&reference.registry, &reference.repository).await?;
 
@@ -286,6 +297,7 @@ impl RegistryClient {
     }
 
     /// Pull an image configuration
+    #[allow(dead_code)]
     pub async fn get_config(
         &mut self,
         reference: &ImageReference,
@@ -297,6 +309,7 @@ impl RegistryClient {
     }
 
     /// Pull a blob by digest
+    #[allow(dead_code)]
     pub async fn get_blob(
         &mut self,
         reference: &ImageReference,
@@ -345,6 +358,7 @@ impl RegistryClient {
     }
 
     /// Download a blob to a file
+    #[allow(dead_code)]
     pub async fn download_blob(
         &mut self,
         reference: &ImageReference,

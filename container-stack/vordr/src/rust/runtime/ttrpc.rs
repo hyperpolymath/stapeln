@@ -8,6 +8,7 @@ use std::path::Path;
 use std::time::Duration;
 use thiserror::Error;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum TtrpcError {
     #[error("Failed to connect to shim: {0}")]
@@ -21,13 +22,17 @@ pub enum TtrpcError {
 }
 
 /// TTRPC client for shim communication
+#[allow(dead_code)]
 pub struct TtrpcClient {
+    #[allow(dead_code)]
     socket_path: String,
+    #[allow(dead_code)]
     timeout: Duration,
 }
 
 impl TtrpcClient {
     /// Create a new TTRPC client
+    #[allow(dead_code)]
     pub fn new(socket_path: impl AsRef<Path>, timeout_secs: u64) -> Self {
         Self {
             socket_path: socket_path.as_ref().to_string_lossy().into_owned(),
@@ -36,6 +41,7 @@ impl TtrpcClient {
     }
 
     /// Connect to the shim socket
+    #[allow(dead_code)]
     pub async fn connect(&self) -> Result<(), TtrpcError> {
         // Check if socket exists
         let path = Path::new(&self.socket_path);
@@ -52,6 +58,7 @@ impl TtrpcClient {
     }
 
     /// Create a container task
+    #[allow(dead_code)]
     pub async fn create(
         &self,
         id: &str,
@@ -76,30 +83,35 @@ impl TtrpcClient {
     }
 
     /// Start a created container
+    #[allow(dead_code)]
     pub async fn start(&self, id: &str) -> Result<u32, TtrpcError> {
         tracing::debug!("TTRPC start: id={}", id);
         Err(TtrpcError::RpcError("TTRPC not yet implemented".to_string()))
     }
 
     /// Kill a container process
+    #[allow(dead_code)]
     pub async fn kill(&self, id: &str, signal: u32, all: bool) -> Result<(), TtrpcError> {
         tracing::debug!("TTRPC kill: id={}, signal={}, all={}", id, signal, all);
         Err(TtrpcError::RpcError("TTRPC not yet implemented".to_string()))
     }
 
     /// Delete a container
+    #[allow(dead_code)]
     pub async fn delete(&self, id: &str) -> Result<(u32, u32), TtrpcError> {
         tracing::debug!("TTRPC delete: id={}", id);
         Err(TtrpcError::RpcError("TTRPC not yet implemented".to_string()))
     }
 
     /// Wait for container exit
+    #[allow(dead_code)]
     pub async fn wait(&self, id: &str) -> Result<u32, TtrpcError> {
         tracing::debug!("TTRPC wait: id={}", id);
         Err(TtrpcError::RpcError("TTRPC not yet implemented".to_string()))
     }
 
     /// Get container state
+    #[allow(dead_code)]
     pub async fn state(&self, id: &str) -> Result<TaskState, TtrpcError> {
         tracing::debug!("TTRPC state: id={}", id);
         Err(TtrpcError::RpcError("TTRPC not yet implemented".to_string()))
@@ -107,6 +119,7 @@ impl TtrpcClient {
 }
 
 /// Container task state
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TaskState {
     pub id: String,
@@ -116,6 +129,7 @@ pub struct TaskState {
 }
 
 /// Task status
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskStatus {
     Unknown,
@@ -127,6 +141,7 @@ pub enum TaskStatus {
 }
 
 impl TaskStatus {
+    #[allow(dead_code)]
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "created" => TaskStatus::Created,
@@ -138,6 +153,7 @@ impl TaskStatus {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             TaskStatus::Unknown => "unknown",

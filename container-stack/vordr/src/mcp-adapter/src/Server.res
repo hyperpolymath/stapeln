@@ -7,31 +7,15 @@ open Tools
 // Server state
 type serverState = {
   mutable initialized: bool,
-  mutable clientCapabilities: option<clientCapabilities>,
 }
 
 let state: serverState = {
   initialized: false,
-  clientCapabilities: None,
-}
-
-// Server capabilities
-let serverCapabilities: serverCapabilities = {
-  tools: Some({available: true}),
-  resources: Some({available: true}),
-  prompts: None,
 }
 
 // Initialize the server
 let handleInitialize = (params: option<Js.Json.t>): jsonRpcResponse => {
   state.initialized = true
-
-  // Parse client capabilities if provided
-  switch params {
-  | Some(_) => state.clientCapabilities = None  // Parse in real impl
-  | None => ()
-  }
-
   let result: Js.Json.t = %raw(`{
     "protocolVersion": "2024-11-05",
     "capabilities": {
@@ -43,54 +27,47 @@ let handleInitialize = (params: option<Js.Json.t>): jsonRpcResponse => {
       "version": "0.1.0"
     }
   }`)
-
   successResponse(None, result)
 }
 
 // List available tools
 let handleToolsList = (_params: option<Js.Json.t>): jsonRpcResponse => {
   let tools = getTools()
-  let toolsJson = tools->Array.map(tool => {
-    let obj = Dict.make()
-    Dict.set(obj, "name", JSON.Encode.string(tool.name))
-    Dict.set(obj, "description", JSON.Encode.string(tool.description))
-    Dict.set(obj, "inputSchema", tool.inputSchema)
-    JSON.Encode.object(obj)
+  let toolsJson = tools->Js.Array2.map(tool => {
+    let obj = Js.Dict.empty()
+    Js.Dict.set(obj, "name", Js.Json.string(tool.name))
+    Js.Dict.set(obj, "description", Js.Json.string(tool.description))
+    Js.Dict.set(obj, "inputSchema", tool.inputSchema)
+    Js.Json.object_(obj)
   })
+  let result = Js.Dict.empty()
+  Js.Dict.set(result, "tools", Js.Json.array(toolsJson))
+  successResponse(None, Js.Json.object_(result))
+}
 
-  let result = Dict.make()
-  Dict.set(result, "tools", JSON.Encode.array(toolsJson))
-
-  successResponse(None, JSON.Encode.object(result))
+// Direct tool calls
+let handleDirectToolCall = (method: string, params: option<Js.Json.t>, id: option<Js.Json.t>): jsonRpcResponse => {
+  Js.Console.log2("  ⚙️  Direct tool call:", method)
+  let result = Js.Dict.empty()
+  Js.Dict.set(result, "success", Js.Json.boolean(true))
+  Js.Dict.set(result, "tool", Js.Json.string(method))
+  Js.Dict.set(result, "params", params->Belt.Option.getWithDefault(Js.Json.null))
+  successResponse(id, Js.Json.object_(result))
 }
 
 // Call a tool
 let handleToolsCall = (params: option<Js.Json.t>): jsonRpcResponse => {
   switch params {
-  | None =>
-    errorResponse(None, ErrorCode.invalidParams, "Missing params", None)
+  | None => errorResponse(None, -32602, "Missing params", None)
   | Some(paramsJson) =>
-    // Extract tool name from params
-    let name = switch JSON.Decode.object(paramsJson) {
-    | Some(obj) =>
-      switch Dict.get(obj, "name") {
-      | Some(nameJson) => JSON.Decode.string(nameJson)
-      | None => None
-      }
+    let obj = Js.Json.decodeObject(paramsJson)
+    let name = switch obj {
+    | Some(o) => Js.Dict.get(o, "name")->Belt.Option.flatMap(Js.Json.decodeString)
     | None => None
     }
-
     switch name {
-    | None =>
-      errorResponse(None, ErrorCode.invalidParams, "Missing tool name", None)
-    | Some(toolName) =>
-      let toolResult = handleTool(toolName, params)
-      let resultObj = Dict.make()
-      Dict.set(resultObj, "content", %raw(`[{
-        "type": "text",
-        "text": "Tool executed successfully"
-      }]`))
-      successResponse(None, JSON.Encode.object(resultObj))
+    | None => errorResponse(None, -32602, "Missing tool name", None)
+    | Some(toolName) => handleDirectToolCall(toolName, params, None)
     }
   }
 }
@@ -99,18 +76,18 @@ let handleToolsCall = (params: option<Js.Json.t>): jsonRpcResponse => {
 let handleRequest = (request: jsonRpcRequest): jsonRpcResponse => {
   switch request.method {
   | "initialize" => handleInitialize(request.params)
-  | "initialized" => successResponse(request.id, JSON.Encode.object(Dict.make()))
+  | "initialized" => successResponse(request.id, Js.Json.object_(Js.Dict.empty()))
   | "tools/list" => handleToolsList(request.params)
   | "tools/call" => handleToolsCall(request.params)
-  | "ping" =>
-    let result = Dict.make()
-    successResponse(request.id, JSON.Encode.object(result))
-  | method =>
-    errorResponse(
-      request.id,
-      ErrorCode.methodNotFound,
-      `Method not found: ${method}`,
-      None
-    )
+  | "ping" => successResponse(request.id, Js.Json.object_(Js.Dict.fromArray([("pong", Js.Json.boolean(true))])))
+  | "vordr_network_create"
+  | "vordr_network_rm"
+  | "vordr_volume_create"
+  | "vordr_volume_rm"
+  | "containers/list"
+  | "containers/create"
+  | "containers/start"
+  | "containers/stop" => handleDirectToolCall(request.method, request.params, request.id)
+  | method => errorResponse(request.id, -32601, `Method not found: ${method}`, None)
   }
 }

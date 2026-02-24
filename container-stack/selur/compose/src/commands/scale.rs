@@ -147,6 +147,7 @@ pub async fn scale(
                     secrets: service_config.secrets.clone(),
                     healthcheck,
                     command: service_config.command.clone(),
+                    ..Default::default()
                 };
 
                 let image_digest = ct_client.bundle_digest(&service_config.image)?;

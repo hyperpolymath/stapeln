@@ -91,3 +91,36 @@ let errorResponse = (
     }),
   }
 }
+
+// Encode JSON-RPC response to JSON
+let encodeResponse = (response: jsonRpcResponse): Js.Json.t => {
+  let dict = Js.Dict.empty()
+  Js.Dict.set(dict, "jsonrpc", Js.Json.string(response.jsonrpc))
+
+  switch response.id {
+  | Some(id) => Js.Dict.set(dict, "id", id)
+  | None => ()
+  }
+
+  switch response.result {
+  | Some(result) => Js.Dict.set(dict, "result", result)
+  | None => ()
+  }
+
+  switch response.error {
+  | Some(err) => {
+      let errorDict = Js.Dict.fromArray([
+        ("code", Js.Json.number(Belt.Int.toFloat(err.code))),
+        ("message", Js.Json.string(err.message)),
+      ])
+      switch err.data {
+      | Some(data) => Js.Dict.set(errorDict, "data", data)
+      | None => ()
+      }
+      Js.Dict.set(dict, "error", Js.Json.object_(errorDict))
+    }
+  | None => ()
+  }
+
+  Js.Json.object_(dict)
+}

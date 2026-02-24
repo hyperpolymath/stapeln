@@ -59,18 +59,21 @@ impl SyscallFilter {
     }
 
     /// Add a UID restriction
+    #[allow(dead_code)]
     pub fn with_uid(mut self, uid: u32) -> Self {
         self.uids.insert(uid);
         self
     }
 
     /// Add a GID restriction
+    #[allow(dead_code)]
     pub fn with_gid(mut self, gid: u32) -> Self {
         self.gids.insert(gid);
         self
     }
 
     /// Add a command pattern restriction
+    #[allow(dead_code)]
     pub fn with_comm(mut self, pattern: String) -> Self {
         self.comm_pattern = Some(pattern);
         self
@@ -83,6 +86,7 @@ impl SyscallFilter {
     }
 
     /// Check if this filter matches an event
+    #[allow(dead_code)]
     pub fn matches(&self, syscall_nr: i64, uid: u32, gid: u32, comm: &str) -> bool {
         // Must match syscall number
         if !self.syscalls.contains(&syscall_nr) {
@@ -223,6 +227,7 @@ impl SyscallPolicy {
     }
 
     /// Evaluate a syscall against this policy
+    #[allow(dead_code)]
     pub fn evaluate(&self, syscall_nr: i64, uid: u32, gid: u32, comm: &str) -> FilterAction {
         for filter in &self.filters {
             if filter.matches(syscall_nr, uid, gid, comm) {
@@ -233,11 +238,13 @@ impl SyscallPolicy {
     }
 
     /// Add a filter to this policy
+    #[allow(dead_code)]
     pub fn add_filter(&mut self, filter: SyscallFilter) {
         self.filters.push(filter);
     }
 
     /// Restrict this policy to specific containers
+    #[allow(dead_code)]
     pub fn for_containers(mut self, containers: impl IntoIterator<Item = String>) -> Self {
         self.container_ids = containers.into_iter().collect();
         self
@@ -245,20 +252,24 @@ impl SyscallPolicy {
 }
 
 /// Predefined syscall groups for common use cases
+#[allow(dead_code)]
 pub struct SyscallGroups;
 
 impl SyscallGroups {
     /// Process execution syscalls
+    #[allow(dead_code)]
     pub fn process_exec() -> Vec<i64> {
         vec![59, 322] // execve, execveat
     }
 
     /// Process creation syscalls
+    #[allow(dead_code)]
     pub fn process_create() -> Vec<i64> {
         vec![56, 57, 58, 435] // clone, fork, vfork, clone3
     }
 
     /// File operations
+    #[allow(dead_code)]
     pub fn file_ops() -> Vec<i64> {
         vec![
             2, 257, 85, 86, 87, 88, 82, 83, 84, // open, openat, creat, link, unlink, symlink, rename, mkdir, rmdir
@@ -267,6 +278,7 @@ impl SyscallGroups {
     }
 
     /// Network operations
+    #[allow(dead_code)]
     pub fn network_ops() -> Vec<i64> {
         vec![
             41, 42, 43, 44, 45, 46, 47, 48, 49, 50, // socket, connect, accept, sendto, recvfrom, etc.
@@ -274,11 +286,13 @@ impl SyscallGroups {
     }
 
     /// Namespace operations
+    #[allow(dead_code)]
     pub fn namespace_ops() -> Vec<i64> {
         vec![272, 308] // unshare, setns
     }
 
     /// Privilege escalation related
+    #[allow(dead_code)]
     pub fn privilege_ops() -> Vec<i64> {
         vec![
             105, 106, 113, 114, 117, 119, // setuid, setgid, setreuid, setregid, setresuid, setresgid
@@ -287,6 +301,7 @@ impl SyscallGroups {
     }
 
     /// System administration
+    #[allow(dead_code)]
     pub fn sysadmin_ops() -> Vec<i64> {
         vec![
             161, 163, 165, 166, // chroot, pivot_root, mount, umount

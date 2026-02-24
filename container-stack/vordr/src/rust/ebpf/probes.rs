@@ -23,23 +23,29 @@ pub enum ProbeType {
     /// sys_enter raw tracepoint
     SysEnter,
     /// sys_exit raw tracepoint
+    #[allow(dead_code)]
     SysExit,
     /// sched_process_exec tracepoint
     SchedProcessExec,
     /// sched_process_exit tracepoint
     SchedProcessExit,
     /// net_dev_xmit tracepoint
+    #[allow(dead_code)]
     NetDevXmit,
     /// sock_sendmsg kprobe
+    #[allow(dead_code)]
     SockSendMsg,
     /// vfs_read kprobe
+    #[allow(dead_code)]
     VfsRead,
     /// vfs_write kprobe
+    #[allow(dead_code)]
     VfsWrite,
 }
 
 impl ProbeType {
     /// Get the BPF program name for this probe
+    #[allow(dead_code)]
     pub fn program_name(&self) -> &'static str {
         match self {
             ProbeType::SysEnter => "vordr_sys_enter",
@@ -109,6 +115,7 @@ pub struct ProbeManager {
 
 impl ProbeManager {
     /// Create a new probe manager
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "bpf")]
@@ -121,6 +128,7 @@ impl ProbeManager {
     }
 
     /// Load the eBPF programs from embedded bytecode
+    #[allow(dead_code)]
     pub async fn load(&mut self) -> Result<()> {
         info!("Loading Vörðr eBPF programs");
 
@@ -147,6 +155,7 @@ impl ProbeManager {
     }
 
     /// Attach a specific probe
+    #[allow(dead_code)]
     pub async fn attach(&mut self, probe: ProbeType) -> Result<()> {
         let (category, name) = probe.attach_point();
         debug!("Attaching probe {}/{}", category, name);
@@ -186,6 +195,7 @@ impl ProbeManager {
     }
 
     /// Detach a specific probe
+    #[allow(dead_code)]
     pub async fn detach(&mut self, probe: ProbeType) -> Result<()> {
         let (category, name) = probe.attach_point();
         debug!("Detaching probe {}/{}", category, name);
@@ -196,6 +206,7 @@ impl ProbeManager {
     }
 
     /// Attach all default probes for container monitoring
+    #[allow(dead_code)]
     pub async fn attach_default_probes(&mut self) -> Result<()> {
         let default_probes = [
             ProbeType::SysEnter,
@@ -211,6 +222,7 @@ impl ProbeManager {
     }
 
     /// Set container filter
+    #[allow(dead_code)]
     pub async fn set_container_filter(&mut self, cgroup_id: u64, pid_ns: u64) -> Result<()> {
         let _filter = ContainerFilter {
             cgroup_id,
@@ -221,7 +233,7 @@ impl ProbeManager {
 
         #[cfg(feature = "bpf")]
         if let Some(ref mut map) = self.filter_map {
-            map.insert(0, filter, 0)?;
+            map.insert(0, _filter, 0)?;
         }
 
         debug!(
@@ -232,12 +244,13 @@ impl ProbeManager {
     }
 
     /// Clear container filter (monitor all containers)
+    #[allow(dead_code)]
     pub async fn clear_container_filter(&mut self) -> Result<()> {
         let _filter = ContainerFilter::default();
 
         #[cfg(feature = "bpf")]
         if let Some(ref mut map) = self.filter_map {
-            map.insert(0, filter, 0)?;
+            map.insert(0, _filter, 0)?;
         }
 
         debug!("Container filter cleared");
@@ -245,16 +258,19 @@ impl ProbeManager {
     }
 
     /// Get probe statistics
+    #[allow(dead_code)]
     pub async fn get_stats(&self) -> ProbeStats {
         *self.stats.read().await
     }
 
     /// Check if a probe is active
+    #[allow(dead_code)]
     pub fn is_active(&self, probe: ProbeType) -> bool {
         self.active_probes.get(&probe).copied().unwrap_or(false)
     }
 
     /// List all active probes
+    #[allow(dead_code)]
     pub fn active_probes(&self) -> Vec<ProbeType> {
         self.active_probes
             .iter()

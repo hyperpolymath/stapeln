@@ -12,10 +12,13 @@ use thiserror::Error;
 
 use crate::ffi::ValidatedConfig;
 
+use serde::{Serialize, Deserialize};
+
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("OCI spec error: {0}")]
     OciSpec(String),
+    #[allow(dead_code)]
     #[error("Invalid configuration: {0}")]
     Invalid(String),
     #[error("IO error: {0}")]
@@ -62,7 +65,7 @@ pub struct OciConfigBuilder {
 }
 
 /// Mount specification
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MountSpec {
     pub source: String,
     pub destination: String,
@@ -159,6 +162,7 @@ impl OciConfigBuilder {
     }
 
     /// Set working directory
+    #[allow(dead_code)]
     pub fn cwd(mut self, cwd: impl Into<String>) -> Self {
         self.cwd = cwd.into();
         self
@@ -171,6 +175,7 @@ impl OciConfigBuilder {
     }
 
     /// Set group ID
+    #[allow(dead_code)]
     pub fn gid(mut self, gid: u32) -> Self {
         self.gid = gid;
         self
@@ -213,12 +218,14 @@ impl OciConfigBuilder {
     }
 
     /// Set privileged mode
+    #[allow(dead_code)]
     pub fn privileged(mut self, privileged: bool) -> Self {
         self.privileged = privileged;
         self
     }
 
     /// Enable user namespace
+    #[allow(dead_code)]
     pub fn user_namespace(mut self, enabled: bool) -> Self {
         if enabled && !self.namespaces.contains(&LinuxNamespaceType::User) {
             self.namespaces.push(LinuxNamespaceType::User);

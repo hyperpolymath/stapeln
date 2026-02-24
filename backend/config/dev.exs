@@ -51,3 +51,16 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+api_auth_enabled =
+  case System.get_env("STAPELN_API_AUTH_ENABLED", "true") |> String.downcase() do
+    "0" -> false
+    "false" -> false
+    "no" -> false
+    "off" -> false
+    _ -> true
+  end
+
+config :stapeln, :api_auth,
+  enabled: api_auth_enabled,
+  token: System.get_env("STAPELN_API_TOKEN") || "dev-stapeln-token"

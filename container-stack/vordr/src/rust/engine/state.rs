@@ -21,6 +21,7 @@ pub enum StateError {
     NetworkNotFound(String),
     #[error("Volume not found: {0}")]
     VolumeNotFound(String),
+    #[allow(dead_code)]
     #[error("Lock acquisition failed: {0}")]
     LockFailed(String),
 }
@@ -79,6 +80,7 @@ pub struct ImageInfo {
     pub repository: Option<String>,
     pub tags: Vec<String>,
     pub size: i64,
+    #[allow(dead_code)]
     pub path: Option<String>,
     pub created_at: String,
 }
@@ -91,6 +93,7 @@ pub struct NetworkInfo {
     pub driver: String,
     pub subnet: Option<String>,
     pub gateway: Option<String>,
+    #[allow(dead_code)]
     pub options: Option<String>,
     pub created_at: String,
 }
@@ -273,6 +276,7 @@ impl StateManager {
     }
 
     /// Finds a local image by its reference (e.g., "ubuntu:latest", "alpine:3.19") or by digest.
+    #[allow(dead_code)]
     pub fn find_local_image_by_ref(&self, reference: &str) -> Result<Option<ImageInfo>, StateError> {
         // Attempt to parse the reference into repository and tag
         let (repo, tag) = if reference.contains(':') && !reference.starts_with("sha256:") {
@@ -317,6 +321,7 @@ impl StateManager {
 
     /// Adds a new local image record to the database.
     /// This is a convenience method that calls `create_image`.
+    #[allow(dead_code)]
     pub fn add_local_image(
         &self,
         id: &str,       // Unique ID, e.g., image digest
@@ -412,6 +417,7 @@ impl StateManager {
     }
 
     /// Set container exit code.
+    #[allow(dead_code)]
     pub fn set_container_exit_code(&self, id: &str, exit_code: i32) -> Result<(), StateError> {
         let rows = self.conn.execute(
             "UPDATE containers SET exit_code = ?1, state = 'stopped',
@@ -686,6 +692,7 @@ impl StateManager {
     // === LOCK OPERATIONS ===
 
     /// Acquire an advisory lock.
+    #[allow(dead_code)]
     pub fn acquire_lock(&self, resource_type: &str, resource_id: &str) -> Result<(), StateError> {
         let pid = std::process::id() as i32;
 
@@ -713,6 +720,7 @@ impl StateManager {
     }
 
     /// Release an advisory lock.
+    #[allow(dead_code)]
     pub fn release_lock(&self, resource_type: &str, resource_id: &str) -> Result<(), StateError> {
         let pid = std::process::id() as i32;
 
@@ -724,6 +732,7 @@ impl StateManager {
     }
 
     /// Clean up locks from dead processes.
+    #[allow(dead_code)]
     fn cleanup_stale_locks(&self) -> Result<(), StateError> {
         let mut stmt = self
             .conn
@@ -748,6 +757,7 @@ impl StateManager {
     }
 
     /// Check if a process exists.
+    #[allow(dead_code)]
     fn process_exists(pid: i32) -> bool {
         #[cfg(unix)]
         {

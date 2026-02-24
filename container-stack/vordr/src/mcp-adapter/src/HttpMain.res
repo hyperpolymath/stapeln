@@ -1,123 +1,67 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Vörðr MCP Adapter - HTTP transport entry point
-// Similar to how LSP servers support multiple transports
+// Vörðr MCP Adapter - Deno HTTP transport
 
+open Types
 open Server
-open Protocol
 
-// HTTP server configuration
-let port = 8080
-let host = "0.0.0.0"
-
-// CORS headers for cross-origin requests
-let corsHeaders = {
-    // SECURITY FIX: Replaced CORS wildcard with environment-based origin
-  "Access-Control-Allow-Origin": Node.process->Node.Process.env->Js.Dict.get("ALLOWED_ORIGINS")->Belt.Option.getWithDefault("http://localhost:3000"),
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Content-Type": "application/json",
+// Deno bindings
+module Deno = {
+  type serveOptions = {
+    port: int,
+    hostname: string,
+    handler: (request) => Js.Promise.t<response>,
+  }
+  type request
+  type response
+  @scope("Deno") @val external serve: (serveOptions) => unit = "serve"
+  @new external makeResponse: (string, {"headers": Js.Dict.t<string>}) => response = "Response"
+  @get external getMethod: request => string = "method"
+  @send external json: request => Js.Promise.t<Js.Json.t> = "json"
 }
 
-// Handle HTTP request
-let handleHttp = async (request: 'request): 'response => {
-  let method = %raw(`request.method`)
+let port = 8000
+let host = "0.0.0.0"
 
-  // Handle CORS preflight
-  if method === "OPTIONS" {
-    %raw(`new Response("", { status: 200, headers: corsHeaders })`)
-  } else if method === "POST" {
-    try {
-      // Read JSON-RPC request body
-      let body = await %raw(`request.text()`)
-      let json = JSON.parseExn(body)
+let corsHeaders = Js.Dict.fromArray([
+  ("Access-Control-Allow-Origin", "*"),
+  ("Access-Control-Allow-Methods", "POST, OPTIONS"),
+  ("Access-Control-Allow-Headers", "Content-Type"),
+  ("Content-Type", "application/json"),
+])
 
-      // Parse JSON-RPC request
-      let mcpRequest = switch JSON.Decode.object(json) {
+let handler = (req: Deno.request): Js.Promise.t<Deno.response> => {
+  if Deno.getMethod(req) == "OPTIONS" {
+    Js.Promise.resolve(Deno.makeResponse("", {"headers": corsHeaders}))
+  } else if Deno.getMethod(req) == "POST" {
+    Deno.json(req)
+    ->Js.Promise.then_(json => {
+      // Re-use logic from parseRequest in Main or Protocol
+      let requestObj = Js.Json.decodeObject(json)
+      let response = switch requestObj {
       | Some(obj) => {
-          jsonrpc: switch Dict.get(obj, "jsonrpc") {
-          | Some(v) => JSON.Decode.string(v)->Belt.Option.getWithDefault("2.0")
-          | None => "2.0"
-          },
-          id: Dict.get(obj, "id"),
-          method: switch Dict.get(obj, "method") {
-          | Some(v) => JSON.Decode.string(v)->Belt.Option.getWithDefault("")
-          | None => ""
-          },
-          params: Dict.get(obj, "params"),
+          let jsonrpc = obj->Js.Dict.get("jsonrpc")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getWithDefault("2.0")
+          let method = obj->Js.Dict.get("method")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getWithDefault("")
+          let params = obj->Js.Dict.get("params")
+          let id = obj->Js.Dict.get("id")
+          handleRequest({jsonrpc, method, params, id})
         }
       | None => {
           jsonrpc: "2.0",
           id: None,
-          method: "",
-          params: None,
+          result: None,
+          error: Some({code: -32700, message: "Parse error", data: None})
         }
       }
-
-      // Use Server.res protocol handler (shared with stdio transport)
-      let mcpResponse = handleRequest(mcpRequest)
-
-      // Serialize JSON-RPC response
-      let responseObj = Dict.make()
-      Dict.set(responseObj, "jsonrpc", JSON.Encode.string(mcpResponse.jsonrpc))
-
-      switch mcpResponse.id {
-      | Some(id) => Dict.set(responseObj, "id", id)
-      | None => ()
-      }
-
-      switch mcpResponse.result {
-      | Some(result) => Dict.set(responseObj, "result", result)
-      | None => ()
-      }
-
-      switch mcpResponse.error {
-      | Some(err) => {
-          let errObj = Dict.make()
-          Dict.set(errObj, "code", JSON.Encode.int(err.code))
-          Dict.set(errObj, "message", JSON.Encode.string(err.message))
-          switch err.data {
-          | Some(data) => Dict.set(errObj, "data", data)
-          | None => ()
-          }
-          Dict.set(responseObj, "error", JSON.Encode.object(errObj))
-        }
-      | None => ()
-      }
-
-      let responseJson = JSON.stringify(JSON.Encode.object(responseObj))
-      %raw(`new Response(responseJson, { status: 200, headers: corsHeaders })`)
-
-    } catch {
-    | Js.Exn.Error(e) => {
-        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Parse error")
-        let errorObj = Dict.make()
-        Dict.set(errorObj, "jsonrpc", JSON.Encode.string("2.0"))
-        Dict.set(errorObj, "id", JSON.Encode.null)
-
-        let err = Dict.make()
-        Dict.set(err, "code", JSON.Encode.int(-32700))
-        Dict.set(err, "message", JSON.Encode.string(message))
-        Dict.set(errorObj, "error", JSON.Encode.object(err))
-
-        let errorJson = JSON.stringify(JSON.Encode.object(errorObj))
-        %raw(`new Response(errorJson, { status: 500, headers: corsHeaders })`)
-      }
-    }
+      
+      let responseText = Js.Json.stringify(Protocol.encodeResponse(response))
+      Js.Promise.resolve(Deno.makeResponse(responseText, {"headers": corsHeaders}))
+    }, _)
   } else {
-    %raw(`new Response("Method not allowed", { status: 405, headers: corsHeaders })`)
+    Js.Promise.resolve(Deno.makeResponse("Method not allowed", {"headers": corsHeaders}))
   }
 }
 
-// Start HTTP server (Deno.serve)
-let start = () => {
-  Console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-  Console.log("  Vörðr MCP Adapter v0.1.0")
-  Console.log("  Transport: HTTP (LSP-style)")
-  Console.log("  Listening: http://" ++ host ++ ":" ++ Belt.Int.toString(port))
-  Console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+Js.Console.log(`Vörðr HTTP Server listening on http://[::]:${Belt.Int.toString(port)}`)
+Deno.serve({port, hostname: host, handler})
 
-  %raw(`Deno.serve({ port: port, hostname: host }, handleHttp)`)
-}
 
-// Start server
-start()
