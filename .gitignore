@@ -81,5 +81,9 @@ htmlcov/
 *.tmp
 *.bak
 
+# Shared libraries
+*.so
+*.dylib
+
 # Crash recovery artifacts
 ai-cli-crash-capture/
