@@ -83,7 +83,7 @@ defmodule StapelnGrpc.StackService.ServerTest do
         Server.list_stacks(%ListStacksRequest{}, nil)
       end
 
-    assert error.status == :unauthenticated
+    assert error.status in [:unauthenticated, 16]
   end
 
   defp authorized_stream do

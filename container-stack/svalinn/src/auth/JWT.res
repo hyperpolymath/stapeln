@@ -3,6 +3,13 @@
 
 open AuthTypes
 
+@val external atob_: string => string = "atob"
+@val external btoa_: string => string = "btoa"
+
+type textEncoder
+@new external makeTextEncoder: unit => textEncoder = "TextEncoder"
+@send external encodeText: (textEncoder, string) => Js.TypedArray2.Uint8Array.t = "encode"
+
 // JWKS key structure
 type jwk = {
   kty: string,
@@ -95,7 +102,7 @@ let base64UrlDecode = (str: string): Js.TypedArray2.Uint8Array.t => {
     ->Js.String2.replaceByRe(%re("/_/g"), "/")
 
   let padding = Js.String2.repeat("=", (4 - mod(Js.String2.length(base64), 4)) |> mod(_, 4))
-  let binary = %raw(`atob(base64 + padding)`)
+  let binary = atob_(base64 ++ padding)
 
   let bytes = Js.TypedArray2.Uint8Array.fromLength(Js.String2.length(binary))
   for i in 0 to Js.String2.length(binary) - 1 {
@@ -111,7 +118,7 @@ let base64UrlEncode = (bytes: Js.TypedArray2.Uint8Array.t): string => {
   for i in 0 to len - 1 {
     binary := binary.contents ++ Js.String2.fromCharCode(Js.TypedArray2.Uint8Array.unsafe_get(bytes, i))
   }
-  %raw(`btoa(binary.contents)`)
+  btoa_(binary.contents)
     ->Js.String2.replaceByRe(%re("/\\+/g"), "-")
     ->Js.String2.split("/")
     ->Js.Array2.joinWith("_")
@@ -248,38 +255,36 @@ let importJWK = async (jwk: jwk, alg: string): 'cryptoKey => {
   }
 
   // Convert jwk to JS object for importKey
-  let jwkObj = {
-    "kty": jwk.kty,
-    "kid": jwk.kid,
-  }->Obj.magic
+  let jwkObj: Js.Dict.t<string> = Js.Dict.empty()
+  Js.Dict.set(jwkObj, "kty", jwk.kty)
+  Js.Dict.set(jwkObj, "kid", jwk.kid)
 
-  // Add optional fields
   switch jwk.alg {
-  | Some(a) => %raw(`jwkObj.alg = a`)
+  | Some(value) => Js.Dict.set(jwkObj, "alg", value)
   | None => ()
   }
   switch jwk.n {
-  | Some(n) => %raw(`jwkObj.n = n`)
+  | Some(value) => Js.Dict.set(jwkObj, "n", value)
   | None => ()
   }
   switch jwk.e {
-  | Some(e) => %raw(`jwkObj.e = e`)
+  | Some(value) => Js.Dict.set(jwkObj, "e", value)
   | None => ()
   }
   switch jwk.x {
-  | Some(x) => %raw(`jwkObj.x = x`)
+  | Some(value) => Js.Dict.set(jwkObj, "x", value)
   | None => ()
   }
   switch jwk.y {
-  | Some(y) => %raw(`jwkObj.y = y`)
+  | Some(value) => Js.Dict.set(jwkObj, "y", value)
   | None => ()
   }
   switch jwk.crv {
-  | Some(crv) => %raw(`jwkObj.crv = crv`)
+  | Some(value) => Js.Dict.set(jwkObj, "crv", value)
   | None => ()
   }
 
-  await importKey("jwk", jwkObj, algorithmObj, true, ["verify"])
+  await importKey("jwk", Obj.magic(jwkObj), algorithmObj, true, ["verify"])
 }
 
 // Verify JWT signature
@@ -296,8 +301,7 @@ let verifySignature = async (token: string, key: 'cryptoKey, algorithm: algorith
   | None => raise(Js.Exn.raiseError("Invalid JWT: missing payload for signature verification"))
   }
 
-  let dataStr = part0 ++ "." ++ part1
-  let data = %raw(`new TextEncoder().encode(dataStr)`)
+  let data = encodeText(makeTextEncoder(), part0 ++ "." ++ part1)
 
   let signature = switch Belt.Array.get(parts, 2) {
   | Some(sig) => base64UrlDecode(sig)

@@ -17,6 +17,15 @@ defmodule Stapeln.Security.PanicAttacker do
               target: nil,
               schedule: nil,
               task: nil
+
+    @type t :: %__MODULE__{
+            status: :idle | :running | :stopped | :completed | :failed,
+            timeline: [map()],
+            command: String.t() | nil,
+            target: String.t() | nil,
+            schedule: String.t() | nil,
+            task: Task.t() | nil
+          }
   end
 
   ## Client API
@@ -26,15 +35,22 @@ defmodule Stapeln.Security.PanicAttacker do
   end
 
   def start_trace(command, target, schedule) do
-    GenServer.call(__MODULE__, {:start, command, target, schedule})
+    with :ok <- ensure_server_started(),
+         :ok <- ensure_task_supervisor_started() do
+      GenServer.call(__MODULE__, {:start, command, target, schedule})
+    end
   end
 
   def stop_trace do
-    GenServer.call(__MODULE__, :stop)
+    with :ok <- ensure_server_started() do
+      GenServer.call(__MODULE__, :stop)
+    end
   end
 
   def status do
-    GenServer.call(__MODULE__, :status)
+    with :ok <- ensure_server_started() do
+      GenServer.call(__MODULE__, :status)
+    end
   end
 
   ## Server callbacks
@@ -113,7 +129,8 @@ defmodule Stapeln.Security.PanicAttacker do
 
   ## Helpers
 
-  defp set_command(state, command, target, schedule) do
+  @spec set_command(State.t(), String.t(), String.t(), String.t()) :: State.t()
+  defp set_command(%State{} = state, command, target, schedule) do
     %State{state | command: command, target: target, schedule: schedule}
   end
 
@@ -127,7 +144,8 @@ defmodule Stapeln.Security.PanicAttacker do
     }
   end
 
-  defp append_event(state, level, message) do
+  @spec append_event(State.t(), atom(), String.t()) :: {State.t(), map()}
+  defp append_event(%State{} = state, level, message) do
     entry = timeline_entry(level, message)
     timeline = limit_timeline(state.timeline ++ [entry])
     {%State{state | timeline: timeline}, entry}
@@ -179,5 +197,29 @@ defmodule Stapeln.Security.PanicAttacker do
     output
     |> String.trim()
     |> String.slice(0, 120)
+  end
+
+  defp ensure_server_started do
+    if Process.whereis(__MODULE__) do
+      :ok
+    else
+      case start_link([]) do
+        {:ok, _pid} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp ensure_task_supervisor_started do
+    if Process.whereis(TaskSupervisor) do
+      :ok
+    else
+      case Task.Supervisor.start_link(name: TaskSupervisor) do
+        {:ok, _pid} -> :ok
+        {:error, {:already_started, _pid}} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
   end
 end

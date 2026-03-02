@@ -28,7 +28,7 @@
                                  ▼                 ▼
                         ┌─────────────────────────────────────────┐
                         │           BACKEND CORE (ELIXIR)         │
-                        │    (Phoenix, GraphQL, Orchestration)    │
+                        │ (Phoenix, GraphQL, Stack Metadata APIs) │
                         └──────────┬───────────────────┬──────────┘
                                    │                   │
                                    ▼                   ▼
@@ -87,6 +87,12 @@ miniKanren Rules ──► Gap Analysis ───► Paragon View ───► S
      ▼                   ▼                 ▼                 ▼
 VeriSimDB ──────► Trace Audit ─────► Cisco View ──────► Simulation
 ```
+
+## Boundary Contract
+
+- `stapeln/backend` is the **design/control plane** for stack definitions and validation reports.
+- `container-stack/svalinn` + `container-stack/vordr` are the **runtime plane** for container lifecycle operations.
+- `container-stack/rokur` is the planned secrets/policy gate for runtime operations before container start.
 
 ## Update Protocol
 

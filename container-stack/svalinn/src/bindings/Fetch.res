@@ -47,10 +47,6 @@ module Response = {
   @scope("Response") @val
   external json_: (Js.Json.t, {..}) => t = "json"
 
-  let json = (data: Js.Json.t, ~status: int=200, ()): t => {
-    json_(data, {"status": status, "headers": {"Content-Type": "application/json"}})
-  }
-
   @scope("Response") @val
   external error: unit => t = "error"
 

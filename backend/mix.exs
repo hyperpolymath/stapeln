@@ -42,6 +42,8 @@ defmodule Stapeln.MixProject do
       {:phoenix, "~> 1.8.3"},
       {:absinthe, "~> 1.7"},
       {:absinthe_plug, "~> 1.5"},
+      {:grpc, "~> 0.11.5"},
+      {:protobuf, "~> 0.16"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},

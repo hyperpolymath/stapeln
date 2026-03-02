@@ -87,6 +87,7 @@ Svalinn is a Deno-based HTTP gateway that validates container operation requests
 * **Delegation** -- Forwards verified requests to Vörðr via MCP/JSON-RPC
 * **Policy Enforcement** -- Configurable allow/deny rules per operation type
 * **Authentication** -- OAuth2/OIDC and JWT token validation
+* **Secrets Gate** -- Calls Rokur before container start operations
 * **Compose Orchestration** -- Multi-container deployment via `svalinn-compose`
 
 === What Svalinn Does NOT Do
@@ -115,6 +116,11 @@ cargo install just
 export SVALINN_PORT=8000           # Gateway port (default: 8000)
 export SVALINN_HOST=0.0.0.0        # Bind address (default: 0.0.0.0)
 export VORDR_ENDPOINT=http://localhost:8080  # Vörðr MCP endpoint
+export ROKUR_ENDPOINT=http://localhost:9090  # Rokur secrets gate endpoint
+export ROKUR_GATE_ENABLED=true     # Set false to disable start-gate checks
+export ROKUR_API_TOKEN=dev-rokur-token  # Token passed as X-Rokur-Token
+export ROKUR_TIMEOUT_MS=2000       # Per-request timeout to Rokur (100-30000)
+export ROKUR_RETRY_COUNT=1         # Retry budget for network/5xx failures (0-5)
 export SPEC_VERSION=v0.1.0         # Spec version for validation
 ----
 

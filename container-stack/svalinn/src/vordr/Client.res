@@ -48,21 +48,22 @@ let callTool = async (client: t, toolName: string, args: Js.Json.t): Js.Json.t =
   Js.Dict.set(paramsDict, "name", Js.Json.string(toolName))
   Js.Dict.set(paramsDict, "arguments", args)
 
-  let request: mcpRequest = {
-    jsonrpc: "2.0",
-    method: "tools/call",
-    params: Js.Json.object_(paramsDict),
-    id: nextId(client),
-  }
+  let requestId = nextId(client)
+  let requestBody = Js.Json.object_(Js.Dict.fromArray([
+    ("jsonrpc", Js.Json.string("2.0")),
+    ("method", Js.Json.string("tools/call")),
+    ("params", Js.Json.object_(paramsDict)),
+    ("id", Js.Json.number(Belt.Int.toFloat(requestId))),
+  ]))
 
   // Make HTTP request to Vörðr
   let response = await Fetch.fetch(
     client.config.endpoint,
-    %raw(`{
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request)
-    }`),
+    {
+      "method": "POST",
+      "headers": {"Content-Type": "application/json"},
+      "body": Js.Json.stringify(requestBody),
+    },
   )
 
   let json = await Fetch.Response.json(response)
@@ -113,7 +114,7 @@ let ping = async (client: t): bool => {
 }
 
 // Container operations
-let listContainers = async (client: t): array<Gateway.Types.containerInfo> => {
+let listContainers = async (_client: t): array<Gateway.Types.containerInfo> => {
   // Vörðr doesn't have a list tool, we'd need to track locally
   // For now return empty
   []

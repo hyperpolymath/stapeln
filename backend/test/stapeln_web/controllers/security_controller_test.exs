@@ -1,5 +1,5 @@
 defmodule StapelnWeb.SecurityControllerTest do
-  use StapelnWeb.ConnCase, async: true
+  use StapelnWeb.ConnCase, async: false
 
   alias Stapeln.Security.PanicAttacker
 

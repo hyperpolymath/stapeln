@@ -39,6 +39,7 @@ That means no prior container knowledge is required, and security guidance is cl
 | Gap analysis | Partial | UI renders with sample data, no backend calls
 | Settings | Partial | Form renders, localStorage save added
 | Frontend-backend wiring | Partial | SaveStack/LoadStack wired, data model mismatch remains
+| Runtime orchestration boundary | Working | stapeln backend handles stack metadata/validation; Svalinn/Vörðr handles runtime container lifecycle
 | Idris2 proofs | Stubs | Declarations only, zero actual proofs
 | miniKanren engine | Not started | Documentation only
 | VeriSimDB integration | Not started | Documentation only

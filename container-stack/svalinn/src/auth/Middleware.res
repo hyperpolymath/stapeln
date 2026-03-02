@@ -5,6 +5,12 @@ open AuthTypes
 
 // Deno environment variable access
 @scope(("Deno", "env")) @val external getEnv: string => option<string> = "get"
+@new external makeUrl: string => 'url = "URL"
+@get external urlPathname: 'url => string = "pathname"
+@scope("console") @val external consoleWarn: string => unit = "warn"
+@new external makeDate: string => Js.Date.t = "Date"
+@new external makeDateNow: unit => Js.Date.t = "Date"
+@send external getTimeMs: Js.Date.t => float = "getTime"
 
 // Try each authentication method until one succeeds
 let rec tryAuthMethods = async (
@@ -40,9 +46,7 @@ and authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
     } else {
       // Check excluded paths
       let req = Hono.Context.req(c)
-      let url = Hono.Request.url(req)
-      let urlObj = %raw(`new URL(url)`)
-      let pathname = %raw(`urlObj.pathname`)
+      let pathname = Hono.Request.url(req)->makeUrl->urlPathname
 
       let isExcluded = Belt.Array.some(config.excludePaths, p =>
         Js.String2.startsWith(pathname, p)
@@ -161,7 +165,7 @@ and authenticateBearerToken = async (
             let env = getEnv("DENO_ENV")
             switch env {
             | Some("development") | Some("test") => {
-                %raw(`console.warn("INSECURE: Using unverified JWT decode (dev/test only)")`)
+                consoleWarn("INSECURE: Using unverified JWT decode (dev/test only)")
                 let (_, payload) = JWT.decodeJWT(token)
                 payload
               }
@@ -250,11 +254,8 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
           | Some(keyInfo) => {
               // Check expiry
               let isExpired = switch keyInfo.expiresAt {
-              | Some(expiresAt) => {
-                  let expiryDate = %raw(`new Date(expiresAt)`)
-                  let now = %raw(`new Date()`)
-                  %raw(`expiryDate < now`)
-                }
+              | Some(expiresAt) =>
+                makeDate(expiresAt)->getTimeMs < makeDateNow()->getTimeMs
               | None => false
               }
 
@@ -270,17 +271,13 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
               } else {
                 // Create token payload from key info
                 let expiresAtTimestamp = switch keyInfo.expiresAt {
-                | Some(exp) => {
-                    let date = %raw(`new Date(exp)`)
-                    %raw(`Math.floor(date.getTime() / 1000)`)
-                  }
+                | Some(exp) =>
+                  makeDate(exp)->getTimeMs /. 1000.0 |> Js.Math.floor_int
                 | None => 0
                 }
 
-                let createdAtTimestamp = {
-                  let date = %raw(`new Date(keyInfo.createdAt)`)
-                  %raw(`Math.floor(date.getTime() / 1000)`)
-                }
+                let createdAtTimestamp =
+                  makeDate(keyInfo.createdAt)->getTimeMs /. 1000.0 |> Js.Math.floor_int
 
                 let tokenPayload: tokenPayload = {
                   sub: keyInfo.id,
@@ -338,8 +335,7 @@ and authenticateMTLS = (c: Hono.Context.t<'env, 'path>): authResult => {
     }
   | (Some(certDN), Some(_)) => {
       // Parse CN from DN
-      let cnRegex = %re("/CN=([^,]+)/")
-      let matchResult: option<array<string>> = %raw(`certDN.match(cnRegex)`)
+      let matchResult: option<array<string>> = %raw(`certDN.match(/CN=([^,]+)/)`)
       let subject = switch matchResult {
       | Some(matches) => matches->Belt.Array.get(1)->Belt.Option.getWithDefault(certDN)
       | None => certDN
@@ -371,7 +367,7 @@ let requireScopes = (requiredScopes: array<string>): Hono.middleware<'env, 'path
           ()
         )
       }
-    | Some(u) => {
+    | Some((u: userContext)) => {
         let missingScopes = Belt.Array.keep(requiredScopes, s =>
           !Belt.Array.some(u.scopes, us => us == s) && !Belt.Array.some(u.scopes, us => us == "svalinn:admin")
         )
@@ -412,7 +408,7 @@ let requireGroups = (requiredGroups: array<string>): Hono.middleware<'env, 'path
           ()
         )
       }
-    | Some(u) => {
+    | Some((u: userContext)) => {
         let hasGroup = Belt.Array.some(requiredGroups, g => Belt.Array.some(u.groups, ug => ug == g))
 
         if !hasGroup {
@@ -460,7 +456,10 @@ let createAuthConfig = (~options: option<authConfig>=?, ()): authConfig => {
 
 // Load auth config from environment
 let loadAuthConfigFromEnv = (): authConfig => {
-  let enabled = getEnv("AUTH_ENABLED") == Some("true")
+  let enabled = switch getEnv("AUTH_ENABLED") {
+  | Some("true") => true
+  | _ => false
+  }
 
   let methods = switch getEnv("AUTH_METHODS") {
   | Some(methodsStr) =>

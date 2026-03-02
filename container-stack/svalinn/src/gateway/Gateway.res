@@ -5,6 +5,19 @@
 module Config = {
   @scope(("Deno", "env")) @val external getEnv: string => option<string> = "get"
 
+  let parseIntWithBounds = (
+    value: option<string>,
+    defaultValue: int,
+    ~min: int,
+    ~max: int,
+  ): int =>
+    switch value->Belt.Option.flatMap(Belt.Int.fromString) {
+    | Some(v) if v >= min && v <= max => v
+    | Some(v) if v < min => min
+    | Some(v) if v > max => max
+    | _ => defaultValue
+    }
+
   let port = getEnv("SVALINN_PORT")
     ->Belt.Option.flatMap(Belt.Int.fromString)
     ->Belt.Option.getWithDefault(8000)
@@ -13,12 +26,30 @@ module Config = {
 
   let vordrEndpoint = getEnv("VORDR_ENDPOINT")->Belt.Option.getWithDefault("http://localhost:8080")
 
+  let rokurEndpoint = getEnv("ROKUR_ENDPOINT")->Belt.Option.getWithDefault("http://localhost:9090")
+
+  let rokurGateEnabled = switch getEnv("ROKUR_GATE_ENABLED") {
+  | Some("false") => false
+  | _ => true
+  }
+
+  let rokurApiToken = getEnv("ROKUR_API_TOKEN")->Belt.Option.getWithDefault("")
+
+  let rokurTimeoutMs = parseIntWithBounds(getEnv("ROKUR_TIMEOUT_MS"), 2000, ~min=100, ~max=30000)
+
+  let rokurRetryCount = parseIntWithBounds(getEnv("ROKUR_RETRY_COUNT"), 1, ~min=0, ~max=5)
+
   let specVersion = getEnv("SPEC_VERSION")->Belt.Option.getWithDefault("v0.1.0")
 
-  let enableAuth = getEnv("AUTH_ENABLED") == Some("true")
+  let enableAuth = switch getEnv("AUTH_ENABLED") {
+  | Some("true") => true
+  | _ => false
+  }
 
   let logLevel = getEnv("LOG_LEVEL")->Belt.Option.getWithDefault("info")
 }
+
+@scope("AbortSignal") @val external timeoutSignal: int => 'a = "timeout"
 
 // Logging
 module Log = {
@@ -33,16 +64,27 @@ module Log = {
     }
   }
 
-  let shouldLog = (level: level): bool => {
-    switch (Config.logLevel, level) {
-    | ("debug", _) => true
-    | ("info", Debug) => false
-    | ("info", _) => true
-    | ("warn", Debug | Info) => false
-    | ("warn", _) => true
-    | ("error", Error) => true
-    | (_, _) => false
+  let severity = (level: level): int => {
+    switch level {
+    | Debug => 10
+    | Info => 20
+    | Warn => 30
+    | Error => 40
     }
+  }
+
+  let configuredThreshold = (): int => {
+    switch Config.logLevel {
+    | "debug" => 10
+    | "info" => 20
+    | "warn" => 30
+    | "error" => 40
+    | _ => 20
+    }
+  }
+
+  let shouldLog = (level: level): bool => {
+    severity(level) >= configuredThreshold()
   }
 
   let log = (level: level, message: string, ~metadata: option<Js.Json.t>=?, ()) => {
@@ -316,6 +358,134 @@ let validateRequest = (
   }
 }
 
+// Authorize container start with Rokur before runtime operations.
+let authorizeContainerStart = async (
+  c: Hono.Context.t<'env, 'path>,
+  image: string,
+  name: option<string>
+): option<Hono.Response.t> => {
+  if !Config.rokurGateEnabled {
+    None
+  } else {
+    let payloadDict = [("image", Js.Json.string(image))]
+    let payloadDict = switch name {
+    | Some(n) => Belt.Array.concat(payloadDict, [("name", Js.Json.string(n))])
+    | None => payloadDict
+    }
+    let payload = Js.Json.object_(Js.Dict.fromArray(payloadDict))
+
+    let makeRetryMetadata = (attempt: int, statusCode: option<int>): Js.Json.t => {
+      let statusEntry = switch statusCode {
+      | Some(code) =>
+        [("rokurStatusCode", Js.Json.number(Belt.Int.toFloat(code)))]
+      | None => []
+      }
+      let baseEntries = [
+        ("attempt", Js.Json.number(Belt.Int.toFloat(attempt))),
+        ("maxRetries", Js.Json.number(Belt.Int.toFloat(Config.rokurRetryCount))),
+      ]
+      Js.Json.object_(Js.Dict.fromArray(Belt.Array.concat(baseEntries, statusEntry)))
+    }
+
+    let denyStart = (rokurResponse: Js.Json.t): option<Hono.Response.t> =>
+      Some(Hono.Context.json(
+        c,
+        Js.Json.object_(
+          Js.Dict.fromArray([
+            ("error", Js.Json.string("Rokur denied container start")),
+            ("rokur", rokurResponse),
+          ])
+        ),
+        ~status=409,
+        ()
+      ))
+
+    let unavailable = (
+      message: string,
+      ~attempt: int,
+      ~statusCode: option<int>=?,
+      ~rokurResponse: option<Js.Json.t>=?,
+      ()
+    ): option<Hono.Response.t> => {
+      let metadata = [
+        ("error", Js.Json.string(message)),
+        ("rokurEndpoint", Js.Json.string(Config.rokurEndpoint)),
+        ("attempt", Js.Json.number(Belt.Int.toFloat(attempt))),
+      ]
+      let metadata = switch statusCode {
+      | Some(code) =>
+        Belt.Array.concat(metadata, [("rokurStatusCode", Js.Json.number(Belt.Int.toFloat(code)))])
+      | None => metadata
+      }
+      let metadata = switch rokurResponse {
+      | Some(value) => Belt.Array.concat(metadata, [("rokur", value)])
+      | None => metadata
+      }
+
+      Some(Hono.Context.json(c, Js.Json.object_(Js.Dict.fromArray(metadata)), ~status=503, ()))
+    }
+
+    let rec authorizeAttempt = async (attempt: int): option<Hono.Response.t> => {
+      try {
+        let response = await Fetch.fetch(
+          Config.rokurEndpoint ++ "/v1/authorize-start",
+          {
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json",
+              "X-Rokur-Token": Config.rokurApiToken,
+            },
+            "body": Js.Json.stringify(payload),
+            "signal": timeoutSignal(Config.rokurTimeoutMs),
+          }
+        )
+
+        let rokurResponse = try {
+          await Fetch.Response.json(response)
+        } catch {
+        | _ =>
+          Js.Json.object_(
+            Js.Dict.fromArray([("error", Js.Json.string("Rokur returned a non-JSON response"))])
+          )
+        }
+        let statusCode = Fetch.Response.status(response)
+        let shouldRetry = statusCode >= 500 && attempt < Config.rokurRetryCount
+
+        if shouldRetry {
+          Log.warn("Retrying Rokur authorization request", ~metadata=makeRetryMetadata(attempt, Some(statusCode)), ())
+          await authorizeAttempt(attempt + 1)
+        } else if statusCode == 409 {
+          denyStart(rokurResponse)
+        } else if Fetch.Response.ok(response) {
+          let allowed = Validation.getBool(rokurResponse, "allowed")->Belt.Option.getWithDefault(false)
+          if allowed {
+            None
+          } else {
+            denyStart(rokurResponse)
+          }
+        } else {
+          let message = Validation.getString(rokurResponse, "error")
+            ->Belt.Option.getWithDefault("Rokur authorization request failed")
+          unavailable(message, ~attempt, ~statusCode, ~rokurResponse, ())
+        }
+      } catch {
+      | Js.Exn.Error(e) => {
+          let shouldRetry = attempt < Config.rokurRetryCount
+          if shouldRetry {
+            Log.warn("Retrying Rokur authorization request after transport failure", ~metadata=makeRetryMetadata(attempt, None), ())
+            await authorizeAttempt(attempt + 1)
+          } else {
+            let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Rokur request failed")
+            unavailable(message, ~attempt, ())
+          }
+        }
+      }
+    }
+
+    await authorizeAttempt(0)
+  }
+}
+
 // Create Hono app with validation
 let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   let app = Hono.make()
@@ -432,11 +602,16 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
     try {
       let req = Hono.Context.req(c)
       let id = Hono.Request.param(req, "id")->Belt.Option.getExn
-      let result = await McpClient.Container.start(mcpConfig, id)
-      Log.info("Started container", ~metadata=Js.Json.object_(
-        Js.Dict.fromArray([("id", Js.Json.string(id))])
-      ), ())
-      Hono.Context.json(c, result, ())
+      switch await authorizeContainerStart(c, "container-id:" ++ id, Some(id)) {
+      | Some(errorResponse) => errorResponse
+      | None => {
+          let result = await McpClient.Container.start(mcpConfig, id)
+          Log.info("Started container", ~metadata=Js.Json.object_(
+            Js.Dict.fromArray([("id", Js.Json.string(id))])
+          ), ())
+          Hono.Context.json(c, result, ())
+        }
+      }
     } catch {
     | Js.Exn.Error(e) => {
         let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to start container")
@@ -648,28 +823,33 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
           let name = Validation.getString(body, "name")
           let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
 
-          // Create container
-          let createResult = switch (name, config) {
-          | (Some(n), Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ~containerConfig=c, ())
-          | (Some(n), None) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ())
-          | (None, Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~containerConfig=c, ())
-          | (None, None) => await McpClient.Container.create(mcpConfig, ~image, ())
+          switch await authorizeContainerStart(c, image, name) {
+          | Some(errorResponse) => errorResponse
+          | None => {
+              // Create container
+              let createResult = switch (name, config) {
+              | (Some(n), Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ~containerConfig=c, ())
+              | (Some(n), None) => await McpClient.Container.create(mcpConfig, ~image, ~name=n, ())
+              | (None, Some(c)) => await McpClient.Container.create(mcpConfig, ~image, ~containerConfig=c, ())
+              | (None, None) => await McpClient.Container.create(mcpConfig, ~image, ())
+              }
+
+              // Extract container ID from result
+              let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
+
+              // Start container
+              let startResult = await McpClient.Container.start(mcpConfig, containerId)
+
+              Log.info("Ran container", ~metadata=Js.Json.object_(
+                Js.Dict.fromArray([
+                  ("image", Js.Json.string(image)),
+                  ("containerId", Js.Json.string(containerId))
+                ])
+              ), ())
+
+              Hono.Context.json(c, startResult, ~status=201, ())
+            }
           }
-
-          // Extract container ID from result
-          let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
-
-          // Start container
-          let startResult = await McpClient.Container.start(mcpConfig, containerId)
-
-          Log.info("Ran container", ~metadata=Js.Json.object_(
-            Js.Dict.fromArray([
-              ("image", Js.Json.string(image)),
-              ("containerId", Js.Json.string(containerId))
-            ])
-          ), ())
-
-          Hono.Context.json(c, startResult, ~status=201, ())
         }
       }
     } catch {
@@ -860,6 +1040,10 @@ let serve = async () => {
         ("port", Js.Json.number(Belt.Int.toFloat(Config.port))),
         ("host", Js.Json.string(Config.host)),
         ("vordrEndpoint", Js.Json.string(Config.vordrEndpoint)),
+        ("rokurEndpoint", Js.Json.string(Config.rokurEndpoint)),
+        ("rokurGateEnabled", Js.Json.boolean(Config.rokurGateEnabled)),
+        ("rokurTimeoutMs", Js.Json.number(Belt.Int.toFloat(Config.rokurTimeoutMs))),
+        ("rokurRetryCount", Js.Json.number(Belt.Int.toFloat(Config.rokurRetryCount))),
         ("authEnabled", Js.Json.boolean(Config.enableAuth)),
       ])
     ),

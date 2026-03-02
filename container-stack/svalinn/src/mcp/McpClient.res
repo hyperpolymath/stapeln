@@ -38,6 +38,7 @@ let defaultConfig: config = {
 
 // Create config from environment
 @scope(("Deno", "env")) @val external getEnv: string => option<string> = "get"
+@scope("AbortSignal") @val external timeoutSignal: int => 'a = "timeout"
 
 let fromEnv = (): config => {
   {
@@ -77,20 +78,15 @@ let rec callWithRetry = async (
   )
 
   try {
-    let controller = %raw(`new AbortController()`)
-    let timeoutId = %raw(`setTimeout(() => controller.abort(), config.timeout)`)
-
     let response = await Fetch.fetch(
       config.endpoint,
       {
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": Js.Json.stringify(requestBody),
-        "signal": %raw(`controller.signal`),
+        "signal": timeoutSignal(config.timeout),
       }
     )
-
-    %raw(`clearTimeout(timeoutId)`)
 
     if !Fetch.Response.ok(response) {
       let status = Fetch.Response.status(response)
@@ -127,9 +123,7 @@ let rec callWithRetry = async (
       Js.Console.warn(`MCP call failed (attempt ${Belt.Int.toString(attempt + 1)}): ${message}`)
 
       // Exponential backoff: 100ms, 200ms, 400ms, etc.
-      let delayMs = 100.0 *. Js.Math.pow_float(~base=2.0, ~exp=Belt.Int.toFloat(attempt))
-      // Sleep using Promise and setTimeout
-      let _ = await %raw(`(ms) => new Promise(resolve => setTimeout(resolve, ms))`)(delayMs)
+      let _ = await %raw(`new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)))`)
 
       await callWithRetry(config, method, params, attempt + 1)
     }

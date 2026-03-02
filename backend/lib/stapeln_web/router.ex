@@ -23,6 +23,9 @@ defmodule StapelnWeb.Router do
     get "/stacks/:id", StackController, :show
     put "/stacks/:id", StackController, :update
     post "/stacks/:id/validate", StackController, :validate
+    post "/security/panic-attacker", SecurityController, :start
+    post "/security/panic-attacker/stop", SecurityController, :stop
+    get "/security/panic-attacker/status", SecurityController, :status
   end
 
   scope "/api" do

@@ -1,18 +1,75 @@
 # Rokur
 
-Rokur is envisioned as the secrets-management seat of the container stack that stitches together PanLL, panic-attacker, and the verified-container ecosystem. We are using `stapeln/container-stack` as the holding area for all of these artifacts so that we can build, verify, and compose them in one place before moving integrations elsewhere.
+Rokur is the secrets gate used by the stack runtime plane before container start operations.
 
-## Mission
-- Provide a hardened secret store that can deliver credentials, attestations, and configuration to PanLL, panic-attacker, and the selur-compose topology.
-- Expose a minimal API (REST/JSON-RPC) that the stack’s orchestrator (Vörðr/Svalinn) and GUI (PanLL) can call without embedding secrets in the UI or CLI payloads.
-- Serve as the single point where verified `.ctp` bundles can request vault data before launching, so an operator’s policy can gate container launches when credentials are stale or missing.
+## What Is Implemented
+- `GET /health`: liveness with non-sensitive configuration status.
+- `GET /v1/secrets/status`: current allow/deny status from required-secret checks.
+- `POST /v1/authorize-start`: pre-start authorization for runtime calls (used by Svalinn).
 
-## Suggested approach
-1. Keep Rokur lean at first—a tiny service under `stapeln/rokur/` with a placeholder config, stub REST endpoints, and a README describing the secrets domain.
-2. Document expected secrets (e.g., panic-attack ambush profile files, PanLL API tokens, Chainguard registry creds) so future developers know what Rokur must expose.
-3. Wire Rokur into `runtime/compose.toml` via selur-compose (it already references Rokur as a service slot) and ensure the Chainguard/Cerro Torre build artifacts include it as a dependency with a signed `.ctp` reference.
-4. After panic-attacker containerization stabilizes, expand Rokur with real secret handling and policies (Secrets rotation, attestation, etc.) before extracting it into its own repo.
+## Response Shape
+- Authorization responses include `allowed`, `policy`, `code`, and secret counts.
+- Secret names are intentionally not exposed in API responses.
 
-## Next steps
-- Use this directory as the landing pad while panic-attacker/panll container work completes.
-- Once the integration stage is ironed out, promote Rokur to a dedicated repo (with its own README, API, and verified container specs) and replace this placeholder with a symlink or fetch script.
+## Policy Engine Boundary
+- `ROKUR_POLICY_BACKEND=builtin` (default): evaluate required secrets directly in Rokur.
+- `ROKUR_POLICY_BACKEND=external`: evaluate via an external command (intended Ephapax adapter path).
+- `ROKUR_POLICY_BACKEND=auto`: use external when configured, otherwise builtin.
+
+### External Policy Contract
+- Rokur sends JSON on stdin to the external command:
+  - `version`, `timestamp`, `requiredSecrets`, and `input` (`image`, `name`).
+- External command must print one JSON decision to stdout with:
+  - `allowed` (boolean), optional `policy`, `code`, `requiredSecretCount`, `missingSecretCount`.
+- Non-zero exit, invalid JSON, or timeout is fail-closed (`deny`).
+
+## Secret Policy Model (MVP)
+- Configure required secret names via `ROKUR_REQUIRED_SECRETS` (comma-separated).
+- For each required secret `name`, Rokur expects env var `ROKUR_SECRET_<NAME>`.
+  - Example: `panic_profile` -> `ROKUR_SECRET_PANIC_PROFILE`
+- Authorization is denied when any required secret is missing or blank.
+
+## Authentication
+- Set `ROKUR_API_TOKEN` to require `X-Rokur-Token` header on API calls.
+- By default, Rokur fails to start if `ROKUR_API_TOKEN` is missing.
+- For non-production local development only, you can bypass with `ROKUR_ALLOW_UNAUTHENTICATED=true`.
+
+## Secure Defaults
+- Default bind host is `127.0.0.1` (set `ROKUR_HOST` to override).
+- Startup fails if `ROKUR_REQUIRED_SECRETS` is empty.
+- Startup fails if `ROKUR_API_TOKEN` is missing.
+- In `ROKUR_ENV=production`, insecure bypass flags are rejected by policy.
+
+## Development Overrides (Non-Production)
+- `ROKUR_ALLOW_UNAUTHENTICATED=true`: allow requests without `X-Rokur-Token`.
+- `ROKUR_ALLOW_EMPTY_REQUIRED_SECRETS=true`: allow empty required-secrets policy.
+
+## Policy Engine Configuration
+- `ROKUR_POLICY_BACKEND`: `builtin` | `external` | `auto` (default `builtin`).
+- `ROKUR_POLICY_COMMAND`: executable path when backend resolves to `external`.
+- `ROKUR_POLICY_COMMAND_ARGS`: optional args as JSON array or comma-separated list.
+- `ROKUR_POLICY_TIMEOUT_MS`: external-policy timeout in milliseconds (default `1500`).
+
+## Run
+```bash
+cd container-stack/rokur
+deno task dev
+```
+
+## Example
+```bash
+export ROKUR_ENV=development
+export ROKUR_REQUIRED_SECRETS=panic_profile,panll_api_token
+export ROKUR_SECRET_PANIC_PROFILE=enabled
+export ROKUR_SECRET_PANLL_API_TOKEN=abc123
+export ROKUR_API_TOKEN=dev-token
+deno task dev
+```
+
+## External-Policy Example (Ephapax Adapter Slot)
+```bash
+export ROKUR_POLICY_BACKEND=external
+export ROKUR_POLICY_COMMAND=deno
+export ROKUR_POLICY_COMMAND_ARGS='["run","--quiet","policy/ephapax_adapter_example.js"]'
+deno task dev:external
+```

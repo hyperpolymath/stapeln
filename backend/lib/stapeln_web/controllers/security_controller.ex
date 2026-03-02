@@ -3,8 +3,6 @@ defmodule StapelnWeb.SecurityController do
 
   alias Stapeln.Security
 
-  action_fallback StapelnWeb.ErrorJson
-
   def start(conn, params) do
     command = Map.get(params, "command", "ambush")
     target = Map.get(params, "target", "/bin/true")

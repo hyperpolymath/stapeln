@@ -24,6 +24,7 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 - **GraphQL API (MVP):** Absinthe endpoint at `/api/graphql` is live.
 - **Shared API Boundary:** REST/GraphQL route through `backend/lib/stapeln/native_bridge.ex`.
 - **ABI/FFI Contract:** Idris2 ABI (`src/abi/*`) and Zig FFI (`ffi/zig/src/main.zig`) are concrete.
+- **Runtime Boundary:** `stapeln/backend` is the design/control plane (stack metadata + validation). Container lifecycle orchestration is delegated to `container-stack/svalinn` and `container-stack/vordr`.
 
 ## Preserved Future Work
 
@@ -32,7 +33,7 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 
 ## What Is Not Implemented Yet
 
-- **gRPC/GRC API:** Not implemented.
+- **Backend runtime orchestration API:** Not implemented in `stapeln/backend` by design; runtime operations belong to Svalinn/Vordr.
 - **Validation Engine Depth:** Rules are basic MVP checks; not yet parity with full security roadmap.
 - **Persistence:** No durable save/load outside ad-hoc import/export.
 - **Formal Verification Layers:** Idris2 types are now present for ABI contracts, but full proof pipeline is not wired.

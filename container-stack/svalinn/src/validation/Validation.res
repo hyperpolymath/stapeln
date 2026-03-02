@@ -27,7 +27,7 @@ module Ajv = {
   external compile: (t, Js.Json.t) => validator = "compile"
 
   @send
-  external validate: (validator, Js.Json.t) => bool = ""
+  external validate: (validator, Js.Json.t) => bool = "%apply"
 
   @get
   external errors: validator => option<array<errorObject>> = "errors"

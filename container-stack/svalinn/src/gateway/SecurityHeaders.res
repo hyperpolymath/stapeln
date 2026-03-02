@@ -16,7 +16,7 @@ type context
 external header: (context, string, string) => context = "header"
 
 @module("hono") @scope("Context")
-external next: context => Promise.t<context> = "next"
+external next: context => promise<context> = "next"
 
 /**
  * Apply security headers to HTTP response
@@ -135,9 +135,9 @@ let applyRateLimitHeaders = (
   ~remaining: int,
   ~resetAt: int,
 ): context => {
-  let c = c->header("X-RateLimit-Limit", Int.toString(limit))
-  let c = c->header("X-RateLimit-Remaining", Int.toString(remaining))
-  let c = c->header("X-RateLimit-Reset", Int.toString(resetAt))
+  let c = c->header("X-RateLimit-Limit", Belt.Int.toString(limit))
+  let c = c->header("X-RateLimit-Remaining", Belt.Int.toString(remaining))
+  let c = c->header("X-RateLimit-Reset", Belt.Int.toString(resetAt))
   c
 }
 

@@ -3,6 +3,17 @@
 
 open AuthTypes
 
+@val external btoa_: string => string = "btoa"
+
+let toHexByte = (byte: int): string => {
+  let hex = Js.Int.toStringWithRadix(byte, ~radix=16)
+  if Js.String2.length(hex) == 1 {
+    "0" ++ hex
+  } else {
+    hex
+  }
+}
+
 // Token response from OAuth2 token endpoint
 type tokenResponse = {
   @as("access_token") accessToken: string,
@@ -208,8 +219,7 @@ let generateState = (): string => {
   let result = ref("")
   for i in 0 to 31 {
     let byte = Js.TypedArray2.Uint8Array.unsafe_get(array, i)
-    let hex = Js.Int.toStringWithRadix(byte, ~radix=16)
-    let padded = %raw(`hex.padStart(2, "0")`)
+    let padded = toHexByte(byte)
     result := result.contents ++ padded
   }
   result.contents
@@ -297,7 +307,7 @@ let introspectToken = async (
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let auth = %raw(`btoa(clientId + ":" + clientSecret)`)
+  let auth = btoa_(clientId ++ ":" ++ clientSecret)
 
   let response = await Fetch.fetch(
     introspectionEndpoint,
@@ -342,7 +352,7 @@ let revokeToken = async (
     })
     ->Belt.Array.joinWith("&", x => x)
 
-  let auth = %raw(`btoa(clientId + ":" + clientSecret)`)
+  let auth = btoa_(clientId ++ ":" ++ clientSecret)
 
   let response = await Fetch.fetch(
     revocationEndpoint,

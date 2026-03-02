@@ -37,7 +37,7 @@ defmodule StapelnWeb.ConnCase do
 
   def authenticated_conn do
     Phoenix.ConnTest.build_conn()
-    |> put_req_header("authorization", "Bearer #{api_token()}")
+    |> Plug.Conn.put_req_header("authorization", "Bearer #{api_token()}")
   end
 
   def api_token do
