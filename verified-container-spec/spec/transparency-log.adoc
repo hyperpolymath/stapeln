@@ -1,0 +1,235 @@
+= Transparency Log Requirements
+:spec-version: 0.1.0
+:status: draft
+
+== 1. Scope
+
+This document defines requirements for transparency log operators in the Verified Container Specification. It covers:
+
+* Federation model and quorum requirements
+* Log structure and entry formats
+* API requirements for producers and consumers
+* Operator requirements and responsibilities
+* Revocation procedures
+
+This document does NOT cover:
+
+* Attestation bundle format (see link:attestation-bundle.adoc[Attestation Bundle Format])
+* Trust store format (see link:trust-store.adoc[Trust Store Format])
+* Full verification procedures (see link:verification-protocol.adoc[Verification Protocol])
+
+== 2. Terminology
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in https://datatracker.ietf.org/doc/html/rfc2119[RFC 2119].
+
+See link:../docs/glossary.adoc[Glossary] for definitions of terms used throughout this specification.
+
+== 3. Overview
+
+Transparency logs provide an append-only, cryptographically verifiable record of all attestations. This document defines requirements for log operators.
+
+== 4. Federation Model
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    FEDERATED TRANSPARENCY LOGS                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌────────────┐    ┌────────────┐    ┌────────────┐                   │
+│   │  Log EU    │    │  Log US    │    │  Log AP    │                   │
+│   │  Operator  │    │  Operator  │    │  Operator  │                   │
+│   └─────┬──────┘    └─────┬──────┘    └─────┬──────┘                   │
+│         │                 │                 │                           │
+│         └─────────────────┼─────────────────┘                           │
+│                           │                                              │
+│                     ┌─────▼─────┐                                       │
+│                     │  Gossip   │  ← Operators cross-verify             │
+│                     │  Protocol │    consistency                         │
+│                     └───────────┘                                       │
+│                                                                          │
+│   Producers submit to: ≥2 operators                                     │
+│   Consumers verify: ≥2 operator proofs                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+== 5. Log Structure
+
+=== 5.1 Merkle Tree
+
+Logs use a Merkle tree with:
+* Hash function: SHA-256
+* Leaf hash: `SHA256(0x00 || entry)`
+* Node hash: `SHA256(0x01 || left || right)`
+
+=== 5.2 Entry Format
+
+```json
+{
+  "version": 1,
+  "timestamp": "2024-12-28T12:00:00Z",
+  "entryType": "attestation",
+  "body": {
+    "attestationDigest": "sha256:...",
+    "subjectDigest": "sha256:...",
+    "predicateType": "https://slsa.dev/provenance/v1"
+  }
+}
+```
+
+=== 5.3 Signed Tree Head
+
+Operators periodically sign the current tree state:
+
+```json
+{
+  "treeSize": 12345,
+  "timestamp": "2024-12-28T12:00:00Z",
+  "rootHash": "sha256:...",
+  "signature": "base64-signature"
+}
+```
+
+== 6. Operator Requirements
+
+=== 6.1 Availability
+
+* 99.9% uptime SLA
+* Geographic redundancy
+* Public API endpoint
+
+=== 6.2 Append-Only Guarantee
+
+* Entries MUST NOT be removed or modified
+* Tree MUST only grow (no rollback)
+* Signed Tree Heads MUST be consistent
+
+=== 6.3 Cross-Verification
+
+Operators MUST:
+* Publish Signed Tree Heads
+* Participate in gossip protocol
+* Detect and report inconsistencies
+
+=== 6.4 Key Management
+
+* Ed25519 signing key
+* Key rotation with advance notice
+* Secure key storage (HSM recommended)
+
+== 7. API Requirements
+
+=== 7.1 Submit Entry
+
+```
+POST /api/v1/entries
+Content-Type: application/json
+
+{
+  "attestation": "<base64-dsse-envelope>"
+}
+
+Response:
+{
+  "logIndex": 12345,
+  "integratedTime": "2024-12-28T12:00:00Z",
+  "inclusionProof": { ... },
+  "signedEntryTimestamp": "..."
+}
+```
+
+=== 7.2 Get Proof
+
+```
+GET /api/v1/proof?logIndex=12345
+
+Response:
+{
+  "logIndex": 12345,
+  "treeSize": 67890,
+  "rootHash": "sha256:...",
+  "hashes": ["sha256:...", "sha256:..."]
+}
+```
+
+=== 7.3 Get Signed Tree Head
+
+```
+GET /api/v1/sth
+
+Response:
+{
+  "treeSize": 67890,
+  "timestamp": "2024-12-28T12:05:00Z",
+  "rootHash": "sha256:...",
+  "signature": "base64-signature"
+}
+```
+
+== 8. Quorum Requirements
+
+=== 8.1 Submission Quorum
+
+Producers MUST submit to at least 2 log operators and receive successful responses before considering an attestation published.
+
+=== 8.2 Verification Quorum
+
+Consumers MUST verify inclusion proofs from at least 2 different log operators.
+
+=== 8.3 Operator Independence
+
+The 3+ log operators SHOULD be:
+* In different jurisdictions
+* Operated by different organizations
+* Using different infrastructure providers
+
+== 9. Revocation
+
+=== 9.1 Revocation Entry
+
+Keys or attestations can be revoked by submitting a revocation entry:
+
+```json
+{
+  "version": 1,
+  "timestamp": "2024-12-28T13:00:00Z",
+  "entryType": "revocation",
+  "body": {
+    "revokedDigest": "sha256:...",
+    "reason": "key_compromise",
+    "revokedBy": "sha256:key-id"
+  }
+}
+```
+
+=== 9.2 Revocation Checking
+
+Consumers SHOULD check for revocations:
+* At verification time
+* Periodically for cached verifications
+
+== 10. Security Considerations
+
+=== 10.1 Split-View Attack
+
+Operators presenting different views to different clients. Mitigated by:
+* Gossip protocol between operators
+* Client consistency checks
+* Witness network (future)
+
+=== 10.2 Operator Compromise
+
+Single operator compromised. Mitigated by:
+* 2-of-3 quorum requirement
+* Cross-verification between operators
+
+=== 10.3 Log Equivocation
+
+Operator signing conflicting tree heads. Mitigated by:
+* Cryptographic commitment to previous heads
+* Public audit of signed tree heads
+
+== 11. Changelog
+
+=== 0.1.0 (2024-12-28)
+- Initial specification
