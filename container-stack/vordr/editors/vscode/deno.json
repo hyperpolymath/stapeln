@@ -1,0 +1,17 @@
+{
+  "name": "@hyperpolymath/vordr-vscode",
+  "version": "0.1.0",
+  "tasks": {
+    "build": "deno run -A npm:rescript",
+    "dev": "deno run -A npm:rescript -w",
+    "clean": "deno run -A npm:rescript clean",
+    "package": "deno run -A npm:@vscode/vsce package"
+  },
+  "imports": {
+    "rescript": "npm:rescript@^12.0.0",
+    "@rescript/core": "npm:@rescript/core@^1.6.1",
+    "@rescript/runtime/": "npm:/@rescript/runtime@12.2.0/",
+    "vscode": "npm:vscode@^1.1.37",
+    "vscode-languageclient/node": "npm:vscode-languageclient@^8.1.0/node"
+  }
+}
