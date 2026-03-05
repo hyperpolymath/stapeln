@@ -1,0 +1,21 @@
+{
+  "name": "@hyperpolymath/stapeln-frontend",
+  "version": "1.0.0",
+  "tasks": {
+    "clean": "rescript clean",
+    "build": "deno task run build:zig && deno task run build:rescript",
+    "build:zig": "cd ffi/zig && ./build.sh",
+    "build:rescript": "rescript build",
+    "watch": "rescript build -w",
+    "test": "deno task run test:zig",
+    "test:zig": "cd ffi/zig && zig test src/dom_mounter.zig && zig test src/dom_mounter_enhanced.zig && zig test src/dom_mounter_security.zig",
+    "prepublishOnly": "deno task run build && deno task test"
+  },
+  "imports": {
+    "@rescript/react": "npm:@rescript/react@^0.13.0",
+    "react": "npm:react@^18.2.0",
+    "react-dom": "npm:react-dom@^18.2.0",
+    "rescript-tea": "npm:rescript-tea@^0.16.0",
+    "rescript": "^12.0.0"
+  }
+}

@@ -1,14 +1,13 @@
 {
-  "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
+  "name": "vordr-mcp-adapter",
+  "version": "0.1.0",
   "tasks": {
-    "build": "npx rescript",
-    "clean": "npx rescript clean",
-    "start": "deno run --allow-net --allow-read --allow-env src/HttpMain.res.js"
+    "build": "rescript build",
+    "clean": "rescript clean",
+    "serve": "deno run --allow-net src/HttpMain.res.js"
   },
   "imports": {
-    "@rescript/core": "npm:@rescript/core@1.3.0"
-  },
-  "compilerOptions": {
-    "lib": ["deno.ns", "deno.window"]
+    "@rescript/core": "npm:@rescript/core@^1.5.0",
+    "rescript": "^12.0.0"
   }
 }

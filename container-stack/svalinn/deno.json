@@ -3,11 +3,17 @@
   "imports": {
     "rescript/lib/es6/": "./node_modules/rescript/lib/es6/",
     "hono": "npm:hono@^4.6.10",
-    "ajv": "npm:ajv@^8.12.0"
+    "ajv": "npm:ajv@^8.12.0",
+    "ajv-formats": "npm:ajv-formats@^3.0.1",
+    "rescript": "^12.0.0",
+    "@rescript/core": "npm:@rescript/core@^1.0.0"
   },
   "tasks": {
     "dev": "deno run --allow-net --allow-read --allow-env --watch src/Main.res.js",
-    "start": "deno run --allow-net --allow-read --allow-env src/Main.res.js"
+    "start": "deno run --allow-net --allow-read --allow-env src/Main.res.js",
+    "res:build": "cd src && rescript build",
+    "res:clean": "cd src && rescript clean",
+    "res:watch": "cd src && rescript build -w"
   },
   "compilerOptions": {
     "allowJs": true,
