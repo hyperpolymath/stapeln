@@ -9,7 +9,7 @@ let initialState = {
   error: undefined
 };
 
-function reducer(state, action) {
+function reducer(_state, action) {
   if (typeof action !== "object") {
     return initialState;
   } else {
@@ -73,12 +73,12 @@ function ErrorBoundary(props) {
               style: {
                 backgroundColor: "#C53030",
                 border: "none",
+                borderRadius: "6px",
                 color: "white",
                 cursor: "pointer",
                 fontSize: "1rem",
                 fontWeight: "600",
-                padding: "0.75rem 1.5rem",
-                borderRadius: "6px"
+                padding: "0.75rem 1.5rem"
               },
               onClick: param => handleReset()
             }),
@@ -88,20 +88,20 @@ function ErrorBoundary(props) {
               style: {
                 backgroundColor: "white",
                 border: "2px solid #C53030",
+                borderRadius: "6px",
                 color: "#C53030",
                 cursor: "pointer",
                 fontSize: "1rem",
                 fontWeight: "600",
-                padding: "0.75rem 1.5rem",
-                borderRadius: "6px"
+                padding: "0.75rem 1.5rem"
               },
               onClick: param => ((window.location.href = '/'))
             })
           ],
           style: {
             display: "flex",
-            justifyContent: "center",
-            gap: "1rem"
+            gap: "1rem",
+            justifyContent: "center"
           }
         })
       ],
@@ -113,14 +113,14 @@ function ErrorBoundary(props) {
     "aria-live": "assertive",
     role: "alert",
     style: {
+      alignItems: "center",
       backgroundColor: "#FFF5F5",
       color: "#C53030",
       display: "flex",
-      minHeight: "100vh",
-      padding: "2rem",
-      alignItems: "center",
       flexDirection: "column",
-      justifyContent: "center"
+      justifyContent: "center",
+      minHeight: "100vh",
+      padding: "2rem"
     }
   });
 }

@@ -52,3 +52,13 @@ type msg =
   | LoadSettings
   | SettingsSaved(Result.t<unit, string>)
   | SettingsLoaded(Result.t<JSON.t, string>)
+  // WebSocket real-time (optional — app works with REST only)
+  | WsConnect
+  | WsDisconnect
+  | WsConnectionStateChanged(Socket.connectionState)
+  | WsValidate
+  | WsValidationResult(JSON.t)
+  | WsSecurityScan
+  | WsSecurityResult(JSON.t)
+  | WsGapAnalysis
+  | WsGapResult(JSON.t)

@@ -40,3 +40,25 @@ type msg =
   | LoadStack(string)
   | StackSaved(Result.t<string, string>)
   | StackLoaded(Result.t<model, string>)
+  // Security
+  | RunSecurityScan
+  | SecurityScanLoading
+  | SecurityScanResult(Result.t<JSON.t, string>)
+  | RunGapAnalysis
+  | GapAnalysisLoading
+  | GapAnalysisResult(Result.t<JSON.t, string>)
+  // Settings
+  | SaveSettings
+  | LoadSettings
+  | SettingsSaved(Result.t<unit, string>)
+  | SettingsLoaded(Result.t<JSON.t, string>)
+  // WebSocket real-time (optional — app works with REST only)
+  | WsConnect
+  | WsDisconnect
+  | WsConnectionStateChanged(Socket.connectionState)
+  | WsValidate
+  | WsValidationResult(JSON.t)
+  | WsSecurityScan
+  | WsSecurityResult(JSON.t)
+  | WsGapAnalysis
+  | WsGapResult(JSON.t)

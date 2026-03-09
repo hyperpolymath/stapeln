@@ -22,7 +22,7 @@ function replace(path) {
 }
 
 function onRouteChange(callback) {
-  ((window.addEventListener('popstate', handler)));
+  ((window.addEventListener('popstate', _handler)));
 }
 
 function exact(expected, segments) {

@@ -96,7 +96,7 @@ let view = (settings: settings, isDark: bool) => {
   <main
     role="main"
     ariaLabel="Settings and preferences"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="2rem",
       ~backgroundColor=isDark ? "#000000" : "#FFFFFF",
       ~color=isDark ? "#FFFFFF" : "#000000",
@@ -119,7 +119,7 @@ let view = (settings: settings, isDark: bool) => {
     <section
       role="region"
       ariaLabelledby="defaults-title"
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginBottom="2rem",
         ~padding="1.5rem",
         ~border=isDark ? "2px solid #CCCCCC" : "2px solid #333333",
@@ -216,7 +216,7 @@ let view = (settings: settings, isDark: bool) => {
       </h3>
 
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~display="grid",
           ~gridTemplateColumns="repeat(3, 1fr)",
           ~gap="1rem",
@@ -234,7 +234,7 @@ let view = (settings: settings, isDark: bool) => {
             step=0.1
             min="0.1"
             ariaLabel="Default CPU limit in cores"
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~width="100%",
               ~padding="0.75rem",
               ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -256,7 +256,7 @@ let view = (settings: settings, isDark: bool) => {
             step=128.0
             min="128"
             ariaLabel="Default memory limit in megabytes"
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~width="100%",
               ~padding="0.75rem",
               ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -278,7 +278,7 @@ let view = (settings: settings, isDark: bool) => {
             step=1.0
             min="1"
             ariaLabel="Default storage limit in gigabytes"
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~width="100%",
               ~padding="0.75rem",
               ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -296,7 +296,7 @@ let view = (settings: settings, isDark: bool) => {
     <section
       role="region"
       ariaLabelledby="cerro-torre-title"
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginBottom="2rem",
         ~padding="1.5rem",
         ~border=isDark ? "2px solid #CCCCCC" : "2px solid #333333",
@@ -318,7 +318,7 @@ let view = (settings: settings, isDark: bool) => {
           type_="text"
           defaultValue=settings.ctCliPath
           ariaLabel="Path to Cerro Torre CLI"
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~width="100%",
             ~maxWidth="500px",
             ~padding="0.75rem",
@@ -340,7 +340,7 @@ let view = (settings: settings, isDark: bool) => {
           type_="text"
           defaultValue=settings.ctSigningKey
           ariaLabel="Path to default signing key"
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~width="100%",
             ~maxWidth="500px",
             ~padding="0.75rem",
@@ -362,7 +362,7 @@ let view = (settings: settings, isDark: bool) => {
           type_="url"
           defaultValue=settings.ctTransparencyLog
           ariaLabel="Transparency log URL"
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~width="100%",
             ~maxWidth="500px",
             ~padding="0.75rem",
@@ -380,7 +380,7 @@ let view = (settings: settings, isDark: bool) => {
     <section
       role="region"
       ariaLabelledby="ui-title"
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginBottom="2rem",
         ~padding="1.5rem",
         ~border=isDark ? "2px solid #CCCCCC" : "2px solid #333333",
@@ -430,7 +430,7 @@ let view = (settings: settings, isDark: bool) => {
           min="12"
           max="24"
           ariaLabel="Font size in pixels"
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~width="150px",
             ~padding="0.75rem",
             ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -459,10 +459,14 @@ let view = (settings: settings, isDark: bool) => {
     </section>
 
     // Action buttons
-    <div style={ReactDOM.Style.make(~display="flex", ~gap="1rem", ~marginTop="2rem", ())}>
+    <div style={Sx.make(~display="flex", ~gap="1rem", ~marginTop="2rem", ())}>
       <button
         ariaLabel="Reset all settings to default values"
-        style={ReactDOM.Style.make(
+        onClick={_ => {
+          WebAPI.setItem("stapeln-settings", "reset")
+          Console.log("Settings reset to defaults")
+        }}
+        style={Sx.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
           ~color=isDark ? "#FFFFFF" : "#000000",
@@ -478,7 +482,20 @@ let view = (settings: settings, isDark: bool) => {
 
       <button
         ariaLabel="Save settings"
-        style={ReactDOM.Style.make(
+        onClick={_ => {
+          let json = JSON.stringify(JSON.Encode.object(Dict.fromArray([
+            ("theme", JSON.Encode.string(settings.theme)),
+            ("fontSize", JSON.Encode.int(settings.fontSize)),
+            ("highContrast", JSON.Encode.bool(settings.highContrast)),
+            ("reducedMotion", JSON.Encode.bool(settings.reducedMotion)),
+            ("screenReaderMode", JSON.Encode.bool(settings.screenReaderMode)),
+            ("gridSnapping", JSON.Encode.bool(settings.gridSnapping)),
+            ("gridSize", JSON.Encode.int(settings.gridSize)),
+          ])))
+          WebAPI.setItem("stapeln-settings", json)
+          Console.log("Settings saved")
+        }}
+        style={Sx.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? "#66B2FF" : "#0052CC",
           ~color="white",
@@ -494,7 +511,10 @@ let view = (settings: settings, isDark: bool) => {
 
       <button
         ariaLabel="Cancel changes"
-        style={ReactDOM.Style.make(
+        onClick={_ => {
+          Console.log("Settings changes cancelled")
+        }}
+        style={Sx.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
           ~color=isDark ? "#FFFFFF" : "#000000",

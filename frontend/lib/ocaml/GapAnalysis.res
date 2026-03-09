@@ -361,7 +361,7 @@ let confidenceBadge = (confidence: fixConfidence): React.element => {
   }
 
   <span
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="4px 10px",
       ~background=color,
       ~color="white",
@@ -390,7 +390,7 @@ let fixStatusIcon = (status: fixStatus): string => {
 let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): React.element => {
   <div
     key={gap.id}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="20px",
       ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       ~border="2px solid #2a3142",
@@ -403,7 +403,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
     onClick={_ => dispatch(SelectGap(gap.id))}
   >
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~justifyContent="space-between",
         ~alignItems="flex-start",
@@ -411,9 +411,9 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         (),
       )}
     >
-      <div style={ReactDOM.Style.make(~flex="1", ())}>
+      <div style={Sx.make(~flex="1", ())}>
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~display="flex",
             ~gap="8px",
             ~marginBottom="8px",
@@ -422,7 +422,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           )}
         >
           <span
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="4px 12px",
               ~background=categoryColor(gap.category),
               ~color="white",
@@ -436,7 +436,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           </span>
 
           <span
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="4px 12px",
               ~background=severityColor(gap.severity),
               ~color="white",
@@ -453,7 +453,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
 
           {switch fixStatus {
           | Some(status) =>
-            <span style={ReactDOM.Style.make(~fontSize="18px", ())}>
+            <span style={Sx.make(~fontSize="18px", ())}>
               {fixStatusIcon(status)->React.string}
             </span>
           | None => React.null
@@ -461,7 +461,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         </div>
 
         <h3
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="18px",
             ~fontWeight="700",
             ~color="#e0e6ed",
@@ -475,7 +475,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
     </div>
 
     <p
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~fontSize="13px",
         ~color="#8892a6",
         ~lineHeight="1.6",
@@ -487,7 +487,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
     </p>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~padding="12px",
         ~background="rgba(244, 67, 54, 0.1)",
         ~border="1px solid #f44336",
@@ -496,16 +496,16 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         (),
       )}
     >
-      <strong style={ReactDOM.Style.make(~fontSize="12px", ~color="#f44336", ())}>
+      <strong style={Sx.make(~fontSize="12px", ~color="#f44336", ())}>
         {"Impact: "->React.string}
       </strong>
-      <span style={ReactDOM.Style.make(~fontSize="12px", ~color="#b0b8c4", ())}>
+      <span style={Sx.make(~fontSize="12px", ~color="#b0b8c4", ())}>
         {gap.impact->React.string}
       </span>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~gap="24px",
         ~marginBottom="16px",
@@ -513,34 +513,34 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
         (),
       )}
     >
-      <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
-        <span style={ReactDOM.Style.make(~marginRight="6px", ())}>
+      <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
+        <span style={Sx.make(~marginRight="6px", ())}>
           {sourceIcon(gap.source)->React.string}
         </span>
-        <strong style={ReactDOM.Style.make(~color="#4a9eff", ())}>
+        <strong style={Sx.make(~color="#4a9eff", ())}>
           {sourceLabel(gap.source)->React.string}
         </strong>
       </div>
 
-      <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+      <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
         {"Affects: "->React.string}
-        <strong style={ReactDOM.Style.make(~color="#ff9800", ())}>
+        <strong style={Sx.make(~color="#ff9800", ())}>
           {Int.toString(Array.length(gap.affectedComponents))->React.string}
           {" component"->React.string}
           {Array.length(gap.affectedComponents) != 1 ? "s"->React.string : React.null}
         </strong>
       </div>
 
-      <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+      <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
         {"⏱️ "->React.string}
-        <strong style={ReactDOM.Style.make(~color="#4caf50", ())}>
+        <strong style={Sx.make(~color="#4caf50", ())}>
           {gap.estimatedEffort->React.string}
         </strong>
       </div>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~gap="6px",
         ~marginBottom="16px",
@@ -551,7 +551,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
       {Array.map(gap.tags, tag =>
         <span
           key={tag}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="3px 8px",
             ~background="#2a3142",
             ~color="#8892a6",
@@ -572,7 +572,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           {switch gap.fixDescription {
           | Some(desc) =>
             <div
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="12px",
                 ~background="rgba(76, 175, 80, 0.1)",
                 ~border="1px solid #4caf50",
@@ -581,10 +581,10 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                 (),
               )}
             >
-              <strong style={ReactDOM.Style.make(~fontSize="12px", ~color="#4caf50", ())}>
+              <strong style={Sx.make(~fontSize="12px", ~color="#4caf50", ())}>
                 {"Fix: "->React.string}
               </strong>
-              <span style={ReactDOM.Style.make(~fontSize="12px", ~color="#b0b8c4", ())}>
+              <span style={Sx.make(~fontSize="12px", ~color="#b0b8c4", ())}>
                 {desc->React.string}
               </span>
             </div>
@@ -593,9 +593,9 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
 
           {switch gap.fixCommands {
           | Some(commands) =>
-            <div style={ReactDOM.Style.make(~marginBottom="12px", ())}>
+            <div style={Sx.make(~marginBottom="12px", ())}>
               <div
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~fontSize="12px",
                   ~fontWeight="600",
                   ~color="#8892a6",
@@ -606,7 +606,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                 {"Steps:"->React.string}
               </div>
               <ol
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~paddingLeft="20px",
                   ~fontSize="12px",
                   ~color="#b0b8c4",
@@ -620,12 +620,12 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           | None => React.null
           }}
 
-          <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
+          <div style={Sx.make(~display="flex", ~gap="8px", ())}>
             {switch fixStatus {
             | Some(Applied) | Some(Verified) =>
               <button
                 disabled=true
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~padding="10px 20px",
                   ~background="#4caf50",
                   ~color="white",
@@ -646,7 +646,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                   ReactEvent.Mouse.stopPropagation(e)
                   dispatch(ApplyFix(gap.id))
                 }}
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~padding="10px 20px",
                   ~background="linear-gradient(135deg, #4caf50, #66bb6a)",
                   ~color="white",
@@ -669,7 +669,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
                   ReactEvent.Mouse.stopPropagation(e)
                   dispatch(VerifyFix(gap.id))
                 }}
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~padding="10px 20px",
                   ~background="linear-gradient(135deg, #2196f3, #42a5f5)",
                   ~color="white",
@@ -688,7 +688,7 @@ let viewGap = (gap: gap, fixStatus: option<fixStatus>, dispatch: msg => unit): R
           </div>
         </div>
       : <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="12px",
             ~background="rgba(158, 158, 158, 0.1)",
             ~border="1px solid #9e9e9e",
@@ -743,11 +743,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
   <div
     className="gap-analysis"
-    style={ReactDOM.Style.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
+    style={Sx.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
   >
-    <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
+    <div style={Sx.make(~marginBottom="32px", ())}>
       <h1
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
@@ -757,13 +757,13 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {"🔍 Gap Analysis"->React.string}
       </h1>
-      <p style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
+      <p style={Sx.make(~fontSize="16px", ~color="#8892a6", ())}>
         {"Automated detection and remediation of security and compliance gaps"->React.string}
       </p>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="grid",
         ~gridTemplateColumns="repeat(4, 1fr)",
         ~gap="16px",
@@ -790,7 +790,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ->Array.map(((label, count, color)) => {
         <div
           key={label}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="20px",
             ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
             ~border="2px solid #2a3142",
@@ -800,7 +800,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           )}
         >
           <div
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~fontSize="36px",
               ~fontWeight="700",
               ~color,
@@ -810,7 +810,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           >
             {count->React.string}
           </div>
-          <div style={ReactDOM.Style.make(~fontSize="13px", ~color="#8892a6", ())}>
+          <div style={Sx.make(~fontSize="13px", ~color="#8892a6", ())}>
             {label->React.string}
           </div>
         </div>
@@ -819,7 +819,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~justifyContent="space-between",
         ~alignItems="center",
@@ -831,10 +831,10 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         (),
       )}
     >
-      <div style={ReactDOM.Style.make(~display="flex", ~gap="12px", ())}>
+      <div style={Sx.make(~display="flex", ~gap="12px", ())}>
         <button
           onClick={_ => dispatch(RunGapAnalysis)}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="10px 20px",
             ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
             ~color="white",
@@ -851,7 +851,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
         <button
           onClick={_ => dispatch(ApplyAllAutoFixes)}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="10px 20px",
             ~background="linear-gradient(135deg, #4caf50, #66bb6a)",
             ~color="white",
@@ -868,7 +868,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </div>
 
       <label
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~display="flex",
           ~alignItems="center",
           ~gap="8px",
@@ -893,7 +893,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             viewGap(gap, Belt.Map.String.get(state.appliedFixes, gap.id), dispatch)
           )->React.array
         : <div
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="60px",
               ~background="rgba(76, 175, 80, 0.1)",
               ~border="2px solid #4caf50",
@@ -902,11 +902,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               (),
             )}
           >
-            <div style={ReactDOM.Style.make(~fontSize="64px", ~marginBottom="16px", ())}>
+            <div style={Sx.make(~fontSize="64px", ~marginBottom="16px", ())}>
               {"✅"->React.string}
             </div>
             <div
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~fontSize="24px",
                 ~fontWeight="700",
                 ~color="#4caf50",
@@ -916,14 +916,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             >
               {"No Gaps Detected"->React.string}
             </div>
-            <div style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
+            <div style={Sx.make(~fontSize="16px", ~color="#8892a6", ())}>
               {"Your stack meets all security, compliance, and best practice requirements"->React.string}
             </div>
           </div>}
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginTop="32px",
         ~padding="20px",
         ~background="rgba(74, 158, 255, 0.1)",
@@ -933,7 +933,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       )}
     >
       <h4
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="16px",
           ~fontWeight="700",
           ~color="#4a9eff",
@@ -943,7 +943,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {"🤖 AI-Powered Gap Analysis"->React.string}
       </h4>
-      <p style={ReactDOM.Style.make(~fontSize="13px", ~color="#b0b8c4", ~lineHeight="1.8", ())}>
+      <p style={Sx.make(~fontSize="13px", ~color="#b0b8c4", ~lineHeight="1.8", ())}>
         {"Gap detection powered by miniKanren reasoning engine, Hypatia neurosymbolic agent, and VeriSimDB historical analysis. Fixes verified with formal proofs before application. All changes logged to compliance audit trail."->React.string}
       </p>
     </div>

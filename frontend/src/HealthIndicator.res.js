@@ -57,13 +57,13 @@ function HealthIndicator(props) {
       })
     ],
     style: {
+      alignItems: "center",
       background: "rgba(30, 36, 49, 0.8)",
       border: "2px solid " + color,
-      display: "flex",
-      padding: "12px 20px",
       borderRadius: "8px",
-      alignItems: "center",
-      gap: "12px"
+      display: "flex",
+      gap: "12px",
+      padding: "12px 20px"
     }
   });
 }

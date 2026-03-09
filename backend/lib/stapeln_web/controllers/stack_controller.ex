@@ -2,6 +2,7 @@ defmodule StapelnWeb.StackController do
   use StapelnWeb, :controller
 
   alias Stapeln.Stacks
+  alias Stapeln.Crypto
 
   def index(conn, _params) do
     with {:ok, stacks} <- Stacks.list() do
@@ -66,6 +67,63 @@ defmodule StapelnWeb.StackController do
     else
       {:error, :invalid_id} -> bad_request(conn, "invalid stack id")
       {:error, :not_found} -> not_found(conn)
+    end
+  end
+
+  def sign_stack(conn, %{"id" => raw_id}) do
+    with {:ok, id} <- parse_id(raw_id),
+         {:ok, stack} <- Stacks.fetch(id) do
+      {public_key, secret_key} = Crypto.generate_keypair()
+
+      {:ok, signature, _updated_secret} = Crypto.sign_stack(stack, secret_key)
+
+      json(conn, %{
+        data: %{
+          stack_id: id,
+          signature: Base.encode64(signature),
+          public_key: Base.encode64(public_key),
+          algorithm: "hybrid-ed25519-hash",
+          signed_at: DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+        }
+      })
+    else
+      {:error, :invalid_id} -> bad_request(conn, "invalid stack id")
+      {:error, :not_found} -> not_found(conn)
+    end
+  end
+
+  def verify_stack(conn, %{"id" => raw_id} = params) do
+    signature_b64 = Map.get(params, "signature")
+    public_key_b64 = Map.get(params, "public_key")
+
+    with {:ok, id} <- parse_id(raw_id),
+         {:ok, stack} <- Stacks.fetch(id),
+         {:ok, signature} <- decode_base64(signature_b64, "signature"),
+         {:ok, public_key} <- decode_base64(public_key_b64, "public_key") do
+      valid = Crypto.verify_stack(stack, signature, public_key)
+
+      json(conn, %{
+        data: %{
+          stack_id: id,
+          valid: valid,
+          algorithm: "hybrid-ed25519-hash",
+          verified_at: DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+        }
+      })
+    else
+      {:error, :invalid_id} -> bad_request(conn, "invalid stack id")
+      {:error, :not_found} -> not_found(conn)
+      {:error, :missing_param, field} -> bad_request(conn, "missing required parameter: #{field}")
+      {:error, :invalid_base64, field} -> bad_request(conn, "invalid base64 in parameter: #{field}")
+    end
+  end
+
+  defp decode_base64(nil, field), do: {:error, :missing_param, field}
+
+  defp decode_base64(value, field) when is_binary(value) do
+    case Base.decode64(value) do
+      {:ok, decoded} -> {:ok, decoded}
+      :error -> {:error, :invalid_base64, field}
     end
   end
 

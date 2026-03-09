@@ -2,7 +2,6 @@
 // StackView.res - Vertical stack view with Paragon-style interface
 
 open Model
-open Msg
 
 // WCAG 2.3 AAA color palette
 module Colors = {
@@ -232,7 +231,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
                 (Nerdctl, "nerdctl", "containerd CLI"),
               ]
               components
-              ->Array.map(((ct, name, desc)) => {
+              ->Array.map(((_ct, name, desc)) => {
                 <li role="listitem" style={Sx.make(~marginBottom="0.75rem", ())}>
                   <button
                     ariaLabel={"Add " ++ name ++ " to stack. " ++ desc}

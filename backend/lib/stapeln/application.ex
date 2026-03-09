@@ -27,6 +27,7 @@ defmodule Stapeln.Application do
           Stapeln.StackStore,
           Stapeln.Auth.UserStore,
           Stapeln.SettingsStore,
+          Stapeln.Firewall.PinholeManager,
           {Task.Supervisor, name: Stapeln.TaskSupervisor},
           # Start a worker by calling: Stapeln.Worker.start_link(arg)
           # {Stapeln.Worker, arg},

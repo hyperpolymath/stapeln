@@ -54,13 +54,13 @@ function getCurrentRoute() {
 
 function navigateTo(route) {
   routeToPath(route);
-  ((window.history.pushState(null, "", path)));
+  ((window.history.pushState(null, "", _path)));
   ((window.dispatchEvent(new PopStateEvent('popstate'))));
 }
 
 function replaceRoute(route) {
   routeToPath(route);
-  ((window.history.replaceState(null, "", path)));
+  ((window.history.replaceState(null, "", _path)));
 }
 
 function goBack() {
@@ -72,7 +72,7 @@ function goForward() {
 }
 
 function onRouteChange(callback) {
-  ((window.addEventListener('popstate', handler)));
+  ((window.addEventListener('popstate', _handler)));
 }
 
 let navigationItems = [

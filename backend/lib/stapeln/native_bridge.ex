@@ -7,9 +7,11 @@ defmodule Stapeln.NativeBridge do
   - Zig FFI implementation: `ffi/zig/src/main.zig`
 
   If `STAPELN_NATIVE_FFI_BIN` points to an executable, this module calls it.
-  Otherwise it transparently falls back to pure Elixir runtime modules.
+  Otherwise it tries Ecto-backed `Stapeln.DbStore` (PostgreSQL), and finally
+  falls back to in-memory GenServer stores.
   """
 
+  alias Stapeln.DbStore
   alias Stapeln.StackStore
   alias Stapeln.ValidationEngine
   alias Stapeln.SecurityScanner
@@ -95,37 +97,59 @@ defmodule Stapeln.NativeBridge do
   end
 
   defp call_fallback(:list_stacks, _payload) do
-    {:ok, StackStore.list()}
+    if DbStore.available?() do
+      DbStore.list_stacks()
+    else
+      {:ok, StackStore.list()}
+    end
   end
 
   defp call_fallback(:create_stack, attrs) do
-    StackStore.create(attrs)
+    if DbStore.available?() do
+      DbStore.create_stack(attrs)
+    else
+      StackStore.create(attrs)
+    end
   end
 
   defp call_fallback(:get_stack, %{id: id}) do
-    StackStore.get(id)
+    if DbStore.available?() do
+      DbStore.get_stack(id)
+    else
+      StackStore.get(id)
+    end
   end
 
   defp call_fallback(:update_stack, %{id: id, attrs: attrs}) do
-    StackStore.update(id, attrs)
+    if DbStore.available?() do
+      DbStore.update_stack(id, attrs)
+    else
+      StackStore.update(id, attrs)
+    end
   end
 
   defp call_fallback(:validate_stack, %{id: id}) do
-    with {:ok, stack} <- StackStore.get(id) do
+    get_fn = if DbStore.available?(), do: &DbStore.get_stack/1, else: &StackStore.get/1
+
+    with {:ok, stack} <- get_fn.(id) do
       report = ValidationEngine.validate(stack)
       {:ok, Map.put(report, :stack, stack)}
     end
   end
 
   defp call_fallback(:security_scan, %{id: id}) do
-    with {:ok, stack} <- StackStore.get(id) do
+    get_fn = if DbStore.available?(), do: &DbStore.get_stack/1, else: &StackStore.get/1
+
+    with {:ok, stack} <- get_fn.(id) do
       report = SecurityScanner.scan(stack)
       {:ok, report}
     end
   end
 
   defp call_fallback(:gap_analysis, %{id: id}) do
-    with {:ok, stack} <- StackStore.get(id) do
+    get_fn = if DbStore.available?(), do: &DbStore.get_stack/1, else: &StackStore.get/1
+
+    with {:ok, stack} <- get_fn.(id) do
       report = GapAnalyzer.analyze(stack)
       {:ok, report}
     end

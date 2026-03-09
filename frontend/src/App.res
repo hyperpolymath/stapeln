@@ -5,6 +5,9 @@ open Model
 open Msg
 open Update
 
+// Direct JS binding for Array.join (avoids deprecated Js.Array2.joinWith)
+@send external joinWith: (array<string>, string) => string = "join"
+
 type page =
   | NetworkView // Cisco-style topology (TopologyView.res)
   | StackView // Paragon-style vertical (View.res)
@@ -42,9 +45,16 @@ let serializeStack = (model: model): string => {
       port ++
       "}"
     })
-    ->Js.Array2.joinWith(",")
+    ->joinWith(",")
   "{\"name\":\"stapeln-stack\",\"services\":[" ++ services ++ "]}"
 }
+
+// ---------------------------------------------------------------------------
+// Module-level WebSocket connection (created once, survives re-renders)
+// ---------------------------------------------------------------------------
+
+let socketConn = Socket.make()
+let stackChannel: ref<option<Socket.channel>> = ref(None)
 
 @react.component
 let make = () => {
@@ -55,7 +65,7 @@ let make = () => {
     let newModel = update(state.model, msg)
     setState(prev => {...prev, model: newModel})
 
-    // Handle side effects (API calls)
+    // Handle side effects (API calls + WebSocket)
     switch msg {
     | SaveStack => {
         let body = serializeStack(newModel)
@@ -154,6 +164,75 @@ let make = () => {
             Promise.resolve()
           }),
         )
+      }
+
+    // WebSocket connection management
+    | WsConnect => {
+        // Register state-change callback
+        Socket.onStateChange(socketConn, connState => {
+          dispatch(WsConnectionStateChanged(connState))
+        })
+
+        // Create and join the lobby channel
+        let ch = Socket.channel(socketConn, "stack:lobby")
+        stackChannel := Some(ch)
+
+        // Register channel event handlers that dispatch TEA messages
+        Socket.on(ch, "validation_result", payload => dispatch(WsValidationResult(payload)))
+        Socket.on(ch, "security_result", payload => dispatch(WsSecurityResult(payload)))
+        Socket.on(ch, "gap_result", payload => dispatch(WsGapResult(payload)))
+
+        // Connect and auto-join
+        Socket.connect(socketConn, Socket.defaultUrl())
+        Socket.joinChannel(socketConn, ch)
+      }
+
+    | WsDisconnect => {
+        switch stackChannel.contents {
+        | Some(ch) => Socket.leaveChannel(socketConn, ch)
+        | None => ()
+        }
+        stackChannel := None
+        Socket.disconnect(socketConn)
+      }
+
+    | WsValidate => {
+        switch stackChannel.contents {
+        | Some(ch) => {
+            let stackJson = serializeStack(newModel)
+            let payload = JSON.Encode.object(
+              Dict.fromArray([("stack", JSON.Encode.string(stackJson))]),
+            )
+            Socket.push(socketConn, ch, "validate", payload)
+          }
+        | None => Console.warn("WebSocket not connected, cannot validate via WS")
+        }
+      }
+
+    | WsSecurityScan => {
+        switch stackChannel.contents {
+        | Some(ch) => {
+            let stackJson = serializeStack(newModel)
+            let payload = JSON.Encode.object(
+              Dict.fromArray([("stack", JSON.Encode.string(stackJson))]),
+            )
+            Socket.push(socketConn, ch, "security_scan", payload)
+          }
+        | None => Console.warn("WebSocket not connected, cannot security scan via WS")
+        }
+      }
+
+    | WsGapAnalysis => {
+        switch stackChannel.contents {
+        | Some(ch) => {
+            let stackJson = serializeStack(newModel)
+            let payload = JSON.Encode.object(
+              Dict.fromArray([("stack", JSON.Encode.string(stackJson))]),
+            )
+            Socket.push(socketConn, ch, "gap_analysis", payload)
+          }
+        | None => Console.warn("WebSocket not connected, cannot gap analysis via WS")
+        }
       }
 
     | _ => ()

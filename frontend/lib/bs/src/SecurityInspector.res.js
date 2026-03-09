@@ -356,8 +356,8 @@ function viewMetricBar(label, value, color) {
         ],
         style: {
           display: "flex",
-          marginBottom: "8px",
-          justifyContent: "space-between"
+          justifyContent: "space-between",
+          marginBottom: "8px"
         }
       }),
       JsxRuntime.jsx("div", {
@@ -365,16 +365,16 @@ function viewMetricBar(label, value, color) {
           style: {
             background: color,
             height: "100%",
-            width: String(value) + "%",
-            transition: "width 0.3s ease"
+            transition: "width 0.3s ease",
+            width: String(value) + "%"
           }
         }),
         style: {
           background: "#2a3142",
+          borderRadius: "4px",
           height: "8px",
           overflow: "hidden",
-          width: "100%",
-          borderRadius: "4px"
+          width: "100%"
         }
       })
     ],
@@ -394,14 +394,14 @@ function viewVulnerability(vuln, dispatch) {
           children: severityLabel(vuln.severity),
           style: {
             background: severityColor(vuln.severity),
+            borderRadius: "6px",
             color: "white",
             fontSize: "11px",
             fontWeight: "700",
             minWidth: "80px",
             padding: "4px 12px",
             textAlign: "center",
-            textTransform: "uppercase",
-            borderRadius: "6px"
+            textTransform: "uppercase"
           }
         }),
         JsxRuntime.jsxs("div", {
@@ -461,12 +461,12 @@ function viewVulnerability(vuln, dispatch) {
                     style: {
                       background: "linear-gradient(135deg, #4caf50, #66bb6a)",
                       border: "none",
+                      borderRadius: "6px",
                       color: "white",
                       cursor: "pointer",
                       fontSize: "11px",
                       fontWeight: "600",
-                      padding: "6px 12px",
-                      borderRadius: "6px"
+                      padding: "6px 12px"
                     },
                     onClick: e => {
                       e.stopPropagation();
@@ -478,8 +478,8 @@ function viewVulnerability(vuln, dispatch) {
                   }) : null
               ],
               style: {
-                display: "flex",
                 alignItems: "center",
+                display: "flex",
                 gap: "16px"
               }
             }),
@@ -496,11 +496,11 @@ function viewVulnerability(vuln, dispatch) {
                 style: {
                   background: "rgba(76, 175, 80, 0.1)",
                   border: "1px solid #4caf50",
+                  borderRadius: "6px",
                   color: "#b0b8c4",
                   fontSize: "12px",
                   marginTop: "12px",
-                  padding: "12px",
-                  borderRadius: "6px"
+                  padding: "12px"
                 }
               }) : null
           ],
@@ -510,18 +510,18 @@ function viewVulnerability(vuln, dispatch) {
         })
       ],
       style: {
-        display: "flex",
         alignItems: "flex-start",
+        display: "flex",
         gap: "12px"
       }
     }),
     style: {
       background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       border: "2px solid #2a3142",
+      borderRadius: "12px",
       cursor: "pointer",
       marginBottom: "12px",
       padding: "16px",
-      borderRadius: "12px",
       transition: "all 0.2s"
     },
     onClick: param => dispatch({
@@ -564,8 +564,8 @@ function viewSecurityCheck(check) {
           })
         ],
         style: {
-          display: "flex",
           alignItems: "center",
+          display: "flex",
           gap: "12px"
         }
       }),
@@ -573,25 +573,25 @@ function viewSecurityCheck(check) {
         children: check.details,
         style: {
           background: checkResultColor(check.result),
+          borderRadius: "6px",
           color: "white",
           fontSize: "11px",
           fontWeight: "700",
           minWidth: "100px",
           padding: "6px 12px",
-          textAlign: "center",
-          borderRadius: "6px"
+          textAlign: "center"
         }
       })
     ],
     style: {
+      alignItems: "center",
       background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       border: "1px solid #2a3142",
-      display: "flex",
-      marginBottom: "8px",
-      padding: "16px",
       borderRadius: "8px",
-      alignItems: "center",
-      justifyContent: "space-between"
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "8px",
+      padding: "16px"
     }
   }, check.name);
 }
@@ -648,8 +648,8 @@ function viewExposedPort(port) {
           })
         ],
         style: {
-          display: "flex",
           alignItems: "center",
+          display: "flex",
           gap: "12px"
         }
       }),
@@ -660,41 +660,41 @@ function viewExposedPort(port) {
               style: {
                 background: "rgba(244, 67, 54, 0.2)",
                 border: "1px solid #f44336",
+                borderRadius: "4px",
                 color: "#f44336",
                 fontSize: "10px",
                 fontWeight: "600",
-                padding: "4px 8px",
-                borderRadius: "4px"
+                padding: "4px 8px"
               }
             }) : null,
           JsxRuntime.jsx("div", {
             children: port.risk,
             style: {
               background: tmp,
+              borderRadius: "4px",
               color: "white",
               fontSize: "10px",
               fontWeight: "700",
-              padding: "4px 8px",
-              borderRadius: "4px"
+              padding: "4px 8px"
             }
           })
         ],
         style: {
-          display: "flex",
           alignItems: "center",
+          display: "flex",
           gap: "8px"
         }
       })
     ],
     style: {
+      alignItems: "center",
       background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       border: "1px solid #2a3142",
-      display: "flex",
-      marginBottom: "6px",
-      padding: "12px",
       borderRadius: "8px",
-      alignItems: "center",
-      justifyContent: "space-between"
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: "6px",
+      padding: "12px"
     }
   }, String(port.port));
 }
@@ -768,14 +768,14 @@ function SecurityInspector(props) {
           }
         }),
         style: {
+          alignItems: "center",
           background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
           border: "3px solid " + gradeColor(state.grade),
-          display: "flex",
-          marginBottom: "32px",
-          padding: "40px",
           borderRadius: "16px",
-          alignItems: "center",
-          justifyContent: "center"
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "32px",
+          padding: "40px"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -797,9 +797,9 @@ function SecurityInspector(props) {
         style: {
           background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
           border: "2px solid #2a3142",
+          borderRadius: "16px",
           marginBottom: "32px",
-          padding: "24px",
-          borderRadius: "16px"
+          padding: "24px"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -840,21 +840,21 @@ function SecurityInspector(props) {
                 style: {
                   background: "linear-gradient(135deg, #4a9eff, #7b6cff)",
                   border: "none",
+                  borderRadius: "8px",
                   color: "white",
                   cursor: "pointer",
                   fontSize: "14px",
                   fontWeight: "600",
-                  padding: "10px 20px",
-                  borderRadius: "8px"
+                  padding: "10px 20px"
                 },
                 onClick: param => dispatch("RunSecurityScan")
               })
             ],
             style: {
-              display: "flex",
-              marginBottom: "16px",
               alignItems: "center",
-              justifyContent: "space-between"
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "16px"
             }
           }),
           state.vulnerabilities.length !== 0 ? Belt_Array.map(state.vulnerabilities, vuln => viewVulnerability(vuln, dispatch)) : JsxRuntime.jsxs("div", {
@@ -886,9 +886,9 @@ function SecurityInspector(props) {
               style: {
                 background: "rgba(76, 175, 80, 0.1)",
                 border: "2px solid #4caf50",
+                borderRadius: "12px",
                 padding: "40px",
-                textAlign: "center",
-                borderRadius: "12px"
+                textAlign: "center"
               }
             })
         ],
@@ -933,9 +933,9 @@ function SecurityInspector(props) {
         style: {
           background: "rgba(255, 152, 0, 0.1)",
           border: "2px solid #ff9800",
+          borderRadius: "12px",
           marginTop: "32px",
-          padding: "20px",
-          borderRadius: "12px"
+          padding: "20px"
         }
       })
     ],

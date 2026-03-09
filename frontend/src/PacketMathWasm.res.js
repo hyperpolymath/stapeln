@@ -56,8 +56,7 @@ function lerpCoordinate(source, target, progress) {
   let sourceFixed = source * 1024.0 | 0;
   let targetFixed = target * 1024.0 | 0;
   let progressQ16 = toProgressQ16(progress);
-  let coord = PacketMathWasmJs.lerpQ16(sourceFixed, targetFixed, progressQ16);
-  return coord / 1024.0;
+  return PacketMathWasmJs.lerpQ16(sourceFixed, targetFixed, progressQ16) / 1024.0;
 }
 
 function lerpPosition(source, target, progress) {

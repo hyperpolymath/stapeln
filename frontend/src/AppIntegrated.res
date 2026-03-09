@@ -282,7 +282,7 @@ let make = () => {
           | PortConfigView =>
             <PortConfigPanel
               initialState={state.portConfig}
-              onStateChange={newState => dispatch(PortConfigMsg(PortConfigPanel.SelectPort(0)))}
+              onStateChange={_newState => dispatch(PortConfigMsg(PortConfigPanel.SelectPort(0)))}
             />
           | SecurityView =>
             <SecurityInspector
@@ -293,12 +293,12 @@ let make = () => {
           | GapAnalysisView =>
             <GapAnalysis
               initialState={state.gapAnalysis}
-              onStateChange={newState => dispatch(GapAnalysisMsg(GapAnalysis.SelectGap("0")))}
+              onStateChange={_newState => dispatch(GapAnalysisMsg(GapAnalysis.SelectGap("0")))}
             />
           | SimulationView =>
             <SimulationMode
               initialState={state.simulationMode}
-              onStateChange={newState => dispatch(SimulationModeMsg(SimulationMode.ToggleStats))}
+              onStateChange={_newState => dispatch(SimulationModeMsg(SimulationMode.ToggleStats))}
             />
           | SettingsView => Settings.view(Settings.defaultSettings, state.isDark)
           | NotFound =>

@@ -10,42 +10,42 @@ open Msg
 
 // Extract a string from a JSON value, with a default fallback
 let jsonString = (json: JSON.t, fallback: string): string =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | String(s) => s
   | _ => fallback
   }
 
 // Extract an int from a JSON value (JSON numbers are floats), with a default
 let jsonInt = (json: JSON.t, fallback: int): int =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | Number(n) => Float.toInt(n)
   | _ => fallback
   }
 
 // Extract a bool from a JSON value, with a default
 let jsonBool = (json: JSON.t, fallback: bool): bool =>
-  switch JSON.Classify.classify(json) {
-  | Bool(b) => b
+  switch json {
+  | Boolean(b) => b
   | _ => fallback
   }
 
 // Extract a dict from a JSON value
 let jsonDict = (json: JSON.t): option<Dict.t<JSON.t>> =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | Object(d) => Some(d)
   | _ => None
   }
 
 // Extract a JSON array, returning empty array on failure
 let jsonArray = (json: JSON.t): array<JSON.t> =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | Array(arr) => arr
   | _ => []
   }
 
 // Extract an optional string (returns None for JSON null or missing)
 let jsonOptString = (json: JSON.t): option<string> =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | String(s) => Some(s)
   | Null => None
   | _ => None
@@ -53,7 +53,7 @@ let jsonOptString = (json: JSON.t): option<string> =>
 
 // Extract an optional string array
 let jsonOptStringArray = (json: JSON.t): option<array<string>> =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | Array(arr) => Some(Array.map(arr, item => jsonString(item, "")))
   | Null => None
   | _ => None
@@ -61,7 +61,7 @@ let jsonOptStringArray = (json: JSON.t): option<array<string>> =>
 
 // Extract a string array, returning empty array on failure
 let jsonStringArray = (json: JSON.t): array<string> =>
-  switch JSON.Classify.classify(json) {
+  switch json {
   | Array(arr) => Array.map(arr, item => jsonString(item, ""))
   | _ => []
   }
@@ -755,10 +755,99 @@ let update = (model: model, msg: msg): model => {
       }
     }
 
+  // WebSocket messages
+  | WsConnect => {
+      Console.log("WebSocket connect requested")
+      model
+    }
+
+  | WsDisconnect => {
+      Console.log("WebSocket disconnect requested")
+      {...model, wsState: Disconnected}
+    }
+
+  | WsConnectionStateChanged(state) => {
+      {...model, wsState: state}
+    }
+
+  | WsValidate => {
+      Console.log("WebSocket validate requested")
+      model
+    }
+
+  | WsValidationResult(json) => {
+      // Parse the validation result from the "data" wrapper
+      switch jsonDict(json) {
+      | Some(d) =>
+        switch field(d, "data") {
+        | Some(data) =>
+          switch jsonDict(data) {
+          | Some(dd) => {
+              let valid = switch field(dd, "valid") {
+              | Some(v) => jsonBool(v, false)
+              | None => false
+              }
+              let errors = switch field(dd, "errors") {
+              | Some(v) => jsonStringArray(v)
+              | None => []
+              }
+              let warnings = switch field(dd, "warnings") {
+              | Some(v) => jsonStringArray(v)
+              | None => []
+              }
+              let result: validationResult = {valid, errors, warnings}
+              {...model, validationResult: Some(result)}
+            }
+          | None => model
+          }
+        | None => model
+        }
+      | None => model
+      }
+    }
+
+  | WsSecurityScan => {
+      Console.log("WebSocket security scan requested")
+      {...model, securityLoading: true}
+    }
+
+  | WsSecurityResult(json) => {
+      switch jsonDict(json) {
+      | Some(d) =>
+        switch field(d, "data") {
+        | Some(data) => {
+            let parsed = parseSecurityScanJson(data)
+            {...model, securityState: Some(parsed), securityLoading: false}
+          }
+        | None => {...model, securityLoading: false}
+        }
+      | None => {...model, securityLoading: false}
+      }
+    }
+
+  | WsGapAnalysis => {
+      Console.log("WebSocket gap analysis requested")
+      {...model, gapLoading: true}
+    }
+
+  | WsGapResult(json) => {
+      switch jsonDict(json) {
+      | Some(d) =>
+        switch field(d, "data") {
+        | Some(data) => {
+            let parsed = parseGapAnalysisJson(data)
+            {...model, gapState: Some(parsed), gapLoading: false}
+          }
+        | None => {...model, gapLoading: false}
+        }
+      | None => {...model, gapLoading: false}
+      }
+    }
+
   | SettingsLoaded(result) => switch result {
     | Ok(json) => {
         // Parse JSON into settings fields
-        let obj = switch JSON.Classify.classify(json) {
+        let obj = switch json {
         | Object(d) => Some(d)
         | _ => None
         }
@@ -766,7 +855,7 @@ let update = (model: model, msg: msg): model => {
         | Some(d) => {
             let theme = switch Dict.get(d, "theme") {
             | Some(v) =>
-              switch JSON.Classify.classify(v) {
+              switch v {
               | String(s) => s
               | _ => model.settings.theme
               }
@@ -774,7 +863,7 @@ let update = (model: model, msg: msg): model => {
             }
             let defaultRuntime = switch Dict.get(d, "defaultRuntime") {
             | Some(v) =>
-              switch JSON.Classify.classify(v) {
+              switch v {
               | String(s) => s
               | _ => model.settings.defaultRuntime
               }
@@ -782,15 +871,15 @@ let update = (model: model, msg: msg): model => {
             }
             let autoSave = switch Dict.get(d, "autoSave") {
             | Some(v) =>
-              switch JSON.Classify.classify(v) {
-              | Bool(b) => b
+              switch v {
+              | Boolean(b) => b
               | _ => model.settings.autoSave
               }
             | None => model.settings.autoSave
             }
             let backendUrl = switch Dict.get(d, "backendUrl") {
             | Some(v) =>
-              switch JSON.Classify.classify(v) {
+              switch v {
               | String(s) => s
               | _ => model.settings.backendUrl
               }

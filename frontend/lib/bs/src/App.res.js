@@ -2,13 +2,20 @@
 
 import * as Model from "./Model.res.js";
 import * as React from "react";
+import * as Socket from "./Socket.res.js";
 import * as Update from "./Update.res.js";
+import * as Belt_Int from "@rescript/runtime/lib/es6/Belt_Int.js";
+import * as ApiClient from "./ApiClient.res.js";
 import * as StackView from "./StackView.res.js";
+import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as IdrisBadge from "./IdrisBadge.res.js";
+import * as Belt_Option from "@rescript/runtime/lib/es6/Belt_Option.js";
 import * as GapAnalysis from "./GapAnalysis.res.js";
+import * as SettingsPage from "./SettingsPage.res.js";
 import * as TopologyView from "./TopologyView.res.js";
 import * as ErrorBoundary from "./ErrorBoundary.res.js";
 import * as SimulationMode from "./SimulationMode.res.js";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as PortConfigPanel from "./PortConfigPanel.res.js";
 import * as SecurityInspector from "./SecurityInspector.res.js";
 import * as JsxRuntime from "react/jsx-runtime";
@@ -18,6 +25,20 @@ let initialAppState = {
   currentPage: "NetworkView",
   model: Model.initialModel,
   isDark: true
+};
+
+function serializeStack(model) {
+  let services = Belt_Array.map(model.components, comp => {
+    let port = Belt_Option.mapWithDefault(comp.config["port"], "0", p => p);
+    return "{\"name\":\"" + comp.id + "\",\"kind\":\"" + Model.componentTypeToString(comp.componentType) + "\",\"port\":" + port + "}";
+  }).join(",");
+  return "{\"name\":\"stapeln-stack\",\"services\":[" + services + "]}";
+}
+
+let socketConn = Socket.make();
+
+let stackChannel = {
+  contents: undefined
 };
 
 function App(props) {
@@ -31,6 +52,189 @@ function App(props) {
       model: newModel,
       isDark: prev.isDark
     }));
+    if (typeof msg === "object") {
+      return;
+    }
+    switch (msg) {
+      case "SaveStack" :
+        let body = serializeStack(newModel);
+        ApiClient.saveStack(body).then(result => {
+          dispatch({
+            TAG: "StackSaved",
+            _0: result
+          });
+          return Promise.resolve();
+        });
+        return;
+      case "RunSecurityScan" :
+        let body$1 = serializeStack(newModel);
+        Stdlib_Promise.$$catch(ApiClient.saveStack(body$1).then(saveResult => {
+          if (saveResult.TAG === "Ok") {
+            let id = Belt_Int.fromString(saveResult._0);
+            let stackId = id !== undefined ? id : 0;
+            return ApiClient.runSecurityScan(stackId).then(scanResult => {
+              dispatch({
+                TAG: "SecurityScanResult",
+                _0: scanResult
+              });
+              return Promise.resolve();
+            });
+          }
+          dispatch({
+            TAG: "SecurityScanResult",
+            _0: {
+              TAG: "Error",
+              _0: saveResult._0
+            }
+          });
+          return Promise.resolve();
+        }), param => {
+          dispatch({
+            TAG: "SecurityScanResult",
+            _0: {
+              TAG: "Error",
+              _0: "Network error"
+            }
+          });
+          return Promise.resolve();
+        });
+        return;
+      case "RunGapAnalysis" :
+        let body$2 = serializeStack(newModel);
+        Stdlib_Promise.$$catch(ApiClient.saveStack(body$2).then(saveResult => {
+          if (saveResult.TAG === "Ok") {
+            let id = Belt_Int.fromString(saveResult._0);
+            let stackId = id !== undefined ? id : 0;
+            return ApiClient.runGapAnalysis(stackId).then(gapResult => {
+              dispatch({
+                TAG: "GapAnalysisResult",
+                _0: gapResult
+              });
+              return Promise.resolve();
+            });
+          }
+          dispatch({
+            TAG: "GapAnalysisResult",
+            _0: {
+              TAG: "Error",
+              _0: saveResult._0
+            }
+          });
+          return Promise.resolve();
+        }), param => {
+          dispatch({
+            TAG: "GapAnalysisResult",
+            _0: {
+              TAG: "Error",
+              _0: "Network error"
+            }
+          });
+          return Promise.resolve();
+        });
+        return;
+      case "SaveSettings" :
+        let settingsJson = Object.fromEntries([
+          [
+            "theme",
+            newModel.settings.theme
+          ],
+          [
+            "defaultRuntime",
+            newModel.settings.defaultRuntime
+          ],
+          [
+            "autoSave",
+            newModel.settings.autoSave
+          ],
+          [
+            "backendUrl",
+            newModel.settings.backendUrl
+          ]
+        ]);
+        ApiClient.saveSettings(settingsJson).then(result => {
+          dispatch({
+            TAG: "SettingsSaved",
+            _0: result
+          });
+          return Promise.resolve();
+        });
+        return;
+      case "LoadSettings" :
+        ApiClient.loadSettings().then(result => {
+          dispatch({
+            TAG: "SettingsLoaded",
+            _0: result
+          });
+          return Promise.resolve();
+        });
+        return;
+      case "WsConnect" :
+        Socket.onStateChange(socketConn, connState => dispatch({
+          TAG: "WsConnectionStateChanged",
+          _0: connState
+        }));
+        let ch = Socket.channel(socketConn, "stack:lobby");
+        stackChannel.contents = ch;
+        Socket.on(ch, "validation_result", payload => dispatch({
+          TAG: "WsValidationResult",
+          _0: payload
+        }));
+        Socket.on(ch, "security_result", payload => dispatch({
+          TAG: "WsSecurityResult",
+          _0: payload
+        }));
+        Socket.on(ch, "gap_result", payload => dispatch({
+          TAG: "WsGapResult",
+          _0: payload
+        }));
+        Socket.connect(socketConn, Socket.defaultUrl());
+        return Socket.joinChannel(socketConn, ch);
+      case "WsDisconnect" :
+        let ch$1 = stackChannel.contents;
+        if (ch$1 !== undefined) {
+          Socket.leaveChannel(socketConn, ch$1);
+        }
+        stackChannel.contents = undefined;
+        return Socket.disconnect(socketConn);
+      case "WsValidate" :
+        let ch$2 = stackChannel.contents;
+        if (ch$2 !== undefined) {
+          let stackJson = serializeStack(newModel);
+          let payload = Object.fromEntries([[
+              "stack",
+              stackJson
+            ]]);
+          return Socket.push(socketConn, ch$2, "validate", payload);
+        }
+        console.warn("WebSocket not connected, cannot validate via WS");
+        return;
+      case "WsSecurityScan" :
+        let ch$3 = stackChannel.contents;
+        if (ch$3 !== undefined) {
+          let stackJson$1 = serializeStack(newModel);
+          let payload$1 = Object.fromEntries([[
+              "stack",
+              stackJson$1
+            ]]);
+          return Socket.push(socketConn, ch$3, "security_scan", payload$1);
+        }
+        console.warn("WebSocket not connected, cannot security scan via WS");
+        return;
+      case "WsGapAnalysis" :
+        let ch$4 = stackChannel.contents;
+        if (ch$4 !== undefined) {
+          let stackJson$2 = serializeStack(newModel);
+          let payload$2 = Object.fromEntries([[
+              "stack",
+              stackJson$2
+            ]]);
+          return Socket.push(socketConn, ch$4, "gap_analysis", payload$2);
+        }
+        console.warn("WebSocket not connected, cannot gap analysis via WS");
+        return;
+      default:
+        return;
+    }
   };
   let switchPage = page => setState(prev => ({
     currentPage: page,
@@ -53,55 +257,46 @@ function App(props) {
       tmp = JsxRuntime.jsx(PortConfigPanel.make, {});
       break;
     case "SecurityView" :
-      tmp = JsxRuntime.jsx(SecurityInspector.make, {});
+      tmp = JsxRuntime.jsx(SecurityInspector.make, {
+        initialState: state.model.securityState
+      });
       break;
     case "GapAnalysisView" :
-      tmp = JsxRuntime.jsx(GapAnalysis.make, {});
+      tmp = JsxRuntime.jsx(GapAnalysis.make, {
+        initialState: state.model.gapState
+      });
       break;
     case "SimulationView" :
       tmp = JsxRuntime.jsx(SimulationMode.make, {});
       break;
     case "SettingsView" :
-      tmp = JsxRuntime.jsxs("div", {
-        children: [
-          JsxRuntime.jsx("h1", {
-            children: "Settings"
-          }),
-          JsxRuntime.jsxs("div", {
-            children: [
-              JsxRuntime.jsx("h2", {
-                children: "Theme"
-              }),
-              JsxRuntime.jsxs("label", {
-                children: [
-                  JsxRuntime.jsx("input", {
-                    checked: state.isDark,
-                    type: "checkbox",
-                    onChange: param => setState(prev => ({
-                      currentPage: prev.currentPage,
-                      model: prev.model,
-                      isDark: !prev.isDark
-                    }))
-                  }),
-                  " Dark Mode"
-                ]
-              })
-            ],
-            className: "settings-group"
-          }),
-          JsxRuntime.jsxs("div", {
-            children: [
-              JsxRuntime.jsx("h2", {
-                children: "Default Runtime"
-              }),
-              JsxRuntime.jsx("p", {
-                children: "Podman / Docker / nerdctl selection coming soon"
-              })
-            ],
-            className: "settings-group"
-          })
-        ],
-        className: "page settings-page"
+      tmp = JsxRuntime.jsx(SettingsPage.make, {
+        settings: state.model.settings,
+        isDark: state.isDark,
+        onSave: () => dispatch("SaveSettings"),
+        onSettingsChange: newSettings => setState(prev => {
+          let init = prev.model;
+          return {
+            currentPage: prev.currentPage,
+            model: {
+              components: init.components,
+              connections: init.connections,
+              selectedComponent: init.selectedComponent,
+              dragState: init.dragState,
+              canvasOffset: init.canvasOffset,
+              zoomLevel: init.zoomLevel,
+              validationResult: init.validationResult,
+              securityState: init.securityState,
+              gapState: init.gapState,
+              securityLoading: init.securityLoading,
+              gapLoading: init.gapLoading,
+              currentStackId: init.currentStackId,
+              settings: newSettings,
+              wsState: init.wsState
+            },
+            isDark: newSettings.theme === "dark"
+          };
+        })
       });
       break;
   }
@@ -198,6 +393,9 @@ let make = App;
 
 export {
   initialAppState,
+  serializeStack,
+  socketConn,
+  stackChannel,
   make,
 }
-/* react Not a pure module */
+/* socketConn Not a pure module */

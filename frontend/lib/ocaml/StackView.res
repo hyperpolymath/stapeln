@@ -2,7 +2,6 @@
 // StackView.res - Vertical stack view with Paragon-style interface
 
 open Model
-open Msg
 
 // WCAG 2.3 AAA color palette
 module Colors = {
@@ -108,7 +107,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
     className="paragon-stack-view"
     role="main"
     ariaLabel="Container Stack Designer"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~flexDirection="column",
       ~padding="2rem",
@@ -147,7 +146,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
     // Header with theme toggle
     <header
       role="banner"
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~justifyContent="space-between",
         ~alignItems="center",
@@ -159,7 +158,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
       )}
     >
       <h1
-        style={ReactDOM.Style.make(~margin="0", ~fontSize="2rem", ~fontWeight="700", ())}
+        style={Sx.make(~margin="0", ~fontSize="2rem", ~fontWeight="700", ())}
         id="main-title"
       >
         {"stackur"->React.string}
@@ -173,7 +172,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         ariaLabel="Toggle dark/light theme"
         role="switch"
         ariaChecked={isDark ? #"true" : #"false"}
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="0.75rem 1.5rem",
           ~backgroundColor=isDark ? Colors.darkPrimary : Colors.lightPrimary,
           ~color="white",
@@ -191,11 +190,11 @@ let renderParagonStack = (model: model, isDark: bool) => {
     </header>
 
     // Component palette (left sidebar)
-    <div style={ReactDOM.Style.make(~display="flex", ~marginTop="2rem", ())}>
+    <div style={Sx.make(~display="flex", ~marginTop="2rem", ())}>
       <aside
         role="complementary"
         ariaLabel="Component palette"
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~width="250px",
           ~paddingRight="2rem",
           ~borderRight=isDark
@@ -205,7 +204,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         )}
       >
         <h2
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="1.3rem",
             ~fontWeight="600",
             ~marginBottom="1rem",
@@ -219,7 +218,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
         <nav ariaLabelledby="palette-title">
           <ul
             role="list"
-            style={ReactDOM.Style.make(~listStyle="none", ~padding="0", ~margin="0", ())}
+            style={Sx.make(~listStyle="none", ~padding="0", ~margin="0", ())}
           >
             {
               let components = [
@@ -232,11 +231,11 @@ let renderParagonStack = (model: model, isDark: bool) => {
                 (Nerdctl, "nerdctl", "containerd CLI"),
               ]
               components
-              ->Array.map(((ct, name, desc)) => {
-                <li role="listitem" style={ReactDOM.Style.make(~marginBottom="0.75rem", ())}>
+              ->Array.map(((_ct, name, desc)) => {
+                <li role="listitem" style={Sx.make(~marginBottom="0.75rem", ())}>
                   <button
                     ariaLabel={"Add " ++ name ++ " to stack. " ++ desc}
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~width="100%",
                       ~padding="1rem",
                       ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -253,11 +252,11 @@ let renderParagonStack = (model: model, isDark: bool) => {
                       (),
                     )}
                   >
-                    <div style={ReactDOM.Style.make(~fontWeight="600", ())}>
+                    <div style={Sx.make(~fontWeight="600", ())}>
                       {name->React.string}
                     </div>
                     <div
-                      style={ReactDOM.Style.make(
+                      style={Sx.make(
                         ~fontSize="0.8rem",
                         ~opacity="0.8",
                         ~marginTop="0.25rem",
@@ -279,10 +278,10 @@ let renderParagonStack = (model: model, isDark: bool) => {
       <article
         role="article"
         ariaLabel="Current stack configuration"
-        style={ReactDOM.Style.make(~flex="1", ~paddingLeft="2rem", ())}
+        style={Sx.make(~flex="1", ~paddingLeft="2rem", ())}
       >
         <h2
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="1.3rem",
             ~fontWeight="600",
             ~marginBottom="1rem",
@@ -297,7 +296,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
           ? <div
               role="status"
               ariaLabel="Empty stack"
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="3rem",
                 ~textAlign="center",
                 ~border=isDark
@@ -308,7 +307,7 @@ let renderParagonStack = (model: model, isDark: bool) => {
                 (),
               )}
             >
-              <p style={ReactDOM.Style.make(~fontSize="1.1rem", ~margin="0", ())}>
+              <p style={Sx.make(~fontSize="1.1rem", ~margin="0", ())}>
                 {"Drag components from the palette to build your stack"->React.string}
               </p>
             </div>

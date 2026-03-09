@@ -39,7 +39,7 @@ let proofLabel = (proof: proofType): string => {
 // Compact badge (inline)
 let viewCompactBadge = (): React.element => {
   <span
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="inline-flex",
       ~alignItems="center",
       ~gap="4px",
@@ -63,7 +63,7 @@ let viewCompactBadge = (): React.element => {
 // Standard badge (standalone)
 let viewStandardBadge = (): React.element => {
   <div
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="inline-flex",
       ~alignItems="center",
       ~gap="8px",
@@ -75,12 +75,12 @@ let viewStandardBadge = (): React.element => {
       (),
     )}
   >
-    <div style={ReactDOM.Style.make(~fontSize="24px", ~lineHeight="1", ())}>
+    <div style={Sx.make(~fontSize="24px", ~lineHeight="1", ())}>
       {"⚡"->React.string}
     </div>
     <div>
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="14px",
           ~fontWeight="700",
           ~color="white",
@@ -92,7 +92,7 @@ let viewStandardBadge = (): React.element => {
         {"Idris² inside"->React.string}
       </div>
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="10px",
           ~color="rgba(255, 255, 255, 0.8)",
           ~fontWeight="600",
@@ -109,7 +109,7 @@ let viewStandardBadge = (): React.element => {
 // Detailed badge (with proof list)
 let viewDetailedBadge = (proofs: array<proofType>): React.element => {
   <div
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="20px",
       ~background="linear-gradient(135deg, #1e0836 0%, #2d0a4e 100%)",
       ~border="2px solid #bc13fe",
@@ -119,7 +119,7 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
     )}
   >
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~alignItems="center",
         ~gap="12px",
@@ -127,12 +127,12 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
         (),
       )}
     >
-      <div style={ReactDOM.Style.make(~fontSize="32px", ~lineHeight="1", ())}>
+      <div style={Sx.make(~fontSize="32px", ~lineHeight="1", ())}>
         {"⚡"->React.string}
       </div>
       <div>
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="20px",
             ~fontWeight="700",
             ~color="white",
@@ -145,7 +145,7 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
           {"Idris² inside"->React.string}
         </div>
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="12px",
             ~color="rgba(255, 255, 255, 0.7)",
             ~fontWeight="600",
@@ -158,11 +158,11 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
       </div>
     </div>
 
-    <div style={ReactDOM.Style.make(~display="flex", ~flexDirection="column", ~gap="8px", ())}>
+    <div style={Sx.make(~display="flex", ~flexDirection="column", ~gap="8px", ())}>
       {Array.map(proofs, proof =>
         <div
           key={proofLabel(proof)}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~display="flex",
             ~alignItems="center",
             ~gap="8px",
@@ -173,16 +173,16 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
             (),
           )}
         >
-          <span style={ReactDOM.Style.make(~fontSize="16px", ())}>
+          <span style={Sx.make(~fontSize="16px", ())}>
             {proofEmoji(proof)->React.string}
           </span>
           <span
-            style={ReactDOM.Style.make(~fontSize="13px", ~fontWeight="600", ~color="white", ())}
+            style={Sx.make(~fontSize="13px", ~fontWeight="600", ~color="white", ())}
           >
             {proofLabel(proof)->React.string}
           </span>
           <span
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~marginLeft="auto",
               ~fontSize="11px",
               ~fontWeight="700",
@@ -197,7 +197,7 @@ let viewDetailedBadge = (proofs: array<proofType>): React.element => {
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginTop="16px",
         ~paddingTop="16px",
         ~borderTop="1px solid rgba(188, 19, 254, 0.3)",
@@ -234,7 +234,7 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 //   let (hover, setHover) = React.useState(() => false)
 //
 //   <div
-//     style={ReactDOM.Style.make(
+//     style={Sx.make(
 //       ~position="relative",
 //       ~display="inline-block",
 //       (),
@@ -245,7 +245,7 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 //
 //     {hover || showTooltip
 //       ? <div
-//           style={ReactDOM.Style.make(
+//           style={Sx.make(
 //             ~position="absolute",
 //             ~bottom="calc(100% + 8px)",
 //             ~left="50%",
@@ -255,7 +255,7 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 //             (),
 //           )}>
 //           <div
-//             style={ReactDOM.Style.make(
+//             style={Sx.make(
 //               ~padding="12px 16px",
 //               ~background="linear-gradient(135deg, #1e0836 0%, #2d0a4e 100%)",
 //               ~border="2px solid #bc13fe",
@@ -272,7 +272,7 @@ let make = (~style: badgeStyle=Standard, ~proofs: option<array<proofType>>=?) =>
 //           </div>
 //           {/* Tooltip arrow */}
 //           <div
-//             style={ReactDOM.Style.make(
+//             style={Sx.make(
 //               ~position="absolute",
 //               ~bottom="-8px",
 //               ~left="50%",

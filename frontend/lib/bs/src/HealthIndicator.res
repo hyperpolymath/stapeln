@@ -16,7 +16,7 @@ let make = (~health: int) => {
   }
 
   <div
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~alignItems="center",
       ~gap="12px",
@@ -27,12 +27,12 @@ let make = (~health: int) => {
       (),
     )}
   >
-    <div style={ReactDOM.Style.make(~fontSize="20px", ())}> {" ❤️"->React.string} </div>
+    <div style={Sx.make(~fontSize="20px", ())}> {" ❤️"->React.string} </div>
     <div>
-      <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ~marginBottom="2px", ())}>
+      <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ~marginBottom="2px", ())}>
         {"System Health"->React.string}
       </div>
-      <div style={ReactDOM.Style.make(~fontSize="18px", ~fontWeight="700", ~color, ())}>
+      <div style={Sx.make(~fontSize="18px", ~fontWeight="700", ~color, ())}>
         {(Int.toString(health) ++ "% - " ++ label)->React.string}
       </div>
     </div>

@@ -19,20 +19,22 @@ let getCurrentPath = (): string => {
 
 // Navigate to a path (pushState)
 let navigate = (path: string): unit => {
-  %raw(`window.history.pushState(null, "", path)`)
-  // Dispatch popstate event to trigger route change
+  ignore(%raw(`window.history.pushState(null, "", path)`))
+  ignore(path)
   %raw(`window.dispatchEvent(new PopStateEvent('popstate'))`)
 }
 
 // Replace current path (replaceState)
 let replace = (path: string): unit => {
+  ignore(path)
   %raw(`window.history.replaceState(null, "", path)`)
 }
 
 // Subscribe to route changes
 let onRouteChange = (callback: string => unit): unit => {
-  let handler = %raw(`() => callback(window.location.pathname)`)
-  %raw(`window.addEventListener('popstate', handler)`)
+  ignore(callback)
+  let _handler = %raw(`() => callback(window.location.pathname)`)
+  %raw(`window.addEventListener('popstate', _handler)`)
 }
 
 // Simple route matching

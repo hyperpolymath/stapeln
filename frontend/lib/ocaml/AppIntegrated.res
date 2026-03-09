@@ -246,13 +246,13 @@ let make = () => {
       Console.error2("Application error:", errorMsg)
     }}
   >
-    <div style={ReactDOM.Style.make(~display="flex", ~height="100vh", ())}>
+    <div style={Sx.make(~display="flex", ~height="100vh", ())}>
       <Navigation
         currentRoute={state.currentRoute} onNavigate={route => dispatch(NavigateTo(route))}
       />
 
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~flex="1",
           ~display="flex",
           ~flexDirection="column",
@@ -263,7 +263,7 @@ let make = () => {
         <Breadcrumb currentRoute={state.currentRoute} />
 
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="16px 20px",
             ~background="rgba(10, 14, 26, 0.95)",
             ~borderBottom="1px solid #2a3142",
@@ -273,7 +273,7 @@ let make = () => {
           <HealthIndicator health={state.systemHealth} />
         </div>
 
-        <div style={ReactDOM.Style.make(~flex="1", ~overflowY="auto", ~background="#0a0e1a", ())}>
+        <div style={Sx.make(~flex="1", ~overflowY="auto", ~background="#0a0e1a", ())}>
           {switch state.currentRoute {
           | NetworkView =>
             TopologyView.view(state.model, state.isDark, stackMsg => dispatch(StackMsg(stackMsg)))
@@ -282,7 +282,7 @@ let make = () => {
           | PortConfigView =>
             <PortConfigPanel
               initialState={state.portConfig}
-              onStateChange={newState => dispatch(PortConfigMsg(PortConfigPanel.SelectPort(0)))}
+              onStateChange={_newState => dispatch(PortConfigMsg(PortConfigPanel.SelectPort(0)))}
             />
           | SecurityView =>
             <SecurityInspector
@@ -293,17 +293,17 @@ let make = () => {
           | GapAnalysisView =>
             <GapAnalysis
               initialState={state.gapAnalysis}
-              onStateChange={newState => dispatch(GapAnalysisMsg(GapAnalysis.SelectGap("0")))}
+              onStateChange={_newState => dispatch(GapAnalysisMsg(GapAnalysis.SelectGap("0")))}
             />
           | SimulationView =>
             <SimulationMode
               initialState={state.simulationMode}
-              onStateChange={newState => dispatch(SimulationModeMsg(SimulationMode.ToggleStats))}
+              onStateChange={_newState => dispatch(SimulationModeMsg(SimulationMode.ToggleStats))}
             />
           | SettingsView => Settings.view(Settings.defaultSettings, state.isDark)
           | NotFound =>
             <div
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~display="flex",
                 ~alignItems="center",
                 ~justifyContent="center",
@@ -311,11 +311,11 @@ let make = () => {
                 (),
               )}
             >
-              <div style={ReactDOM.Style.make(~textAlign="center", ())}>
-                <div style={ReactDOM.Style.make(~fontSize="72px", ~marginBottom="20px", ())}>
+              <div style={Sx.make(~textAlign="center", ())}>
+                <div style={Sx.make(~fontSize="72px", ~marginBottom="20px", ())}>
                   {"404"->React.string}
                 </div>
-                <div style={ReactDOM.Style.make(~fontSize="24px", ~color="#8892a6", ())}>
+                <div style={Sx.make(~fontSize="24px", ~color="#8892a6", ())}>
                   {"Page not found"->React.string}
                 </div>
               </div>

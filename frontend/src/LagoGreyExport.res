@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // LagoGreyExport.res - Export Lago Grey images
 
+// Direct JS binding for Array.join (avoids deprecated Js.Array2.joinWith)
+@send external joinWith: (array<string>, string) => string = "join"
+
 // Lago Grey designer state (simplified from LagoGreyImageDesigner)
 type baseImage =
   | Distroless
@@ -84,7 +87,7 @@ let generateDockerfile = (state: lagoGreyState): string => {
         name ++ "\n\n"
       }
     })
-    ->Js.Array2.joinWith("")
+    ->joinWith("")
 
   let metadata =
     "# Image metadata\n" ++
@@ -116,7 +119,7 @@ let generateManifest = (state: lagoGreyState): string => {
       Int.toString(formationSize(formation)) ++
       "\n" ++ "    }"
     })
-    ->Js.Array2.joinWith(",\n")
+    ->joinWith(",\n")
 
   let baseStr = switch state.baseImage {
   | Distroless => "distroless"

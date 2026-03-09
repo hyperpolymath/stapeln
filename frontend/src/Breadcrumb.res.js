@@ -32,12 +32,12 @@ function Breadcrumb(props) {
         }) : null
     ],
     style: {
+      alignItems: "center",
       background: "rgba(30, 36, 49, 0.6)",
       borderBottom: "1px solid #2a3142",
       display: "flex",
-      padding: "12px 20px",
-      alignItems: "center",
-      gap: "8px"
+      gap: "8px",
+      padding: "12px 20px"
     }
   });
 }

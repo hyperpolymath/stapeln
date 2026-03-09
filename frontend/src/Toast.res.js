@@ -141,19 +141,19 @@ function viewToast(toast, dispatch) {
     ],
     className: "toast",
     style: {
+      alignItems: "center",
+      animation: "slideIn 0.3s ease-out",
       background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       border: "2px solid " + toastColor(toast.toastType),
+      borderRadius: "12px",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
       display: "flex",
+      gap: "12px",
       marginBottom: "12px",
       maxWidth: "500px",
       minWidth: "300px",
       padding: "16px 20px",
-      position: "relative",
-      borderRadius: "12px",
-      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
-      alignItems: "center",
-      gap: "12px",
-      animation: "slideIn 0.3s ease-out"
+      position: "relative"
     }
   }, toast.id);
 }
@@ -174,13 +174,13 @@ function Toast(props) {
     children: Belt_Array.map(toasts, toast => viewToast(toast, dispatch)),
     className: "toast-container",
     style: {
+      alignItems: "flex-end",
       display: "flex",
+      flexDirection: "column",
       position: "fixed",
       right: "24px",
       top: "24px",
-      zIndex: "10000",
-      alignItems: "flex-end",
-      flexDirection: "column"
+      zIndex: "10000"
     }
   });
 }

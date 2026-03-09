@@ -40,18 +40,18 @@ function viewCompactBadge() {
       "Idris²"
     ],
     style: {
+      alignItems: "center",
       background: "linear-gradient(135deg, #bc13fe 0%, #7209b7 100%)",
+      borderRadius: "4px",
       color: "white",
       display: "inline-flex",
       fontFamily: "monospace",
       fontSize: "10px",
       fontWeight: "700",
+      gap: "4px",
       letterSpacing: "0.5px",
       padding: "2px 8px",
-      textTransform: "uppercase",
-      borderRadius: "4px",
-      alignItems: "center",
-      gap: "4px"
+      textTransform: "uppercase"
     }
   });
 }
@@ -91,14 +91,14 @@ function viewStandardBadge() {
       })
     ],
     style: {
+      alignItems: "center",
       background: "linear-gradient(135deg, #bc13fe 0%, #7209b7 50%, #480ca8 100%)",
       border: "2px solid #bc13fe",
-      display: "inline-flex",
-      padding: "8px 16px",
       borderRadius: "8px",
       boxShadow: "0 4px 12px rgba(188, 19, 254, 0.3)",
-      alignItems: "center",
-      gap: "8px"
+      display: "inline-flex",
+      gap: "8px",
+      padding: "8px 16px"
     }
   });
 }
@@ -141,10 +141,10 @@ function viewDetailedBadge(proofs) {
           })
         ],
         style: {
-          display: "flex",
-          marginBottom: "16px",
           alignItems: "center",
-          gap: "12px"
+          display: "flex",
+          gap: "12px",
+          marginBottom: "16px"
         }
       }),
       JsxRuntime.jsx("div", {
@@ -175,13 +175,13 @@ function viewDetailedBadge(proofs) {
             })
           ],
           style: {
+            alignItems: "center",
             background: "rgba(188, 19, 254, 0.15)",
             border: "1px solid rgba(188, 19, 254, 0.3)",
-            display: "flex",
-            padding: "8px 12px",
             borderRadius: "6px",
-            alignItems: "center",
-            gap: "8px"
+            display: "flex",
+            gap: "8px",
+            padding: "8px 12px"
           }
         }, proofLabel(proof))),
         style: {
@@ -205,9 +205,9 @@ function viewDetailedBadge(proofs) {
     style: {
       background: "linear-gradient(135deg, #1e0836 0%, #2d0a4e 100%)",
       border: "2px solid #bc13fe",
-      padding: "20px",
       borderRadius: "12px",
-      boxShadow: "0 8px 24px rgba(188, 19, 254, 0.4)"
+      boxShadow: "0 8px 24px rgba(188, 19, 254, 0.4)",
+      padding: "20px"
     }
   });
 }

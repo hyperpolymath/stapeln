@@ -1,8 +1,8 @@
 {
-  "version": "12.1.0",
-  "bsc_path": "/var/home/hyper/.local/lib/node_modules/rescript/node_modules/@rescript/linux-x64/bin/bsc.exe",
-  "bsc_hash": "e71a4b341d54d39d77ed040eac08d002633dac2437fe69da2e0aa643219947ff",
+  "version": "12.2.0",
+  "bsc_path": "/var/mnt/eclipse/repos/stapeln/frontend/node_modules/.deno/@rescript+linux-x64@12.2.0/node_modules/@rescript/linux-x64/bin/bsc.exe",
+  "bsc_hash": "ca03c46847ff55e2a2115049975f546b655fceff6fc10e34645da2e812314070",
   "rescript_config_hash": "f448f86e826d7dafe446caf3f9a9b3d0dd582cafac723f24a9fef60319481f88",
-  "runtime_path": "/var/home/hyper/.local/lib/node_modules/rescript/node_modules/@rescript/runtime",
-  "generated_at": "1770304505458"
+  "runtime_path": "/var/mnt/eclipse/repos/stapeln/frontend/node_modules/.deno/@rescript+runtime@12.2.0/node_modules/@rescript/runtime",
+  "generated_at": "1773055944091"
 }

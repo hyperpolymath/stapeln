@@ -379,8 +379,8 @@ let view = (model: model, isDark: bool, dispatch) => {
         >
           {renderShape(comp, isSelected, isDark)}
           <text
-            x={Float.toString(comp.position.x +. fst(comp.size) /. 2.0)}
-            y={Float.toString(comp.position.y +. snd(comp.size) /. 2.0)}
+            x={Float.toString(comp.position.x +. Pair.first(comp.size) /. 2.0)}
+            y={Float.toString(comp.position.y +. Pair.second(comp.size) /. 2.0)}
             textAnchor="middle"
             dominantBaseline="middle"
             fill={isDark ? "#FFFFFF" : "#000000"}

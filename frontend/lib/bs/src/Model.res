@@ -36,6 +36,21 @@ type dragState =
   | DraggingComponent(component)
   | DraggingCanvas(position)
 
+// Settings stored in the model for backend persistence
+type settingsConfig = {
+  theme: string, // "dark" or "light"
+  defaultRuntime: string, // "podman", "docker", or "nerdctl"
+  autoSave: bool,
+  backendUrl: string,
+}
+
+let defaultSettingsConfig: settingsConfig = {
+  theme: "dark",
+  defaultRuntime: "podman",
+  autoSave: false,
+  backendUrl: "/api",
+}
+
 type rec model = {
   components: array<component>,
   connections: array<connection>,
@@ -44,6 +59,16 @@ type rec model = {
   canvasOffset: position,
   zoomLevel: float,
   validationResult: option<validationResult>,
+  // Security and gap analysis state from backend
+  securityState: option<SecurityInspector.state>,
+  gapState: option<GapAnalysis.state>,
+  securityLoading: bool,
+  gapLoading: bool,
+  currentStackId: option<int>,
+  // Settings
+  settings: settingsConfig,
+  // WebSocket state (optional — None means REST-only mode)
+  wsState: Socket.connectionState,
 }
 
 and validationResult = {
@@ -60,6 +85,13 @@ let initialModel = {
   canvasOffset: {x: 0.0, y: 0.0},
   zoomLevel: 1.0,
   validationResult: None,
+  securityState: None,
+  gapState: None,
+  securityLoading: false,
+  gapLoading: false,
+  currentStackId: None,
+  settings: defaultSettingsConfig,
+  wsState: Disconnected,
 }
 
 // Helper functions
@@ -69,7 +101,7 @@ let generateId = () => {
   let chars = "0123456789abcdef"
   let uuid = ref("")
   for i in 0 to 35 {
-    let idx = Js.Math.random_int(0, 16)
+    let idx = Float.toInt(Math.random() *. 16.0)
     let char = String.charAt(chars, idx)
     uuid := uuid.contents ++ char
     if i == 7 || i == 12 || i == 17 || i == 22 {

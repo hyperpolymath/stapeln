@@ -4,6 +4,9 @@
 open Model
 open DesignFormat
 
+// Direct JS binding for Array.join (avoids deprecated Js.Array2.joinWith)
+@send external joinWith: (array<string>, string) => string = "join"
+
 // Get current ISO timestamp
 let getCurrentTimestamp = (): string => {
   let date = Date.make()
@@ -90,7 +93,7 @@ let exportToSelurCompose = (model: model) => {
       "\"\n" ++
       portLine
     })
-    ->Js.Array2.joinWith("\n")
+    ->joinWith("\n")
 
   let fullToml = toml ++ services
 
@@ -125,7 +128,7 @@ let exportToDockerCompose = (model: model) => {
       "\n" ++
       portLine
     })
-    ->Js.Array2.joinWith("\n")
+    ->joinWith("\n")
 
   let fullYaml = yaml ++ services
 

@@ -5,81 +5,66 @@ import * as Export from "./Export.res.js";
 import * as Import from "./Import.res.js";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as GapAnalysis from "./GapAnalysis.res.js";
-import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as SecurityInspector from "./SecurityInspector.res.js";
 
 function jsonString(json, fallback) {
-  let s = Stdlib_JSON.Classify.classify(json);
-  if (typeof s !== "object" || s.TAG !== "String") {
-    return fallback;
+  if (typeof json === "string") {
+    return json;
   } else {
-    return s._0;
+    return fallback;
   }
 }
 
 function jsonInt(json, fallback) {
-  let n = Stdlib_JSON.Classify.classify(json);
-  if (typeof n !== "object" || n.TAG !== "Number") {
-    return fallback;
+  if (typeof json === "number") {
+    return json | 0;
   } else {
-    return n._0 | 0;
+    return fallback;
   }
 }
 
 function jsonBool(json, fallback) {
-  let b = Stdlib_JSON.Classify.classify(json);
-  if (typeof b !== "object" || b.TAG !== "Bool") {
-    return fallback;
+  if (typeof json === "boolean") {
+    return json;
   } else {
-    return b._0;
+    return fallback;
   }
 }
 
 function jsonDict(json) {
-  let d = Stdlib_JSON.Classify.classify(json);
-  if (typeof d !== "object" || d.TAG !== "Object") {
-    return;
-  } else {
-    return d._0;
+  if (typeof json === "object" && json !== null && !Array.isArray(json)) {
+    return json;
   }
 }
 
 function jsonArray(json) {
-  let arr = Stdlib_JSON.Classify.classify(json);
-  if (typeof arr !== "object") {
-    return [];
-  } else if (arr.TAG === "Array") {
-    return arr._0;
+  if (Array.isArray(json)) {
+    return json;
   } else {
     return [];
   }
 }
 
 function jsonOptString(json) {
-  let s = Stdlib_JSON.Classify.classify(json);
-  if (typeof s !== "object" || s.TAG !== "String") {
+  if (typeof json !== "string") {
     return;
   } else {
-    return s._0;
+    return json;
   }
 }
 
 function jsonOptStringArray(json) {
-  let arr = Stdlib_JSON.Classify.classify(json);
-  if (typeof arr !== "object" || arr.TAG !== "Array") {
+  if (json === null || !Array.isArray(json)) {
     return;
   } else {
-    return Belt_Array.map(arr._0, item => jsonString(item, ""));
+    return Belt_Array.map(json, item => jsonString(item, ""));
   }
 }
 
 function jsonStringArray(json) {
-  let arr = Stdlib_JSON.Classify.classify(json);
-  if (typeof arr !== "object") {
-    return [];
-  } else if (arr.TAG === "Array") {
-    return Belt_Array.map(arr._0, item => jsonString(item, ""));
+  if (Array.isArray(json)) {
+    return Belt_Array.map(json, item => jsonString(item, ""));
   } else {
     return [];
   }
@@ -462,7 +447,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ZoomIn" :
         let newZoom = Math.min(model.zoomLevel * 1.2, 3.0);
@@ -479,7 +465,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ZoomOut" :
         let newZoom$1 = Math.max(model.zoomLevel / 1.2, 0.5);
@@ -496,7 +483,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ResetZoom" :
         return {
@@ -515,7 +503,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ValidateStack" :
         let result_valid = model.components.length !== 0;
@@ -539,7 +528,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ExportToSelurCompose" :
         Export.exportToSelurCompose(model);
@@ -575,7 +565,8 @@ function update(model, msg) {
           securityLoading: true,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "SecurityScanLoading" :
         return {
@@ -591,7 +582,8 @@ function update(model, msg) {
           securityLoading: true,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "RunGapAnalysis" :
         console.log("Running gap analysis...");
@@ -608,7 +600,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: true,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "GapAnalysisLoading" :
         return {
@@ -624,7 +617,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: true,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "SaveSettings" :
         console.log("Saving settings to backend...");
@@ -632,6 +626,66 @@ function update(model, msg) {
       case "LoadSettings" :
         console.log("Loading settings from backend...");
         return model;
+      case "WsConnect" :
+        console.log("WebSocket connect requested");
+        return model;
+      case "WsDisconnect" :
+        console.log("WebSocket disconnect requested");
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: "Disconnected"
+        };
+      case "WsValidate" :
+        console.log("WebSocket validate requested");
+        return model;
+      case "WsSecurityScan" :
+        console.log("WebSocket security scan requested");
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: true,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: model.wsState
+        };
+      case "WsGapAnalysis" :
+        console.log("WebSocket gap analysis requested");
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: true,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: model.wsState
+        };
     }
   } else {
     switch (msg.TAG) {
@@ -659,7 +713,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "RemoveComponent" :
         let id = msg._0;
@@ -684,7 +739,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "UpdateComponentPosition" :
         let position = msg._1;
@@ -714,7 +770,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "UpdateComponentConfig" :
         let config = msg._1;
@@ -744,7 +801,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "SelectComponent" :
         return {
@@ -760,7 +818,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "AddConnection" :
         let toId = msg._1;
@@ -789,7 +848,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "RemoveConnection" :
         let id$3 = msg._0;
@@ -807,7 +867,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "StartDragComponent" :
         return {
@@ -826,7 +887,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "StartDragCanvas" :
         return {
@@ -845,7 +907,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "DragMove" :
         let mousePos = msg._0;
@@ -888,7 +951,8 @@ function update(model, msg) {
             securityLoading: model.securityLoading,
             gapLoading: model.gapLoading,
             currentStackId: model.currentStackId,
-            settings: model.settings
+            settings: model.settings,
+            wsState: model.wsState
           };
         }
         let startPos = component._0;
@@ -916,7 +980,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "PanCanvas" :
         return {
@@ -932,7 +997,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ValidationResult" :
         return {
@@ -948,7 +1014,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "ExportDesignToJson" :
         Export.exportDesignToJson(model, msg._0);
@@ -996,7 +1063,8 @@ function update(model, msg) {
             securityLoading: false,
             gapLoading: model.gapLoading,
             currentStackId: model.currentStackId,
-            settings: model.settings
+            settings: model.settings,
+            wsState: model.wsState
           };
         }
         console.error("Security scan failed:", result$3._0);
@@ -1013,7 +1081,8 @@ function update(model, msg) {
           securityLoading: false,
           gapLoading: model.gapLoading,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "GapAnalysisResult" :
         let result$4 = msg._0;
@@ -1033,7 +1102,8 @@ function update(model, msg) {
             securityLoading: model.securityLoading,
             gapLoading: false,
             currentStackId: model.currentStackId,
-            settings: model.settings
+            settings: model.settings,
+            wsState: model.wsState
           };
         }
         console.error("Gap analysis failed:", result$4._0);
@@ -1050,7 +1120,8 @@ function update(model, msg) {
           securityLoading: model.securityLoading,
           gapLoading: false,
           currentStackId: model.currentStackId,
-          settings: model.settings
+          settings: model.settings,
+          wsState: model.wsState
         };
       case "SettingsSaved" :
         let result$5 = msg._0;
@@ -1063,44 +1134,20 @@ function update(model, msg) {
       case "SettingsLoaded" :
         let result$6 = msg._0;
         if (result$6.TAG === "Ok") {
-          let d = Stdlib_JSON.Classify.classify(result$6._0);
+          let json = result$6._0;
           let obj;
-          obj = typeof d !== "object" || d.TAG !== "Object" ? undefined : d._0;
+          obj = typeof json === "object" && json !== null && !Array.isArray(json) ? json : undefined;
           if (obj === undefined) {
             return model;
           }
           let v = obj["theme"];
-          let theme;
-          if (v !== undefined) {
-            let s = Stdlib_JSON.Classify.classify(v);
-            theme = typeof s !== "object" || s.TAG !== "String" ? model.settings.theme : s._0;
-          } else {
-            theme = model.settings.theme;
-          }
+          let theme = typeof v === "string" ? v : model.settings.theme;
           let v$1 = obj["defaultRuntime"];
-          let defaultRuntime;
-          if (v$1 !== undefined) {
-            let s$1 = Stdlib_JSON.Classify.classify(v$1);
-            defaultRuntime = typeof s$1 !== "object" || s$1.TAG !== "String" ? model.settings.defaultRuntime : s$1._0;
-          } else {
-            defaultRuntime = model.settings.defaultRuntime;
-          }
+          let defaultRuntime = typeof v$1 === "string" ? v$1 : model.settings.defaultRuntime;
           let v$2 = obj["autoSave"];
-          let autoSave;
-          if (v$2 !== undefined) {
-            let b = Stdlib_JSON.Classify.classify(v$2);
-            autoSave = typeof b !== "object" || b.TAG !== "Bool" ? model.settings.autoSave : b._0;
-          } else {
-            autoSave = model.settings.autoSave;
-          }
+          let autoSave = typeof v$2 === "boolean" ? v$2 : model.settings.autoSave;
           let v$3 = obj["backendUrl"];
-          let backendUrl;
-          if (v$3 !== undefined) {
-            let s$2 = Stdlib_JSON.Classify.classify(v$3);
-            backendUrl = typeof s$2 !== "object" || s$2.TAG !== "String" ? model.settings.backendUrl : s$2._0;
-          } else {
-            backendUrl = model.settings.backendUrl;
-          }
+          let backendUrl = typeof v$3 === "string" ? v$3 : model.settings.backendUrl;
           let newSettings = {
             theme: theme,
             defaultRuntime: defaultRuntime,
@@ -1120,11 +1167,181 @@ function update(model, msg) {
             securityLoading: model.securityLoading,
             gapLoading: model.gapLoading,
             currentStackId: model.currentStackId,
-            settings: newSettings
+            settings: newSettings,
+            wsState: model.wsState
           };
         }
         console.error("Failed to load settings:", result$6._0);
         return model;
+      case "WsConnectionStateChanged" :
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: msg._0
+        };
+      case "WsValidationResult" :
+        let d = jsonDict(msg._0);
+        if (d === undefined) {
+          return model;
+        }
+        let data = d["data"];
+        if (data === undefined) {
+          return model;
+        }
+        let dd = jsonDict(data);
+        if (dd === undefined) {
+          return model;
+        }
+        let v$4 = dd["valid"];
+        let valid = v$4 !== undefined ? jsonBool(v$4, false) : false;
+        let v$5 = dd["errors"];
+        let errors = v$5 !== undefined ? jsonStringArray(v$5) : [];
+        let v$6 = dd["warnings"];
+        let warnings = v$6 !== undefined ? jsonStringArray(v$6) : [];
+        let result$7 = {
+          valid: valid,
+          errors: errors,
+          warnings: warnings
+        };
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: result$7,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: model.wsState
+        };
+      case "WsSecurityResult" :
+        let d$1 = jsonDict(msg._0);
+        if (d$1 === undefined) {
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: model.gapState,
+            securityLoading: false,
+            gapLoading: model.gapLoading,
+            currentStackId: model.currentStackId,
+            settings: model.settings,
+            wsState: model.wsState
+          };
+        }
+        let data$1 = d$1["data"];
+        if (data$1 === undefined) {
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: model.gapState,
+            securityLoading: false,
+            gapLoading: model.gapLoading,
+            currentStackId: model.currentStackId,
+            settings: model.settings,
+            wsState: model.wsState
+          };
+        }
+        let parsed$2 = parseSecurityScanJson(data$1);
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: parsed$2,
+          gapState: model.gapState,
+          securityLoading: false,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: model.wsState
+        };
+      case "WsGapResult" :
+        let d$2 = jsonDict(msg._0);
+        if (d$2 === undefined) {
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: model.gapState,
+            securityLoading: model.securityLoading,
+            gapLoading: false,
+            currentStackId: model.currentStackId,
+            settings: model.settings,
+            wsState: model.wsState
+          };
+        }
+        let data$2 = d$2["data"];
+        if (data$2 === undefined) {
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: model.gapState,
+            securityLoading: model.securityLoading,
+            gapLoading: false,
+            currentStackId: model.currentStackId,
+            settings: model.settings,
+            wsState: model.wsState
+          };
+        }
+        let parsed$3 = parseGapAnalysisJson(data$2);
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: parsed$3,
+          securityLoading: model.securityLoading,
+          gapLoading: false,
+          currentStackId: model.currentStackId,
+          settings: model.settings,
+          wsState: model.wsState
+        };
     }
   }
 }

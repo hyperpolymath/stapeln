@@ -329,7 +329,7 @@ function AppIntegrated(props) {
     case "PortConfigView" :
       tmp = JsxRuntime.jsx(PortConfigPanel.make, {
         initialState: state.portConfig,
-        onStateChange: newState => dispatch({
+        onStateChange: _newState => dispatch({
           TAG: "PortConfigMsg",
           _0: {
             TAG: "SelectPort",
@@ -353,7 +353,7 @@ function AppIntegrated(props) {
     case "GapAnalysisView" :
       tmp = JsxRuntime.jsx(GapAnalysis.make, {
         initialState: state.gapAnalysis,
-        onStateChange: newState => dispatch({
+        onStateChange: _newState => dispatch({
           TAG: "GapAnalysisMsg",
           _0: {
             TAG: "SelectGap",
@@ -365,7 +365,7 @@ function AppIntegrated(props) {
     case "SimulationView" :
       tmp = JsxRuntime.jsx(SimulationMode.make, {
         initialState: state.simulationMode,
-        onStateChange: newState => dispatch({
+        onStateChange: _newState => dispatch({
           TAG: "SimulationModeMsg",
           _0: "ToggleStats"
         })
@@ -398,9 +398,9 @@ function AppIntegrated(props) {
           }
         }),
         style: {
+          alignItems: "center",
           display: "flex",
           height: "100%",
-          alignItems: "center",
           justifyContent: "center"
         }
       });
@@ -435,16 +435,16 @@ function AppIntegrated(props) {
               children: tmp,
               style: {
                 background: "#0a0e1a",
-                overflowY: "auto",
-                flex: "1"
+                flex: "1",
+                overflowY: "auto"
               }
             })
           ],
           style: {
             display: "flex",
-            overflow: "hidden",
             flex: "1",
-            flexDirection: "column"
+            flexDirection: "column",
+            overflow: "hidden"
           }
         }),
         JsxRuntime.jsx(Toast.make, {

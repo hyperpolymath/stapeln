@@ -20,7 +20,7 @@ type designFile = {
 
 // Serialize component to JSON
 let componentToJson = (comp: component): JSON.t => {
-  // Convert config dict<string> to dict<Js.Json.t>
+  // Convert config dict<string> to dict<JSON.t>
   let configJson = Dict.fromArray(
     comp.config
     ->Dict.toArray
@@ -43,16 +43,15 @@ let componentToJson = (comp: component): JSON.t => {
 
 // Deserialize component from JSON
 let componentFromJson = (json: JSON.t): option<component> => {
-  open Js.Json
-  switch classify(json) {
-  | JSONObject(obj) => {
-      let id = Dict.get(obj, "id")->Belt.Option.flatMap(JSON.Decode.string)
-      let typeStr = Dict.get(obj, "type")->Belt.Option.flatMap(JSON.Decode.string)
-      let position = Dict.get(obj, "position")->Belt.Option.flatMap(posJson => {
-        switch classify(posJson) {
-        | JSONObject(posObj) => {
-            let x = Dict.get(posObj, "x")->Belt.Option.flatMap(JSON.Decode.float)
-            let y = Dict.get(posObj, "y")->Belt.Option.flatMap(JSON.Decode.float)
+  switch json {
+  | Object(obj) => {
+      let id = Dict.get(obj, "id")->Option.flatMap(JSON.Decode.string)
+      let typeStr = Dict.get(obj, "type")->Option.flatMap(JSON.Decode.string)
+      let position = Dict.get(obj, "position")->Option.flatMap(posJson => {
+        switch posJson {
+        | Object(posObj) => {
+            let x = Dict.get(posObj, "x")->Option.flatMap(JSON.Decode.float)
+            let y = Dict.get(posObj, "y")->Option.flatMap(JSON.Decode.float)
             switch (x, y) {
             | (Some(x), Some(y)) => Some({x, y})
             | _ => None
@@ -61,10 +60,10 @@ let componentFromJson = (json: JSON.t): option<component> => {
         | _ => None
         }
       })
-      let config = Dict.get(obj, "config")->Belt.Option.flatMap(cfg => {
-        switch classify(cfg) {
-        | JSONObject(dict) => {
-            // Convert dict<Js.Json.t> to dict<string>
+      let config = Dict.get(obj, "config")->Option.flatMap(cfg => {
+        switch cfg {
+        | Object(dict) => {
+            // Convert dict<JSON.t> to dict<string>
             let stringDict = Dict.make()
             dict
             ->Dict.toArray
@@ -116,12 +115,11 @@ let connectionToJson = (conn: connection): JSON.t => {
 
 // Deserialize connection from JSON
 let connectionFromJson = (json: JSON.t): option<connection> => {
-  open Js.Json
-  switch classify(json) {
-  | JSONObject(obj) => {
-      let id = Dict.get(obj, "id")->Belt.Option.flatMap(JSON.Decode.string)
-      let from = Dict.get(obj, "from")->Belt.Option.flatMap(JSON.Decode.string)
-      let to = Dict.get(obj, "to")->Belt.Option.flatMap(JSON.Decode.string)
+  switch json {
+  | Object(obj) => {
+      let id = Dict.get(obj, "id")->Option.flatMap(JSON.Decode.string)
+      let from = Dict.get(obj, "from")->Option.flatMap(JSON.Decode.string)
+      let to = Dict.get(obj, "to")->Option.flatMap(JSON.Decode.string)
 
       switch (id, from, to) {
       | (Some(id), Some(from), Some(to)) => Some({id, from, to})
@@ -142,12 +140,11 @@ let modelToJson = (model: model): JSON.t => {
 
 // Deserialize model from JSON
 let modelFromJson = (json: JSON.t): option<model> => {
-  open Js.Json
-  switch classify(json) {
-  | JSONObject(obj) => {
-      let components = Dict.get(obj, "components")->Belt.Option.flatMap(arr => {
-        switch classify(arr) {
-        | JSONArray(items) => {
+  switch json {
+  | Object(obj) => {
+      let components = Dict.get(obj, "components")->Option.flatMap(arr => {
+        switch arr {
+        | Array(items) => {
             let parsed = items->Array.map(componentFromJson)->Array.keepMap(x => x)
             Some(parsed)
           }
@@ -155,9 +152,9 @@ let modelFromJson = (json: JSON.t): option<model> => {
         }
       })
 
-      let connections = Dict.get(obj, "connections")->Belt.Option.flatMap(arr => {
-        switch classify(arr) {
-        | JSONArray(items) => {
+      let connections = Dict.get(obj, "connections")->Option.flatMap(arr => {
+        switch arr {
+        | Array(items) => {
             let parsed = items->Array.map(connectionFromJson)->Array.keepMap(x => x)
             Some(parsed)
           }
@@ -201,19 +198,18 @@ let serializeDesign = (model: model, metadata: designMetadata): string => {
 let deserializeDesign = (jsonStr: string): Result.t<(designMetadata, model), string> => {
   try {
     let json = JSON.parseOrThrow(jsonStr)
-    open Js.Json
 
-    switch classify(json) {
-    | JSONObject(obj) => {
-        let version = Dict.get(obj, "version")->Belt.Option.flatMap(JSON.Decode.string)
+    switch json {
+    | Object(obj) => {
+        let version = Dict.get(obj, "version")->Option.flatMap(JSON.Decode.string)
 
-        let metadata = Dict.get(obj, "metadata")->Belt.Option.flatMap(metaJson => {
-          switch classify(metaJson) {
-          | JSONObject(metaObj) => {
-              let created = Dict.get(metaObj, "created")->Belt.Option.flatMap(JSON.Decode.string)
-              let author = Dict.get(metaObj, "author")->Belt.Option.flatMap(JSON.Decode.string)
+        let metadata = Dict.get(obj, "metadata")->Option.flatMap(metaJson => {
+          switch metaJson {
+          | Object(metaObj) => {
+              let created = Dict.get(metaObj, "created")->Option.flatMap(JSON.Decode.string)
+              let author = Dict.get(metaObj, "author")->Option.flatMap(JSON.Decode.string)
               let description =
-                Dict.get(metaObj, "description")->Belt.Option.flatMap(JSON.Decode.string)
+                Dict.get(metaObj, "description")->Option.flatMap(JSON.Decode.string)
 
               switch (created, author, description) {
               | (Some(created), Some(author), Some(description)) =>
@@ -230,7 +226,7 @@ let deserializeDesign = (jsonStr: string): Result.t<(designMetadata, model), str
           }
         })
 
-        let canvas = Dict.get(obj, "canvas")->Belt.Option.flatMap(modelFromJson)
+        let canvas = Dict.get(obj, "canvas")->Option.flatMap(modelFromJson)
 
         switch (metadata, canvas) {
         | (Some(meta), Some(model)) => Ok((meta, model))

@@ -240,23 +240,23 @@ function renderParagonStack(model, isDark) {
             style: {
               backgroundColor: isDark ? darkPrimary : lightPrimary,
               border: "none",
+              borderRadius: "6px",
               color: "white",
               cursor: "pointer",
               fontSize: "1rem",
               fontWeight: "600",
               padding: "0.75rem 1.5rem",
-              borderRadius: "6px",
               transition: "background-color 0.2s ease"
             }
           })
         ],
         role: "banner",
         style: {
+          alignItems: "center",
           borderBottom: isDark ? "2px solid " + darkBorder : "2px solid " + lightBorder,
           display: "flex",
-          paddingBottom: "1.5rem",
-          alignItems: "center",
-          justifyContent: "space-between"
+          justifyContent: "space-between",
+          paddingBottom: "1.5rem"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -299,15 +299,15 @@ function renderParagonStack(model, isDark) {
                         style: {
                           backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                           border: isDark ? "2px solid " + darkBorder : "2px solid " + lightBorder,
+                          borderRadius: "6px",
                           color: isDark ? darkText : lightText,
                           cursor: "pointer",
                           fontSize: "0.95rem",
                           fontWeight: "500",
                           padding: "1rem",
                           textAlign: "left",
-                          width: "100%",
-                          borderRadius: "6px",
-                          transition: "all 0.2s ease"
+                          transition: "all 0.2s ease",
+                          width: "100%"
                         }
                       }),
                       role: "listitem",
@@ -357,10 +357,10 @@ function renderParagonStack(model, isDark) {
                   role: "status",
                   style: {
                     border: isDark ? "2px dashed " + darkBorder : "2px dashed " + lightBorder,
+                    borderRadius: "8px",
                     color: isDark ? darkSecondary : lightSecondary,
                     padding: "3rem",
-                    textAlign: "center",
-                    borderRadius: "8px"
+                    textAlign: "center"
                   }
                 }) : JsxRuntime.jsx("div", {
                   children: Belt_Array.map(model.components, comp => renderStackBlock(comp, isDark)),
@@ -372,8 +372,8 @@ function renderParagonStack(model, isDark) {
             "aria-label": "Current stack configuration",
             role: "article",
             style: {
-              paddingLeft: "2rem",
-              flex: "1"
+              flex: "1",
+              paddingLeft: "2rem"
             }
           })
         ],
@@ -390,10 +390,10 @@ function renderParagonStack(model, isDark) {
       backgroundColor: isDark ? darkBg : lightBg,
       color: isDark ? darkText : lightText,
       display: "flex",
+      flexDirection: "column",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       minHeight: "100vh",
-      padding: "2rem",
-      flexDirection: "column"
+      padding: "2rem"
     }
   });
 }

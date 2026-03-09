@@ -15,6 +15,11 @@ defmodule StapelnWeb.Endpoint do
   #   websocket: [connect_info: [session: @session_options]],
   #   longpoll: [connect_info: [session: @session_options]]
 
+  # Real-time validation channel (WebSocket only, no long-poll fallback)
+  socket "/socket", StapelnWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),

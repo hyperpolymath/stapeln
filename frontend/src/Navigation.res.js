@@ -51,6 +51,7 @@ function Navigation(props) {
               })
             ],
             style: {
+              alignItems: "center",
               background: isActive ? "rgba(74, 158, 255, 0.15)" : "transparent",
               border: "none",
               borderLeft: isActive ? "3px solid #4a9eff" : "3px solid transparent",
@@ -59,19 +60,18 @@ function Navigation(props) {
               display: "flex",
               fontSize: "14px",
               fontWeight: isActive ? "600" : "400",
+              gap: "12px",
               padding: "12px 20px",
               textAlign: "left",
-              width: "100%",
-              alignItems: "center",
-              gap: "12px",
-              transition: "all 0.2s"
+              transition: "all 0.2s",
+              width: "100%"
             },
             onClick: param => onNavigate(item.route)
           }, AppRouter.routeToPath(item.route));
         }),
         style: {
-          padding: "12px 0",
-          flex: "1"
+          flex: "1",
+          padding: "12px 0"
         }
       }),
       JsxRuntime.jsx("div", {
@@ -81,8 +81,8 @@ function Navigation(props) {
         style: {
           borderTop: "1px solid #2a3142",
           display: "flex",
-          padding: "20px",
-          justifyContent: "center"
+          justifyContent: "center",
+          padding: "20px"
         }
       })
     ],
@@ -90,10 +90,10 @@ function Navigation(props) {
       background: "linear-gradient(180deg, #0a0e1a 0%, #1e2431 100%)",
       borderRight: "2px solid #2a3142",
       display: "flex",
+      flexDirection: "column",
       height: "100vh",
       overflowY: "auto",
-      width: "240px",
-      flexDirection: "column"
+      width: "240px"
     }
   });
 }

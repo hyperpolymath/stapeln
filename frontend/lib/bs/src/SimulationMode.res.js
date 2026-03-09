@@ -2,7 +2,180 @@
 
 import * as React from "react";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
+import * as Belt_Float from "@rescript/runtime/lib/es6/Belt_Float.js";
+import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as JsxRuntime from "react/jsx-runtime";
+import * as PacketBatchKernelJs from "./PacketBatchKernel.js";
+
+function presetLabel(preset) {
+  switch (preset) {
+    case "Ideal" :
+      return "Ideal";
+    case "Normal" :
+      return "Normal";
+    case "Congested" :
+      return "Congested";
+    case "Lossy" :
+      return "Lossy";
+  }
+}
+
+function presetParams(preset) {
+  switch (preset) {
+    case "Ideal" :
+      return {
+        packetRate: 2.0,
+        latencyMs: 5.0,
+        dropRate: 0.0,
+        jitterMs: 0.0
+      };
+    case "Normal" :
+      return {
+        packetRate: 4.0,
+        latencyMs: 50.0,
+        dropRate: 0.02,
+        jitterMs: 10.0
+      };
+    case "Congested" :
+      return {
+        packetRate: 10.0,
+        latencyMs: 200.0,
+        dropRate: 0.1,
+        jitterMs: 80.0
+      };
+    case "Lossy" :
+      return {
+        packetRate: 3.0,
+        latencyMs: 100.0,
+        dropRate: 0.25,
+        jitterMs: 50.0
+      };
+  }
+}
+
+let defaultParams = {
+  packetRate: 4.0,
+  latencyMs: 50.0,
+  dropRate: 0.02,
+  jitterMs: 10.0
+};
+
+function keepLastN(items, maxCount) {
+  let overflow = items.length - maxCount | 0;
+  if (overflow <= 0) {
+    return [
+      items,
+      0
+    ];
+  } else {
+    return [
+      Belt_Array.keepWithIndex(items, (param, idx) => idx >= overflow),
+      overflow
+    ];
+  }
+}
+
+function enforcePacketCap(packets) {
+  return keepLastN(packets, 2000);
+}
+
+function enforceEventCap(events) {
+  return keepLastN(events, 1000);
+}
+
+function stepPacketsBatchExternal(prim0, prim1, prim2) {
+  return PacketBatchKernelJs.stepPacketsBatch(prim0, prim1, prim2);
+}
+
+function isBatchWasmActive(prim) {
+  return PacketBatchKernelJs.isBatchWasmActive();
+}
+
+function stepPacketsKernel(packets, nodesById, step) {
+  return PacketBatchKernelJs.stepPacketsBatch(packets, nodesById, step);
+}
+
+let edges = [
+  {
+    fromNode: "node-1",
+    toNode: "node-2"
+  },
+  {
+    fromNode: "node-2",
+    toNode: "node-3"
+  },
+  {
+    fromNode: "node-2",
+    toNode: "node-4"
+  },
+  {
+    fromNode: "node-1",
+    toNode: "node-5"
+  },
+  {
+    fromNode: "node-5",
+    toNode: "node-2"
+  }
+];
+
+let routePool = [
+  [
+    "node-1",
+    "node-3",
+    "HTTPS"
+  ],
+  [
+    "node-1",
+    "node-2",
+    "HTTP"
+  ],
+  [
+    "node-5",
+    "node-3",
+    "TCP"
+  ],
+  [
+    "node-2",
+    "node-4",
+    "TCP"
+  ],
+  [
+    "node-1",
+    "node-4",
+    "DNS"
+  ],
+  [
+    "node-5",
+    "node-2",
+    "UDP"
+  ],
+  [
+    "node-3",
+    "node-2",
+    "TCP"
+  ],
+  [
+    "node-4",
+    "node-2",
+    "ICMP"
+  ],
+  [
+    "node-1",
+    "node-5",
+    "HTTPS"
+  ],
+  [
+    "node-2",
+    "node-3",
+    "HTTP"
+  ]
+];
+
+function pseudoRandom(seed) {
+  let x = Math.sin(seed * 9301.0 + 49297.0) * 233280.0;
+  return x - Math.floor(x);
+}
 
 let init_nodes = [
   {
@@ -41,6 +214,8 @@ let init_packets = [];
 
 let init_events = [];
 
+let init_activePreset = "Normal";
+
 let init = {
   nodes: init_nodes,
   packets: init_packets,
@@ -53,167 +228,98 @@ let init = {
   totalPacketsDelivered: 0,
   totalPacketsDropped: 0,
   avgLatency: 0.0,
+  totalLatency: 0.0,
+  throughput: 0.0,
   showStats: true,
   selectedPacket: undefined,
-  showEventLog: true
+  showEventLog: true,
+  simParams: defaultParams,
+  activePreset: init_activePreset,
+  autoGenerate: true,
+  lastGenTime: 0.0
 };
 
 function update(msg, state) {
   if (typeof msg !== "object") {
     switch (msg) {
       case "StartSimulation" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: true,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord = {...state};
+        newrecord.lastGenTime = state.currentTime;
+        newrecord.isRunning = true;
+        return newrecord;
       case "PauseSimulation" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: false,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$1 = {...state};
+        newrecord$1.isRunning = false;
+        return newrecord$1;
       case "StopSimulation" :
-        return {
-          nodes: state.nodes,
-          packets: [],
-          events: [],
-          isRunning: false,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: 0.0,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$2 = {...state};
+        newrecord$2.lastGenTime = 0.0;
+        newrecord$2.throughput = 0.0;
+        newrecord$2.totalLatency = 0.0;
+        newrecord$2.avgLatency = 0.0;
+        newrecord$2.totalPacketsDropped = 0;
+        newrecord$2.totalPacketsDelivered = 0;
+        newrecord$2.totalPacketsSent = 0;
+        newrecord$2.currentTime = 0.0;
+        newrecord$2.isRunning = false;
+        newrecord$2.events = [];
+        newrecord$2.packets = [];
+        return newrecord$2;
+      case "StepSimulation" :
+        let newrecord$3 = {...state};
+        let stepped = update({
+          TAG: "UpdatePacketPositions",
+          _0: 16.67
+        }, (newrecord$3.speed = "Normal", newrecord$3));
+        let newrecord$4 = {...stepped};
+        newrecord$4.speed = state.speed;
+        newrecord$4.isRunning = false;
+        return newrecord$4;
+      case "DeselectPacket" :
+        let newrecord$5 = {...state};
+        newrecord$5.selectedPacket = undefined;
+        return newrecord$5;
       case "ToggleStats" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: !state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$6 = {...state};
+        newrecord$6.showStats = !state.showStats;
+        return newrecord$6;
       case "ToggleEventLog" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: !state.showEventLog
-        };
+        let newrecord$7 = {...state};
+        newrecord$7.showEventLog = !state.showEventLog;
+        return newrecord$7;
       case "ClearEvents" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: [],
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$8 = {...state};
+        newrecord$8.events = [];
+        return newrecord$8;
+      case "ToggleAutoGenerate" :
+        let newrecord$9 = {...state};
+        newrecord$9.autoGenerate = !state.autoGenerate;
+        return newrecord$9;
     }
   } else {
     switch (msg.TAG) {
       case "SetSpeed" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: msg._0,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$10 = {...state};
+        newrecord$10.speed = msg._0;
+        return newrecord$10;
       case "SetMode" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: msg._0,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$11 = {...state};
+        newrecord$11.mode = msg._0;
+        return newrecord$11;
       case "SendPacket" :
-        let packetType = msg._2;
+        let pktType = msg._2;
         let targetId = msg._1;
         let sourceId = msg._0;
         let sourceNode = Belt_Array.getBy(state.nodes, n => n.id === sourceId);
-        let targetNode = Belt_Array.getBy(state.nodes, n => n.id === targetId);
+        let _targetNode = Belt_Array.getBy(state.nodes, n => n.id === targetId);
         if (sourceNode === undefined) {
           return state;
         }
-        if (targetNode === undefined) {
+        if (_targetNode === undefined) {
           return state;
         }
-        let packetId = "packet-" + String(Date.now());
-        let newPacket_encrypted = packetType === "HTTPS";
+        let packetId = "pkt-" + String(Date.now()) + "-" + String(state.totalPacketsSent);
+        let newPacket_encrypted = pktType === "HTTPS";
         let newPacket_timestamp = state.currentTime;
         let newPacket_position = [
           sourceNode.x,
@@ -221,7 +327,7 @@ function update(msg, state) {
         ];
         let newPacket = {
           id: packetId,
-          packetType: packetType,
+          packetType: pktType,
           status: "InTransit",
           sourceNode: sourceId,
           targetNode: targetId,
@@ -232,33 +338,38 @@ function update(msg, state) {
           progress: 0.0,
           position: newPacket_position
         };
-        let event = {
-          TAG: "PacketSent",
-          _0: sourceId,
-          _1: targetId,
-          _2: packetType
-        };
-        return {
-          nodes: state.nodes,
-          packets: Belt_Array.concat(state.packets, [newPacket]),
-          events: Belt_Array.concat(state.events, [event]),
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent + 1 | 0,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let nextPackets = Belt_Array.concat(state.packets, [newPacket]);
+        let match = keepLastN(nextPackets, 2000);
+        let droppedForCap = match[1];
+        let nextEvents = droppedForCap > 0 ? Belt_Array.concat(state.events, [
+            {
+              TAG: "PacketSent",
+              _0: sourceId,
+              _1: targetId,
+              _2: pktType
+            },
+            {
+              TAG: "CapacityDrop",
+              _0: droppedForCap
+            }
+          ]) : Belt_Array.concat(state.events, [{
+              TAG: "PacketSent",
+              _0: sourceId,
+              _1: targetId,
+              _2: pktType
+            }]);
+        let match$1 = keepLastN(nextEvents, 1000);
+        let newrecord$12 = {...state};
+        newrecord$12.totalPacketsDropped = state.totalPacketsDropped + droppedForCap | 0;
+        newrecord$12.totalPacketsSent = state.totalPacketsSent + 1 | 0;
+        newrecord$12.events = match$1[0];
+        newrecord$12.packets = match[0];
+        return newrecord$12;
       case "UpdatePacketPositions" :
         let deltaTime = msg._0;
-        let match = state.speed;
+        let match$2 = state.speed;
         let speedMultiplier;
-        switch (match) {
+        switch (match$2) {
           case "Paused" :
             speedMultiplier = 0.0;
             break;
@@ -275,76 +386,159 @@ function update(msg, state) {
             speedMultiplier = 4.0;
             break;
         }
-        let updatedPackets = Belt_Array.map(state.packets, packet => {
-          if (packet.status !== "InTransit") {
-            return packet;
+        let step = deltaTime * speedMultiplier * 0.001;
+        let nodesById = {};
+        Belt_Array.forEach(state.nodes, node => {
+          nodesById[node.id] = node;
+        });
+        let updatedPackets = PacketBatchKernelJs.stepPacketsBatch(state.packets, nodesById, step);
+        let newDelivered = {
+          contents: 0
+        };
+        let newDropped = {
+          contents: 0
+        };
+        let newLatencySum = {
+          contents: 0.0
+        };
+        let arrivalEvents = {
+          contents: []
+        };
+        let processedPackets = Belt_Array.map(updatedPackets, p => {
+          if (!(p.status === "InTransit" && p.progress >= 1.0)) {
+            return p;
           }
-          let newProgress = packet.progress + deltaTime * speedMultiplier * 0.001;
-          if (newProgress >= 1.0) {
+          let rand = pseudoRandom(p.timestamp + state.currentTime + state.totalPacketsSent);
+          if (rand < state.simParams.dropRate) {
+            newDropped.contents = newDropped.contents + 1 | 0;
+            arrivalEvents.contents = Belt_Array.concat(arrivalEvents.contents, [{
+                TAG: "PacketDropped",
+                _0: p.id,
+                _1: "simulated drop"
+              }]);
             return {
-              id: packet.id,
-              packetType: packet.packetType,
-              status: "Delivered",
-              sourceNode: packet.sourceNode,
-              targetNode: packet.targetNode,
-              payload: packet.payload,
-              size: packet.size,
-              encrypted: packet.encrypted,
-              timestamp: packet.timestamp,
-              progress: 1.0,
-              position: packet.position
+              id: p.id,
+              packetType: p.packetType,
+              status: "Dropped",
+              sourceNode: p.sourceNode,
+              targetNode: p.targetNode,
+              payload: p.payload,
+              size: p.size,
+              encrypted: p.encrypted,
+              timestamp: p.timestamp,
+              progress: p.progress,
+              position: p.position
             };
           }
-          let sourceNode = Belt_Array.getBy(state.nodes, n => n.id === packet.sourceNode);
-          let targetNode = Belt_Array.getBy(state.nodes, n => n.id === packet.targetNode);
-          if (sourceNode === undefined) {
-            return packet;
-          }
-          if (targetNode === undefined) {
-            return packet;
-          }
-          let x = sourceNode.x + (targetNode.x - sourceNode.x) * newProgress;
-          let y = sourceNode.y + (targetNode.y - sourceNode.y) * newProgress;
+          let latency = state.simParams.latencyMs + pseudoRandom(p.timestamp * 7.0) * state.simParams.jitterMs;
+          newDelivered.contents = newDelivered.contents + 1 | 0;
+          newLatencySum.contents = newLatencySum.contents + latency;
+          arrivalEvents.contents = Belt_Array.concat(arrivalEvents.contents, [{
+              TAG: "PacketReceived",
+              _0: p.id
+            }]);
           return {
-            id: packet.id,
-            packetType: packet.packetType,
-            status: packet.status,
-            sourceNode: packet.sourceNode,
-            targetNode: packet.targetNode,
-            payload: packet.payload,
-            size: packet.size,
-            encrypted: packet.encrypted,
-            timestamp: packet.timestamp,
-            progress: newProgress,
-            position: [
-              x,
-              y
-            ]
+            id: p.id,
+            packetType: p.packetType,
+            status: "Delivered",
+            sourceNode: p.sourceNode,
+            targetNode: p.targetNode,
+            payload: p.payload,
+            size: p.size,
+            encrypted: p.encrypted,
+            timestamp: p.timestamp,
+            progress: p.progress,
+            position: p.position
           };
         });
-        let filteredPackets = Belt_Array.keep(updatedPackets, p => {
-          if (p.status !== "Delivered") {
-            return true;
-          } else {
-            return p.progress < 1.2;
+        let filteredPackets = Belt_Array.keep(processedPackets, p => {
+          let match = p.status;
+          switch (match) {
+            case "Delivered" :
+            case "Dropped" :
+              return p.progress < 1.3;
+            case "InTransit" :
+            case "Blocked" :
+              return true;
           }
         });
-        return {
-          nodes: state.nodes,
-          packets: filteredPackets,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime + deltaTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newTime = state.currentTime + deltaTime;
+        let genInterval = state.simParams.packetRate > 0.0 ? 1000.0 / state.simParams.packetRate : 999999.0;
+        let timeSinceLastGen = newTime - state.lastGenTime;
+        let genPackets = [];
+        let genEvents = [];
+        let genCount = 0;
+        let updatedLastGenTime = state.lastGenTime;
+        if (state.autoGenerate && timeSinceLastGen >= genInterval) {
+          let numToGen = timeSinceLastGen / genInterval | 0;
+          let capped = numToGen > 5 ? 5 : numToGen;
+          for (let i = 0; i < capped; ++i) {
+            let routeIdx = Primitive_int.mod_(pseudoRandom(newTime + i * 1.3) * routePool.length | 0, routePool.length);
+            let r = Belt_Array.get(routePool, routeIdx);
+            let route = r !== undefined ? r : [
+                "node-1",
+                "node-2",
+                "TCP"
+              ];
+            let pType = route[2];
+            let tgtId = route[1];
+            let srcId = route[0];
+            let srcNode = Belt_Array.getBy(state.nodes, n => n.id === srcId);
+            if (srcNode !== undefined) {
+              let pid = "auto-" + String(newTime) + "-" + String(i);
+              genPackets = Belt_Array.concat(genPackets, [{
+                  id: pid,
+                  packetType: pType,
+                  status: "InTransit",
+                  sourceNode: srcId,
+                  targetNode: tgtId,
+                  payload: "Auto-generated",
+                  size: 512 + (pseudoRandom(newTime + i) * 1024.0 | 0) | 0,
+                  encrypted: pType === "HTTPS",
+                  timestamp: newTime,
+                  progress: 0.0,
+                  position: [
+                    srcNode.x,
+                    srcNode.y
+                  ]
+                }]);
+              genEvents = Belt_Array.concat(genEvents, [{
+                  TAG: "PacketSent",
+                  _0: srcId,
+                  _1: tgtId,
+                  _2: pType
+                }]);
+            }
+          }
+          genCount = capped;
+          updatedLastGenTime = state.lastGenTime + capped * genInterval;
+        }
+        let allPackets = Belt_Array.concat(filteredPackets, genPackets);
+        let match$3 = keepLastN(allPackets, 2000);
+        let droppedForCap$1 = match$3[1];
+        let allNewEvents = Belt_Array.concat(arrivalEvents.contents, genEvents);
+        let capEvents = droppedForCap$1 > 0 ? Belt_Array.concat(allNewEvents, [{
+              TAG: "CapacityDrop",
+              _0: droppedForCap$1
+            }]) : allNewEvents;
+        let nextEvents$1 = Belt_Array.concat(state.events, capEvents);
+        let match$4 = keepLastN(nextEvents$1, 1000);
+        let totalDel = state.totalPacketsDelivered + newDelivered.contents | 0;
+        let totalLat = state.totalLatency + newLatencySum.contents;
+        let newAvgLatency = totalDel > 0 ? totalLat / totalDel : 0.0;
+        let newThroughput = newTime > 0.0 ? totalDel / (newTime / 1000.0) : 0.0;
+        let newrecord$13 = {...state};
+        newrecord$13.lastGenTime = updatedLastGenTime;
+        newrecord$13.throughput = newThroughput;
+        newrecord$13.totalLatency = totalLat;
+        newrecord$13.avgLatency = newAvgLatency;
+        newrecord$13.totalPacketsDropped = (state.totalPacketsDropped + newDropped.contents | 0) + droppedForCap$1 | 0;
+        newrecord$13.totalPacketsDelivered = totalDel;
+        newrecord$13.totalPacketsSent = state.totalPacketsSent + genCount | 0;
+        newrecord$13.currentTime = newTime;
+        newrecord$13.events = match$4[0];
+        newrecord$13.packets = match$3[0];
+        return newrecord$13;
       case "PacketArrived" :
         let packetId$1 = msg._0;
         let updatedPackets$1 = Belt_Array.map(state.packets, packet => {
@@ -366,22 +560,10 @@ function update(msg, state) {
             return packet;
           }
         });
-        return {
-          nodes: state.nodes,
-          packets: updatedPackets$1,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered + 1 | 0,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let newrecord$14 = {...state};
+        newrecord$14.totalPacketsDelivered = state.totalPacketsDelivered + 1 | 0;
+        newrecord$14.packets = updatedPackets$1;
+        return newrecord$14;
       case "DropPacket" :
         let packetId$2 = msg._0;
         let updatedPackets$2 = Belt_Array.map(state.packets, packet => {
@@ -403,51 +585,82 @@ function update(msg, state) {
             return packet;
           }
         });
-        let event_1 = msg._1;
-        let event$1 = {
-          TAG: "PacketDropped",
-          _0: packetId$2,
-          _1: event_1
-        };
-        return {
-          nodes: state.nodes,
-          packets: updatedPackets$2,
-          events: Belt_Array.concat(state.events, [event$1]),
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped + 1 | 0,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: state.selectedPacket,
-          showEventLog: state.showEventLog
-        };
+        let nextEvents$2 = Belt_Array.concat(state.events, [{
+            TAG: "PacketDropped",
+            _0: packetId$2,
+            _1: msg._1
+          }]);
+        let match$5 = keepLastN(nextEvents$2, 1000);
+        let newrecord$15 = {...state};
+        newrecord$15.totalPacketsDropped = state.totalPacketsDropped + 1 | 0;
+        newrecord$15.events = match$5[0];
+        newrecord$15.packets = updatedPackets$2;
+        return newrecord$15;
       case "SelectPacket" :
-        return {
-          nodes: state.nodes,
-          packets: state.packets,
-          events: state.events,
-          isRunning: state.isRunning,
-          speed: state.speed,
-          mode: state.mode,
-          currentTime: state.currentTime,
-          totalPacketsSent: state.totalPacketsSent,
-          totalPacketsDelivered: state.totalPacketsDelivered,
-          totalPacketsDropped: state.totalPacketsDropped,
-          avgLatency: state.avgLatency,
-          showStats: state.showStats,
-          selectedPacket: msg._0,
-          showEventLog: state.showEventLog
+        let newrecord$16 = {...state};
+        newrecord$16.selectedPacket = msg._0;
+        return newrecord$16;
+      case "SetSimParams" :
+        let newrecord$17 = {...state};
+        newrecord$17.activePreset = undefined;
+        newrecord$17.simParams = msg._0;
+        return newrecord$17;
+      case "ApplyPreset" :
+        let preset = msg._0;
+        let newrecord$18 = {...state};
+        newrecord$18.activePreset = preset;
+        newrecord$18.simParams = presetParams(preset);
+        return newrecord$18;
+      case "SetPacketRate" :
+        let newrecord$19 = {...state};
+        newrecord$19.activePreset = undefined;
+        let init = state.simParams;
+        newrecord$19.simParams = {
+          packetRate: msg._0,
+          latencyMs: init.latencyMs,
+          dropRate: init.dropRate,
+          jitterMs: init.jitterMs
         };
+        return newrecord$19;
+      case "SetLatency" :
+        let newrecord$20 = {...state};
+        newrecord$20.activePreset = undefined;
+        let init$1 = state.simParams;
+        newrecord$20.simParams = {
+          packetRate: init$1.packetRate,
+          latencyMs: msg._0,
+          dropRate: init$1.dropRate,
+          jitterMs: init$1.jitterMs
+        };
+        return newrecord$20;
+      case "SetDropRate" :
+        let newrecord$21 = {...state};
+        newrecord$21.activePreset = undefined;
+        let init$2 = state.simParams;
+        newrecord$21.simParams = {
+          packetRate: init$2.packetRate,
+          latencyMs: init$2.latencyMs,
+          dropRate: msg._0,
+          jitterMs: init$2.jitterMs
+        };
+        return newrecord$21;
+      case "SetJitter" :
+        let newrecord$22 = {...state};
+        newrecord$22.activePreset = undefined;
+        let init$3 = state.simParams;
+        newrecord$22.simParams = {
+          packetRate: init$3.packetRate,
+          latencyMs: init$3.latencyMs,
+          dropRate: init$3.dropRate,
+          jitterMs: msg._0
+        };
+        return newrecord$22;
     }
   }
 }
 
-function packetTypeColor(packetType) {
-  switch (packetType) {
+function packetTypeColor(pt) {
+  switch (pt) {
     case "HTTP" :
       return "#4a9eff";
     case "HTTPS" :
@@ -463,8 +676,8 @@ function packetTypeColor(packetType) {
   }
 }
 
-function packetTypeLabel(packetType) {
-  switch (packetType) {
+function packetTypeLabel(pt) {
+  switch (pt) {
     case "HTTP" :
       return "HTTP";
     case "HTTPS" :
@@ -508,11 +721,133 @@ function speedLabel(speed) {
   }
 }
 
+function statusLabel(status) {
+  switch (status) {
+    case "InTransit" :
+      return "In Transit";
+    case "Delivered" :
+      return "Delivered";
+    case "Dropped" :
+      return "Dropped";
+    case "Blocked" :
+      return "Blocked";
+  }
+}
+
+function formatFloat1(v) {
+  return String(Math.round(v * 10.0) / 10.0);
+}
+
+function formatFloat2(v) {
+  return String(Math.round(v * 100.0) / 100.0);
+}
+
+function formatSimTime(ms) {
+  let totalSec = ms / 1000.0 | 0;
+  let mins = totalSec / 60 | 0;
+  let secs = totalSec % 60;
+  let mStr = mins < 10 ? "0" + String(mins) : String(mins);
+  let sStr = secs < 10 ? "0" + String(secs) : String(secs);
+  return mStr + ":" + sStr;
+}
+
+function controlBtnStyle(bg) {
+  return {
+    background: bg,
+    border: "none",
+    borderRadius: "8px",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "600",
+    padding: "10px 20px"
+  };
+}
+
+function smallBtnStyle(active) {
+  return {
+    background: active ? "#4a9eff" : "#2a3142",
+    border: "none",
+    borderRadius: "6px",
+    color: active ? "white" : "#8892a6",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "600",
+    padding: "6px 14px"
+  };
+}
+
+function viewStatRow(value, label, color) {
+  return JsxRuntime.jsxs("div", {
+    children: [
+      JsxRuntime.jsx("div", {
+        children: value,
+        style: {
+          color: color,
+          fontSize: "22px",
+          fontWeight: "700"
+        }
+      }),
+      JsxRuntime.jsx("div", {
+        children: label,
+        style: {
+          color: "#8892a6",
+          fontSize: "11px"
+        }
+      })
+    ]
+  });
+}
+
+function viewParamSlider(label, value, min, max, stepVal, unit, onChange) {
+  return JsxRuntime.jsxs("div", {
+    children: [
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: label
+          }),
+          JsxRuntime.jsx("span", {
+            children: formatFloat1(value) + " " + unit
+          })
+        ],
+        style: {
+          color: "#8892a6",
+          display: "flex",
+          fontSize: "11px",
+          justifyContent: "space-between",
+          marginBottom: "4px"
+        }
+      }),
+      JsxRuntime.jsx("input", {
+        style: {
+          cursor: "pointer",
+          width: "100%"
+        },
+        max: String(max),
+        min: String(min),
+        step: stepVal,
+        type: "range",
+        value: String(value),
+        onChange: evt => {
+          let v = Belt_Float.fromString(evt.target.value);
+          if (v !== undefined) {
+            return onChange(v);
+          }
+        }
+      })
+    ],
+    style: {
+      marginBottom: "10px"
+    }
+  });
+}
+
 function viewNode(node) {
   return JsxRuntime.jsxs("div", {
     children: [
       JsxRuntime.jsx("div", {
-        children: "🖥️",
+        children: "\xF0\x9F\x96\xA5\xEF\xB8\x8F",
         style: {
           fontSize: "24px",
           marginBottom: "4px"
@@ -530,20 +865,20 @@ function viewNode(node) {
       })
     ],
     style: {
+      alignItems: "center",
       background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       border: "2px solid #4a9eff",
+      borderRadius: "12px",
       display: "flex",
+      flexDirection: "column",
       height: "80px",
+      justifyContent: "center",
       left: String(node.x - 50.0) + "px",
       padding: "8px",
       position: "absolute",
       top: String(node.y - 40.0) + "px",
       width: "100px",
-      zIndex: "10",
-      borderRadius: "12px",
-      alignItems: "center",
-      flexDirection: "column",
-      justifyContent: "center"
+      zIndex: "10"
     }
   }, node.id);
 }
@@ -565,25 +900,25 @@ function viewPacket(packet, dispatch) {
       break;
   }
   return JsxRuntime.jsx("div", {
-    children: packet.encrypted ? "🔒" : "📦",
+    children: packet.encrypted ? "\xF0\x9F\x94\x92" : "\xF0\x9F\x93\xA6",
     style: {
+      alignItems: "center",
       background: packetTypeColor(packet.packetType),
       border: "2px solid white",
+      borderRadius: "50%",
+      boxShadow: "0 0 10px " + packetTypeColor(packet.packetType),
       cursor: "pointer",
       display: "flex",
       fontSize: "14px",
       height: "30px",
+      justifyContent: "center",
       left: String(match[0] - 15.0) + "px",
+      opacity: tmp,
       position: "absolute",
       top: String(match[1] - 15.0) + "px",
+      transition: "all 0.1s",
       width: "30px",
-      zIndex: "20",
-      opacity: tmp,
-      borderRadius: "50%",
-      boxShadow: "0 0 10px " + packetTypeColor(packet.packetType),
-      alignItems: "center",
-      justifyContent: "center",
-      transition: "all 0.1s"
+      zIndex: "20"
     },
     onClick: param => dispatch({
       TAG: "SelectPacket",
@@ -597,49 +932,56 @@ function viewEvent(event, index) {
   switch (event.TAG) {
     case "PacketSent" :
       match = [
-        "📤",
+        "\xF0\x9F\x93\xA4",
         "#4a9eff",
-        `Packet sent: ` + event._0 + ` → ` + event._1 + ` (` + packetTypeLabel(event._2) + `)`
+        `Packet sent: ` + event._0 + ` -> ` + event._1 + ` (` + packetTypeLabel(event._2) + `)`
       ];
       break;
     case "PacketReceived" :
       match = [
-        "📥",
+        "\xF0\x9F\x93\xA5",
         "#4caf50",
         `Packet received: ` + event._0
       ];
       break;
     case "PacketDropped" :
       match = [
-        "❌",
+        "\xE2\x9D\x8C",
         "#f44336",
         `Packet dropped: ` + event._0 + ` - ` + event._1
       ];
       break;
+    case "CapacityDrop" :
+      match = [
+        "\xF0\x9F\x9B\x91",
+        "#ff9800",
+        `Backpressure: dropped ` + String(event._0) + ` packet(s) to stay under cap`
+      ];
+      break;
     case "ConnectionEstablished" :
       match = [
-        "🔗",
+        "\xF0\x9F\x94\x97",
         "#4caf50",
-        `Connection: ` + event._0 + ` ↔ ` + event._1
+        `Connection: ` + event._0 + ` <-> ` + event._1
       ];
       break;
     case "ConnectionClosed" :
       match = [
-        "🔌",
+        "\xF0\x9F\x94\x8C",
         "#9e9e9e",
-        `Disconnected: ` + event._0 + ` ↔ ` + event._1
+        `Disconnected: ` + event._0 + ` <-> ` + event._1
       ];
       break;
     case "FirewallBlock" :
       match = [
-        "🚫",
+        "\xF0\x9F\x9A\xAB",
         "#ff9800",
-        `Firewall blocked: ` + event._0 + ` → ` + event._1 + `:` + String(event._2)
+        `Firewall blocked: ` + event._0 + ` -> ` + event._1 + `:` + String(event._2)
       ];
       break;
     case "LatencySpike" :
       match = [
-        "⚠️",
+        "\xE2\x9A\xA0\xEF\xB8\x8F",
         "#ff9800",
         `Latency spike: ` + event._0 + ` (` + String(event._1) + `ms)`
       ];
@@ -667,6 +1009,169 @@ function viewEvent(event, index) {
   }, String(index));
 }
 
+function viewPacketDetail(packet, dispatch) {
+  let panelStyle = {
+    background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
+    border: "2px solid " + packetTypeColor(packet.packetType),
+    borderRadius: "12px",
+    marginBottom: "12px",
+    padding: "16px"
+  };
+  let rowStyle = {
+    color: "#b0b8c4",
+    display: "flex",
+    fontSize: "12px",
+    justifyContent: "space-between",
+    marginBottom: "6px"
+  };
+  return JsxRuntime.jsxs("div", {
+    children: [
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("h3", {
+            children: "Packet Detail",
+            style: {
+              color: "#e0e6ed",
+              fontSize: "14px",
+              fontWeight: "700"
+            }
+          }),
+          JsxRuntime.jsx("button", {
+            children: "X",
+            style: {
+              background: "#2a3142",
+              border: "none",
+              borderRadius: "4px",
+              color: "#8892a6",
+              cursor: "pointer",
+              fontSize: "11px",
+              padding: "2px 8px"
+            },
+            onClick: param => dispatch("DeselectPacket")
+          })
+        ],
+        style: {
+          alignItems: "center",
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "12px"
+        }
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "ID"
+          }),
+          JsxRuntime.jsx("span", {
+            children: packet.id,
+            style: {
+              fontFamily: "monospace",
+              fontSize: "10px"
+            }
+          })
+        ],
+        style: rowStyle
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "Type"
+          }),
+          JsxRuntime.jsx("span", {
+            children: packetTypeLabel(packet.packetType),
+            style: {
+              color: packetTypeColor(packet.packetType),
+              fontWeight: "600"
+            }
+          })
+        ],
+        style: rowStyle
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "Status"
+          }),
+          JsxRuntime.jsx("span", {
+            children: statusLabel(packet.status),
+            style: {
+              color: statusColor(packet.status),
+              fontWeight: "600"
+            }
+          })
+        ],
+        style: rowStyle
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "Route"
+          }),
+          JsxRuntime.jsx("span", {
+            children: packet.sourceNode + " -> " + packet.targetNode
+          })
+        ],
+        style: rowStyle
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "Size"
+          }),
+          JsxRuntime.jsx("span", {
+            children: String(packet.size) + " B"
+          })
+        ],
+        style: rowStyle
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "Encrypted"
+          }),
+          JsxRuntime.jsx("span", {
+            children: packet.encrypted ? "Yes" : "No"
+          })
+        ],
+        style: rowStyle
+      }),
+      JsxRuntime.jsxs("div", {
+        children: [
+          JsxRuntime.jsx("span", {
+            children: "Progress"
+          }),
+          JsxRuntime.jsx("span", {
+            children: formatFloat1(packet.progress * 100.0) + "%"
+          })
+        ],
+        style: rowStyle
+      })
+    ],
+    style: panelStyle
+  });
+}
+
+function viewEdges(nodes) {
+  let nodeById = nid => Belt_Array.getBy(nodes, n => n.id === nid);
+  return Belt_Array.mapWithIndex(edges, (idx, edge) => {
+    let match = nodeById(edge.fromNode);
+    let match$1 = nodeById(edge.toNode);
+    if (match !== undefined && match$1 !== undefined) {
+      return JsxRuntime.jsx("line", {
+        stroke: "#2a3142",
+        strokeDasharray: "5,5",
+        strokeWidth: "2",
+        x1: String(match.x),
+        x2: String(match$1.x),
+        y1: String(match.y),
+        y2: String(match$1.y)
+      }, String(idx));
+    } else {
+      return null;
+    }
+  });
+}
+
 function SimulationMode(props) {
   let onStateChange = props.onStateChange;
   let initialState = props.initialState;
@@ -692,15 +1197,114 @@ function SimulationMode(props) {
     }
     let animationId = 0;
     Date.now();
-    animationId = (requestAnimationFrame(animate));
+    animationId = (requestAnimationFrame(_animate));
     return () => ((cancelAnimationFrame(animationId.contents)));
   }, [state.isRunning]);
+  let sid = state.selectedPacket;
+  let selectedPkt = sid !== undefined ? Belt_Array.getBy(state.packets, p => p.id === sid) : undefined;
+  let sidebarPanelStyle = {
+    background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
+    border: "2px solid #2a3142",
+    borderRadius: "12px",
+    padding: "16px"
+  };
+  let tmp;
+  if (state.showEventLog) {
+    let tmp$1;
+    if (state.events.length !== 0) {
+      let reversed = state.events.slice(0);
+      Belt_Array.reverseInPlace(reversed);
+      tmp$1 = Belt_Array.mapWithIndex(reversed, (index, evt) => viewEvent(evt, index));
+    } else {
+      tmp$1 = JsxRuntime.jsx("div", {
+        children: "No events yet. Start the simulation.",
+        style: {
+          color: "#8892a6",
+          fontSize: "12px",
+          padding: "16px",
+          textAlign: "center"
+        }
+      });
+    }
+    tmp = JsxRuntime.jsxs("div", {
+      children: [
+        JsxRuntime.jsxs("div", {
+          children: [
+            JsxRuntime.jsx("h3", {
+              children: "Event Log (" + String(state.events.length) + ")",
+              style: {
+                color: "#e0e6ed",
+                fontSize: "14px",
+                fontWeight: "700"
+              }
+            }),
+            JsxRuntime.jsxs("div", {
+              children: [
+                JsxRuntime.jsx("button", {
+                  children: "Clear",
+                  style: {
+                    background: "#2a3142",
+                    border: "none",
+                    borderRadius: "4px",
+                    color: "#8892a6",
+                    cursor: "pointer",
+                    fontSize: "10px",
+                    padding: "2px 8px"
+                  },
+                  onClick: param => dispatch("ClearEvents")
+                }),
+                JsxRuntime.jsx("button", {
+                  children: "Hide",
+                  style: {
+                    background: "#2a3142",
+                    border: "none",
+                    borderRadius: "4px",
+                    color: "#8892a6",
+                    cursor: "pointer",
+                    fontSize: "10px",
+                    padding: "2px 8px"
+                  },
+                  onClick: param => dispatch("ToggleEventLog")
+                })
+              ],
+              style: {
+                display: "flex",
+                gap: "6px"
+              }
+            })
+          ],
+          style: {
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "10px"
+          }
+        }),
+        tmp$1
+      ],
+      style: {
+        background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
+        border: "2px solid #2a3142",
+        borderRadius: "12px",
+        flex: "1",
+        maxHeight: "300px",
+        overflow: "auto",
+        padding: "16px"
+      }
+    });
+  } else {
+    tmp = JsxRuntime.jsx("button", {
+      children: "Show Event Log",
+      style: smallBtnStyle(false),
+      onClick: param => dispatch("ToggleEventLog")
+    });
+  }
   return JsxRuntime.jsxs("div", {
     children: [
       JsxRuntime.jsxs("div", {
         children: [
           JsxRuntime.jsx("h1", {
-            children: "🎮 Simulation Mode",
+            children: "Simulation Mode",
             style: {
               background: "linear-gradient(135deg, #4a9eff, #00bcd4)",
               fontSize: "32px",
@@ -725,45 +1329,23 @@ function SimulationMode(props) {
           JsxRuntime.jsxs("div", {
             children: [
               state.isRunning ? JsxRuntime.jsx("button", {
-                  children: "⏸️ Pause",
-                  style: {
-                    background: "linear-gradient(135deg, #ff9800, #ffb74d)",
-                    border: "none",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    padding: "10px 20px",
-                    borderRadius: "8px"
-                  },
+                  children: "Pause",
+                  style: controlBtnStyle("linear-gradient(135deg, #ff9800, #ffb74d)"),
                   onClick: param => dispatch("PauseSimulation")
                 }) : JsxRuntime.jsx("button", {
-                  children: "▶️ Start",
-                  style: {
-                    background: "linear-gradient(135deg, #4caf50, #66bb6a)",
-                    border: "none",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    padding: "10px 20px",
-                    borderRadius: "8px"
-                  },
+                  children: "Start",
+                  style: controlBtnStyle("linear-gradient(135deg, #4caf50, #66bb6a)"),
                   onClick: param => dispatch("StartSimulation")
                 }),
               JsxRuntime.jsx("button", {
-                children: "⏹️ Stop",
-                style: {
-                  background: "linear-gradient(135deg, #f44336, #e57373)",
-                  border: "none",
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  padding: "10px 20px",
-                  borderRadius: "8px"
-                },
+                children: "Stop",
+                style: controlBtnStyle("linear-gradient(135deg, #f44336, #e57373)"),
                 onClick: param => dispatch("StopSimulation")
+              }),
+              JsxRuntime.jsx("button", {
+                children: "Step",
+                style: controlBtnStyle(state.isRunning ? "#555" : "linear-gradient(135deg, #7b6cff, #9c88ff)"),
+                onClick: param => dispatch("StepSimulation")
               })
             ],
             style: {
@@ -771,62 +1353,101 @@ function SimulationMode(props) {
               gap: "8px"
             }
           }),
-          JsxRuntime.jsx("div", {
-            children: Belt_Array.map([
-              "Slow",
-              "Normal",
-              "Fast",
-              "VeryFast"
-            ], speed => JsxRuntime.jsx("button", {
-              children: speedLabel(speed),
-              style: {
-                background: state.speed === speed ? "#4a9eff" : "#2a3142",
-                border: "none",
-                color: "white",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "600",
-                padding: "8px 16px",
-                borderRadius: "6px"
-              },
-              onClick: param => dispatch({
-                TAG: "SetSpeed",
-                _0: speed
-              })
-            }, speedLabel(speed))),
+          JsxRuntime.jsxs("div", {
+            children: [
+              JsxRuntime.jsx("span", {
+                children: "Speed:",
+                style: {
+                  color: "#8892a6",
+                  fontSize: "12px",
+                  marginRight: "4px"
+                }
+              }),
+              Belt_Array.map([
+                "Slow",
+                "Normal",
+                "Fast",
+                "VeryFast"
+              ], spd => JsxRuntime.jsx("button", {
+                children: speedLabel(spd),
+                style: smallBtnStyle(state.speed === spd),
+                onClick: param => dispatch({
+                  TAG: "SetSpeed",
+                  _0: spd
+                })
+              }, speedLabel(spd)))
+            ],
             style: {
+              alignItems: "center",
               display: "flex",
-              gap: "8px"
+              gap: "6px"
+            }
+          }),
+          JsxRuntime.jsxs("div", {
+            children: [
+              JsxRuntime.jsx("span", {
+                children: "Network:",
+                style: {
+                  color: "#8892a6",
+                  fontSize: "12px",
+                  marginRight: "4px"
+                }
+              }),
+              Belt_Array.map([
+                "Ideal",
+                "Normal",
+                "Congested",
+                "Lossy"
+              ], preset => JsxRuntime.jsx("button", {
+                children: presetLabel(preset),
+                style: smallBtnStyle(Primitive_object.equal(state.activePreset, preset)),
+                onClick: param => dispatch({
+                  TAG: "ApplyPreset",
+                  _0: preset
+                })
+              }, presetLabel(preset)))
+            ],
+            style: {
+              alignItems: "center",
+              display: "flex",
+              gap: "6px"
             }
           }),
           JsxRuntime.jsx("button", {
-            children: "📤 Send Test Packet",
-            style: {
-              background: "linear-gradient(135deg, #4a9eff, #7b6cff)",
-              border: "none",
-              color: "white",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "600",
-              padding: "10px 20px",
-              borderRadius: "8px"
-            },
+            children: state.autoGenerate ? "Auto: ON" : "Auto: OFF",
+            style: smallBtnStyle(state.autoGenerate),
+            onClick: param => dispatch("ToggleAutoGenerate")
+          }),
+          JsxRuntime.jsx("button", {
+            children: "Send Packet",
+            style: controlBtnStyle("linear-gradient(135deg, #4a9eff, #7b6cff)"),
             onClick: param => dispatch({
               TAG: "SendPacket",
               _0: "node-1",
               _1: "node-3",
               _2: "HTTPS"
             })
+          }),
+          JsxRuntime.jsx("div", {
+            children: "T " + formatSimTime(state.currentTime),
+            style: {
+              color: "#00bcd4",
+              fontFamily: "monospace",
+              fontSize: "14px",
+              marginLeft: "auto"
+            }
           })
         ],
         style: {
+          alignItems: "center",
           background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
           border: "2px solid #2a3142",
-          display: "flex",
-          marginBottom: "24px",
-          padding: "16px",
           borderRadius: "12px",
-          gap: "16px"
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "12px",
+          marginBottom: "24px",
+          padding: "16px"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -835,212 +1456,209 @@ function SimulationMode(props) {
             children: [
               Belt_Array.map(state.nodes, viewNode),
               Belt_Array.map(state.packets, packet => viewPacket(packet, dispatch)),
-              JsxRuntime.jsxs("svg", {
-                children: [
-                  JsxRuntime.jsx("line", {
-                    stroke: "#2a3142",
-                    strokeDasharray: "5,5",
-                    strokeWidth: "2",
-                    x1: "150",
-                    x2: "450",
-                    y1: "250",
-                    y2: "250"
-                  }),
-                  JsxRuntime.jsx("line", {
-                    stroke: "#2a3142",
-                    strokeDasharray: "5,5",
-                    strokeWidth: "2",
-                    x1: "450",
-                    x2: "750",
-                    y1: "250",
-                    y2: "250"
-                  })
-                ],
+              JsxRuntime.jsx("svg", {
+                children: viewEdges(state.nodes),
                 style: {
                   height: "100%",
                   left: "0",
+                  pointerEvents: "none",
                   position: "absolute",
                   top: "0",
                   width: "100%",
-                  zIndex: "5",
-                  pointerEvents: "none"
+                  zIndex: "5"
+                }
+              }),
+              JsxRuntime.jsx("div", {
+                children: Belt_Array.map([
+                  "HTTP",
+                  "HTTPS",
+                  "TCP",
+                  "UDP",
+                  "ICMP",
+                  "DNS"
+                ], ptype => JsxRuntime.jsxs("div", {
+                  children: [
+                    JsxRuntime.jsx("div", {
+                      style: {
+                        background: packetTypeColor(ptype),
+                        borderRadius: "50%",
+                        height: "10px",
+                        width: "10px"
+                      }
+                    }),
+                    JsxRuntime.jsx("span", {
+                      children: packetTypeLabel(ptype),
+                      style: {
+                        color: "#8892a6",
+                        fontSize: "10px"
+                      }
+                    })
+                  ],
+                  style: {
+                    alignItems: "center",
+                    display: "flex",
+                    gap: "4px"
+                  }
+                }, packetTypeLabel(ptype))),
+                style: {
+                  background: "rgba(0, 0, 0, 0.6)",
+                  borderRadius: "8px",
+                  bottom: "12px",
+                  display: "flex",
+                  gap: "10px",
+                  left: "12px",
+                  padding: "8px 12px",
+                  position: "absolute",
+                  zIndex: "30"
                 }
               })
             ],
             style: {
               background: "linear-gradient(135deg, #0a0e1a 0%, #1e2431 100%)",
               border: "2px solid #2a3142",
+              borderRadius: "16px",
+              flex: "1",
               height: "600px",
               overflow: "hidden",
-              position: "relative",
-              borderRadius: "16px",
-              flex: "1"
+              position: "relative"
             }
           }),
           JsxRuntime.jsxs("div", {
             children: [
+              selectedPkt !== undefined ? viewPacketDetail(selectedPkt, dispatch) : null,
               state.showStats ? JsxRuntime.jsxs("div", {
-                  children: [
-                    JsxRuntime.jsx("h3", {
-                      children: "📊 Statistics",
-                      style: {
-                        color: "#e0e6ed",
-                        fontSize: "16px",
-                        fontWeight: "700",
-                        marginBottom: "16px"
-                      }
-                    }),
-                    JsxRuntime.jsxs("div", {
-                      children: [
-                        JsxRuntime.jsxs("div", {
-                          children: [
-                            JsxRuntime.jsx("div", {
-                              children: String(state.totalPacketsSent),
-                              style: {
-                                color: "#4a9eff",
-                                fontSize: "24px",
-                                fontWeight: "700"
-                              }
-                            }),
-                            JsxRuntime.jsx("div", {
-                              children: "Packets Sent",
-                              style: {
-                                color: "#8892a6",
-                                fontSize: "12px"
-                              }
-                            })
-                          ]
-                        }),
-                        JsxRuntime.jsxs("div", {
-                          children: [
-                            JsxRuntime.jsx("div", {
-                              children: String(state.totalPacketsDelivered),
-                              style: {
-                                color: "#4caf50",
-                                fontSize: "24px",
-                                fontWeight: "700"
-                              }
-                            }),
-                            JsxRuntime.jsx("div", {
-                              children: "Delivered",
-                              style: {
-                                color: "#8892a6",
-                                fontSize: "12px"
-                              }
-                            })
-                          ]
-                        }),
-                        JsxRuntime.jsxs("div", {
-                          children: [
-                            JsxRuntime.jsx("div", {
-                              children: String(state.totalPacketsDropped),
-                              style: {
-                                color: "#f44336",
-                                fontSize: "24px",
-                                fontWeight: "700"
-                              }
-                            }),
-                            JsxRuntime.jsx("div", {
-                              children: "Dropped",
-                              style: {
-                                color: "#8892a6",
-                                fontSize: "12px"
-                              }
-                            })
-                          ]
-                        }),
-                        JsxRuntime.jsxs("div", {
-                          children: [
-                            JsxRuntime.jsx("div", {
-                              children: String(state.packets.length),
-                              style: {
-                                color: "#ff9800",
-                                fontSize: "24px",
-                                fontWeight: "700"
-                              }
-                            }),
-                            JsxRuntime.jsx("div", {
-                              children: "In Transit",
-                              style: {
-                                color: "#8892a6",
-                                fontSize: "12px"
-                              }
-                            })
-                          ]
-                        })
-                      ],
-                      style: {
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "12px"
-                      }
-                    })
-                  ],
-                  style: {
-                    background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
-                    border: "2px solid #2a3142",
-                    padding: "20px",
-                    borderRadius: "12px"
-                  }
-                }) : null,
-              state.showEventLog ? JsxRuntime.jsxs("div", {
                   children: [
                     JsxRuntime.jsxs("div", {
                       children: [
                         JsxRuntime.jsx("h3", {
-                          children: "📋 Event Log",
+                          children: "Statistics",
                           style: {
                             color: "#e0e6ed",
-                            fontSize: "16px",
+                            fontSize: "14px",
                             fontWeight: "700"
                           }
                         }),
                         JsxRuntime.jsx("button", {
-                          children: "Clear",
+                          children: "Hide",
                           style: {
                             background: "#2a3142",
                             border: "none",
+                            borderRadius: "4px",
                             color: "#8892a6",
                             cursor: "pointer",
-                            fontSize: "11px",
-                            padding: "4px 12px",
-                            borderRadius: "4px"
+                            fontSize: "10px",
+                            padding: "2px 8px"
                           },
-                          onClick: param => dispatch("ClearEvents")
+                          onClick: param => dispatch("ToggleStats")
                         })
                       ],
                       style: {
+                        alignItems: "center",
                         display: "flex",
-                        marginBottom: "12px",
-                        justifyContent: "space-between"
+                        justifyContent: "space-between",
+                        marginBottom: "12px"
                       }
                     }),
-                    state.events.length !== 0 ? Belt_Array.mapWithIndex(state.events, (index, event) => viewEvent(event, index)) : JsxRuntime.jsx("div", {
-                        children: "No events yet",
-                        style: {
-                          color: "#8892a6",
-                          fontSize: "12px",
-                          padding: "20px",
-                          textAlign: "center"
-                        }
-                      })
+                    JsxRuntime.jsxs("div", {
+                      children: [
+                        viewStatRow(String(state.totalPacketsSent), "Packets Sent", "#4a9eff"),
+                        viewStatRow(String(state.totalPacketsDelivered), "Delivered", "#4caf50"),
+                        viewStatRow(String(state.totalPacketsDropped), "Dropped", "#f44336"),
+                        viewStatRow(String(state.packets.length), "Active In Transit", "#ff9800"),
+                        JsxRuntime.jsxs("div", {
+                          children: [
+                            JsxRuntime.jsxs("div", {
+                              children: [
+                                JsxRuntime.jsx("span", {
+                                  children: "Delivery Rate"
+                                }),
+                                JsxRuntime.jsx("span", {
+                                  children: state.totalPacketsSent > 0 ? formatFloat1(state.totalPacketsDelivered / state.totalPacketsSent * 100.0) + "%" : "N/A"
+                                })
+                              ],
+                              style: {
+                                color: "#8892a6",
+                                display: "flex",
+                                fontSize: "11px",
+                                justifyContent: "space-between",
+                                marginBottom: "4px"
+                              }
+                            }),
+                            JsxRuntime.jsx("div", {
+                              children: JsxRuntime.jsx("div", {
+                                style: {
+                                  background: "linear-gradient(90deg, #4caf50, #66bb6a)",
+                                  borderRadius: "3px",
+                                  height: "100%",
+                                  transition: "width 0.3s",
+                                  width: (
+                                    state.totalPacketsSent > 0 ? formatFloat1(state.totalPacketsDelivered / state.totalPacketsSent * 100.0) : "0"
+                                  ) + "%"
+                                }
+                              }),
+                              style: {
+                                background: "#2a3142",
+                                borderRadius: "3px",
+                                height: "6px",
+                                overflow: "hidden"
+                              }
+                            })
+                          ]
+                        }),
+                        viewStatRow(formatFloat1(state.avgLatency) + " ms", "Avg Latency", "#9c27b0"),
+                        viewStatRow(formatFloat2(state.throughput) + " p/s", "Throughput", "#00bcd4"),
+                        viewStatRow(PacketBatchKernelJs.isBatchWasmActive() ? "WASM" : "JS", "Packet Kernel", "#00bcd4")
+                      ],
+                      style: {
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px"
+                      }
+                    })
                   ],
-                  style: {
-                    background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
-                    border: "2px solid #2a3142",
-                    maxHeight: "400px",
-                    overflow: "auto",
-                    padding: "20px",
-                    borderRadius: "12px",
-                    flex: "1"
-                  }
-                }) : null
+                  style: sidebarPanelStyle
+                }) : JsxRuntime.jsx("button", {
+                  children: "Show Stats",
+                  style: smallBtnStyle(false),
+                  onClick: param => dispatch("ToggleStats")
+                }),
+              JsxRuntime.jsxs("div", {
+                children: [
+                  JsxRuntime.jsx("h3", {
+                    children: "Parameters",
+                    style: {
+                      color: "#e0e6ed",
+                      fontSize: "14px",
+                      fontWeight: "700",
+                      marginBottom: "12px"
+                    }
+                  }),
+                  viewParamSlider("Packet Rate", state.simParams.packetRate, 0.0, 20.0, 0.5, "p/s", v => dispatch({
+                    TAG: "SetPacketRate",
+                    _0: v
+                  })),
+                  viewParamSlider("Latency", state.simParams.latencyMs, 0.0, 500.0, 5.0, "ms", v => dispatch({
+                    TAG: "SetLatency",
+                    _0: v
+                  })),
+                  viewParamSlider("Drop Rate", state.simParams.dropRate, 0.0, 1.0, 0.01, "", v => dispatch({
+                    TAG: "SetDropRate",
+                    _0: v
+                  })),
+                  viewParamSlider("Jitter", state.simParams.jitterMs, 0.0, 200.0, 5.0, "ms", v => dispatch({
+                    TAG: "SetJitter",
+                    _0: v
+                  }))
+                ],
+                style: sidebarPanelStyle
+              }),
+              tmp
             ],
             style: {
               display: "flex",
-              width: "300px",
               flexDirection: "column",
-              gap: "16px"
+              gap: "12px",
+              width: "320px"
             }
           })
         ],
@@ -1052,14 +1670,14 @@ function SimulationMode(props) {
       JsxRuntime.jsxs("div", {
         children: [
           JsxRuntime.jsx("strong", {
-            children: "💡 Simulation Tips: ",
+            children: "Simulation Tips: ",
             style: {
               color: "#4a9eff",
               fontSize: "13px"
             }
           }),
           JsxRuntime.jsx("span", {
-            children: "Click packets for details. Adjust speed to observe traffic patterns. Use test packets to verify connectivity.",
+            children: "Click packets for details. Use presets (Ideal/Normal/Congested/Lossy) to simulate network conditions. Adjust sliders for fine-grained control. Step advances one frame while paused.",
             style: {
               color: "#b0b8c4",
               fontSize: "13px"
@@ -1069,9 +1687,9 @@ function SimulationMode(props) {
         style: {
           background: "rgba(74, 158, 255, 0.1)",
           border: "2px solid #4a9eff",
+          borderRadius: "12px",
           marginTop: "24px",
-          padding: "16px",
-          borderRadius: "12px"
+          padding: "16px"
         }
       })
     ],
@@ -1084,18 +1702,46 @@ function SimulationMode(props) {
   });
 }
 
+let maxActivePackets = 2000;
+
+let maxEventLogEntries = 1000;
+
 let make = SimulationMode;
 
 export {
+  presetLabel,
+  presetParams,
+  defaultParams,
+  maxActivePackets,
+  maxEventLogEntries,
+  keepLastN,
+  enforcePacketCap,
+  enforceEventCap,
+  stepPacketsBatchExternal,
+  isBatchWasmActive,
+  stepPacketsKernel,
+  edges,
+  routePool,
+  pseudoRandom,
   init,
   update,
   packetTypeColor,
   packetTypeLabel,
   statusColor,
   speedLabel,
+  statusLabel,
+  formatFloat1,
+  formatFloat2,
+  formatSimTime,
+  controlBtnStyle,
+  smallBtnStyle,
+  viewStatRow,
+  viewParamSlider,
   viewNode,
   viewPacket,
   viewEvent,
+  viewPacketDetail,
+  viewEdges,
   make,
 }
 /* react Not a pure module */

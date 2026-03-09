@@ -21,12 +21,12 @@ function spinner(sizeOpt, colorOpt, labelOpt) {
     children: [
       JsxRuntime.jsx("div", {
         style: {
+          animation: "spin 0.8s linear infinite",
           border: "4px solid #E2E8F0",
+          borderRadius: "50%",
           borderTop: "4px solid " + color,
           height: spinnerSize,
-          width: spinnerSize,
-          borderRadius: "50%",
-          animation: "spin 0.8s linear infinite"
+          width: spinnerSize
         }
       }),
       JsxRuntime.jsx("span", {
@@ -44,10 +44,10 @@ function spinner(sizeOpt, colorOpt, labelOpt) {
     "aria-live": "polite",
     role: "status",
     style: {
-      display: "flex",
-      padding: "2rem",
       alignItems: "center",
-      justifyContent: "center"
+      display: "flex",
+      justifyContent: "center",
+      padding: "2rem"
     }
   });
 }
@@ -61,12 +61,12 @@ function skeleton(widthOpt, heightOpt, borderRadiusOpt, marginBottomOpt) {
     "aria-label": "Loading content...",
     role: "status",
     style: {
+      animation: "pulse 1.5s ease-in-out infinite",
       backgroundColor: "#E2E8F0",
+      borderRadius: borderRadius,
       height: height,
       marginBottom: marginBottom,
-      width: width,
-      borderRadius: borderRadius,
-      animation: "pulse 1.5s ease-in-out infinite"
+      width: width
     }
   });
 }
@@ -80,9 +80,9 @@ function skeletonListItem() {
     ],
     style: {
       border: "1px solid #E2E8F0",
+      borderRadius: "8px",
       marginBottom: "0.5rem",
-      padding: "1rem",
-      borderRadius: "8px"
+      padding: "1rem"
     }
   });
 }
@@ -106,18 +106,18 @@ function overlay(messageOpt, isDarkOpt) {
     "aria-live": "polite",
     role: "status",
     style: {
+      alignItems: "center",
       backgroundColor: isDark ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.9)",
       bottom: "0",
       color: isDark ? "#FFFFFF" : "#000000",
       display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
       left: "0",
       position: "fixed",
       right: "0",
       top: "0",
-      zIndex: "9999",
-      alignItems: "center",
-      flexDirection: "column",
-      justifyContent: "center"
+      zIndex: "9999"
     }
   });
 }

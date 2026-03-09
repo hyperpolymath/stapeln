@@ -5,10 +5,15 @@ defmodule Stapeln.SettingsStore do
   @moduledoc """
   In-memory settings store backed by a GenServer.
 
+  Tries Ecto-backed `Stapeln.DbStore` when PostgreSQL is available, and
+  falls back to the GenServer state otherwise.
+
   Settings persist to /tmp/stapeln-settings.json for dev convenience.
   """
 
   use GenServer
+
+  alias Stapeln.DbStore
 
   @name __MODULE__
   @persist_path "/tmp/stapeln-settings.json"
@@ -26,12 +31,20 @@ defmodule Stapeln.SettingsStore do
 
   @spec get() :: map()
   def get do
-    GenServer.call(@name, :get)
+    if DbStore.available?() do
+      DbStore.get_settings(nil)
+    else
+      GenServer.call(@name, :get)
+    end
   end
 
   @spec update(map()) :: {:ok, map()} | {:error, term()}
   def update(attrs) when is_map(attrs) do
-    GenServer.call(@name, {:update, attrs})
+    if DbStore.available?() do
+      DbStore.update_settings(nil, attrs)
+    else
+      GenServer.call(@name, {:update, attrs})
+    end
   end
 
   @impl true

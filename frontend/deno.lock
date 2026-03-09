@@ -1,5 +1,100 @@
 {
   "version": "5",
+  "specifiers": {
+    "npm:@rescript/core@1": "1.6.1_rescript@12.2.0",
+    "npm:@rescript/react@0.14": "0.14.1_react@18.3.1_react-dom@18.3.1__react@18.3.1",
+    "npm:react-dom@^18.3.1": "18.3.1_react@18.3.1",
+    "npm:react@^18.3.1": "18.3.1",
+    "npm:rescript@*": "12.2.0",
+    "npm:rescript@12": "12.2.0"
+  },
+  "npm": {
+    "@rescript/core@1.6.1_rescript@12.2.0": {
+      "integrity": "sha512-vyb5k90ck+65Fgui+5vCja/mUfzKaK3kOPT4Z6aAJdHLH1eljEi1zKhXroCiCtpNLSWp8k4ulh1bdB5WS0hvqA==",
+      "dependencies": [
+        "rescript"
+      ]
+    },
+    "@rescript/darwin-arm64@12.2.0": {
+      "integrity": "sha512-xc3K/J7Ujl1vPiFY2009mRf3kWRlUe/VZyJWprseKxlcEtUQv89ter7r6pY+YFbtYvA/fcaEncL9CVGEdattAg==",
+      "os": ["darwin"],
+      "cpu": ["arm64"]
+    },
+    "@rescript/darwin-x64@12.2.0": {
+      "integrity": "sha512-qqcTvnlSeoKkywLjG7cXfYvKZ1e4Gz2kUKcD6SiqDgCqm8TF+spwlFAiM6sloRUOFsc0bpC/0R0B3yr01FCB1A==",
+      "os": ["darwin"],
+      "cpu": ["x64"]
+    },
+    "@rescript/linux-arm64@12.2.0": {
+      "integrity": "sha512-ODmpG3ji+Nj/8d5yvXkeHlfKkmbw1Q4t1iIjVuNwtmFpz7TiEa7n/sQqoYdE+WzbDX3DoJfmJNbp3Ob7qCUoOg==",
+      "os": ["linux"],
+      "cpu": ["arm64"]
+    },
+    "@rescript/linux-x64@12.2.0": {
+      "integrity": "sha512-2W9Y9/g19Y4F/subl8yV3T8QBG2oRaP+HciNRcBjptyEdw9LmCKH8+rhWO6sp3E+nZLwoE2IAkwH0WKV3wqlxQ==",
+      "os": ["linux"],
+      "cpu": ["x64"]
+    },
+    "@rescript/react@0.14.1_react@18.3.1_react-dom@18.3.1__react@18.3.1": {
+      "integrity": "sha512-tCdzMnzSEuEfWs/A6wq6kLx/E5nBkVJmFST+MwU01W9hzFwQi2JpvE82Fl66ets+oaC5UVpFf3vy4KvXRN+jPA==",
+      "dependencies": [
+        "react",
+        "react-dom"
+      ]
+    },
+    "@rescript/runtime@12.2.0": {
+      "integrity": "sha512-NwfljDRq1rjFPHUaca1nzFz13xsa9ZGkBkLvMhvVgavJT5+A4rMcLu8XAaVTi/oAhO/tlHf9ZDoOTF1AfyAk9Q=="
+    },
+    "@rescript/win32-x64@12.2.0": {
+      "integrity": "sha512-fhf8CBj3p1lkIXPeNko3mVTKQfXXm4BoxJtR1xAXxUn43wDpd8Lox4w8/EPBbbW6C/YFQW6H7rtpY+2AKuNaDA==",
+      "os": ["win32"],
+      "cpu": ["x64"]
+    },
+    "js-tokens@4.0.0": {
+      "integrity": "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="
+    },
+    "loose-envify@1.4.0": {
+      "integrity": "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==",
+      "dependencies": [
+        "js-tokens"
+      ],
+      "bin": true
+    },
+    "react-dom@18.3.1_react@18.3.1": {
+      "integrity": "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==",
+      "dependencies": [
+        "loose-envify",
+        "react",
+        "scheduler"
+      ]
+    },
+    "react@18.3.1": {
+      "integrity": "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==",
+      "dependencies": [
+        "loose-envify"
+      ]
+    },
+    "rescript@12.2.0": {
+      "integrity": "sha512-1Jf2cmNhyx5Mj2vwZ4XXPcXvNSjGj9D1jPBUcoqIOqRpLPo1ch2Ta/7eWh23xAHWHK5ow7BCDyYFjvZSjyjLzg==",
+      "dependencies": [
+        "@rescript/runtime"
+      ],
+      "optionalDependencies": [
+        "@rescript/darwin-arm64",
+        "@rescript/darwin-x64",
+        "@rescript/linux-arm64",
+        "@rescript/linux-x64",
+        "@rescript/win32-x64"
+      ],
+      "bin": true
+    },
+    "scheduler@0.23.2": {
+      "integrity": "sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==",
+      "dependencies": [
+        "loose-envify"
+      ]
+    }
+  },
   "remote": {
     "https://deno.land/std@0.224.0/assert/assert.ts": "09d30564c09de846855b7b071e62b5974b001bb72a4b797958fe0660e7849834",
     "https://deno.land/std@0.224.0/assert/assertion_error.ts": "ba8752bd27ebc51f723702fac2f54d3e94447598f54264a6653d6413738a8917",
@@ -121,11 +216,11 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@rescript/react@0.13",
-        "npm:react-dom@^18.2.0",
-        "npm:react@^18.2.0",
-        "npm:rescript-tea@0.16",
-        "npm:rescript@11"
+        "npm:@rescript/core@1",
+        "npm:@rescript/react@0.14",
+        "npm:react-dom@^18.3.1",
+        "npm:react@^18.3.1",
+        "npm:rescript@12"
       ]
     }
   }

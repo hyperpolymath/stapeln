@@ -182,10 +182,10 @@ function view(settings, isDark) {
                     style: {
                       backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                       border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                      borderRadius: "4px",
                       color: isDark ? "#FFFFFF" : "#000000",
                       padding: "0.75rem",
-                      width: "100%",
-                      borderRadius: "4px"
+                      width: "100%"
                     },
                     min: "0.1",
                     step: 0.1,
@@ -209,10 +209,10 @@ function view(settings, isDark) {
                     style: {
                       backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                       border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                      borderRadius: "4px",
                       color: isDark ? "#FFFFFF" : "#000000",
                       padding: "0.75rem",
-                      width: "100%",
-                      borderRadius: "4px"
+                      width: "100%"
                     },
                     min: "128",
                     step: 128.0,
@@ -236,10 +236,10 @@ function view(settings, isDark) {
                     style: {
                       backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                       border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                      borderRadius: "4px",
                       color: isDark ? "#FFFFFF" : "#000000",
                       padding: "0.75rem",
-                      width: "100%",
-                      borderRadius: "4px"
+                      width: "100%"
                     },
                     min: "1",
                     step: 1.0,
@@ -250,9 +250,9 @@ function view(settings, isDark) {
             ],
             style: {
               display: "grid",
-              maxWidth: "600px",
               gap: "1rem",
-              gridTemplateColumns: "repeat(3, 1fr)"
+              gridTemplateColumns: "repeat(3, 1fr)",
+              maxWidth: "600px"
             }
           })
         ],
@@ -260,9 +260,9 @@ function view(settings, isDark) {
         role: "region",
         style: {
           border: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
+          borderRadius: "8px",
           marginBottom: "2rem",
-          padding: "1.5rem",
-          borderRadius: "8px"
+          padding: "1.5rem"
         }
       }),
       JsxRuntime.jsxs("section", {
@@ -292,12 +292,12 @@ function view(settings, isDark) {
                 style: {
                   backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                   border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                  borderRadius: "4px",
                   color: isDark ? "#FFFFFF" : "#000000",
                   fontFamily: "monospace",
                   maxWidth: "500px",
                   padding: "0.75rem",
-                  width: "100%",
-                  borderRadius: "4px"
+                  width: "100%"
                 },
                 type: "text"
               })
@@ -323,12 +323,12 @@ function view(settings, isDark) {
                 style: {
                   backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                   border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                  borderRadius: "4px",
                   color: isDark ? "#FFFFFF" : "#000000",
                   fontFamily: "monospace",
                   maxWidth: "500px",
                   padding: "0.75rem",
-                  width: "100%",
-                  borderRadius: "4px"
+                  width: "100%"
                 },
                 type: "text"
               })
@@ -354,11 +354,11 @@ function view(settings, isDark) {
                 style: {
                   backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                   border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                  borderRadius: "4px",
                   color: isDark ? "#FFFFFF" : "#000000",
                   maxWidth: "500px",
                   padding: "0.75rem",
-                  width: "100%",
-                  borderRadius: "4px"
+                  width: "100%"
                 },
                 type: "url"
               })
@@ -373,9 +373,9 @@ function view(settings, isDark) {
         role: "region",
         style: {
           border: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
+          borderRadius: "8px",
           marginBottom: "2rem",
-          padding: "1.5rem",
-          borderRadius: "8px"
+          padding: "1.5rem"
         }
       }),
       JsxRuntime.jsxs("section", {
@@ -473,10 +473,10 @@ function view(settings, isDark) {
                 style: {
                   backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                   border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                  borderRadius: "4px",
                   color: isDark ? "#FFFFFF" : "#000000",
                   padding: "0.75rem",
-                  width: "150px",
-                  borderRadius: "4px"
+                  width: "150px"
                 },
                 max: "24",
                 min: "12",
@@ -532,9 +532,9 @@ function view(settings, isDark) {
         role: "region",
         style: {
           border: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
+          borderRadius: "8px",
           marginBottom: "2rem",
-          padding: "1.5rem",
-          borderRadius: "8px"
+          padding: "1.5rem"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -545,11 +545,15 @@ function view(settings, isDark) {
             style: {
               backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
               border: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
+              borderRadius: "6px",
               color: isDark ? "#FFFFFF" : "#000000",
               cursor: "pointer",
               fontWeight: "600",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "6px"
+              padding: "0.75rem 1.5rem"
+            },
+            onClick: param => {
+              window.localStorage.setItem("stapeln-settings", "reset");
+              console.log("Settings reset to defaults");
             }
           }),
           JsxRuntime.jsx("button", {
@@ -558,11 +562,45 @@ function view(settings, isDark) {
             style: {
               backgroundColor: isDark ? "#66B2FF" : "#0052CC",
               border: "none",
+              borderRadius: "6px",
               color: "white",
               cursor: "pointer",
               fontWeight: "600",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "6px"
+              padding: "0.75rem 1.5rem"
+            },
+            onClick: param => {
+              let json = JSON.stringify(Object.fromEntries([
+                [
+                  "theme",
+                  settings.theme
+                ],
+                [
+                  "fontSize",
+                  settings.fontSize
+                ],
+                [
+                  "highContrast",
+                  settings.highContrast
+                ],
+                [
+                  "reducedMotion",
+                  settings.reducedMotion
+                ],
+                [
+                  "screenReaderMode",
+                  settings.screenReaderMode
+                ],
+                [
+                  "gridSnapping",
+                  settings.gridSnapping
+                ],
+                [
+                  "gridSize",
+                  settings.gridSize
+                ]
+              ]));
+              window.localStorage.setItem("stapeln-settings", json);
+              console.log("Settings saved");
             }
           }),
           JsxRuntime.jsx("button", {
@@ -571,18 +609,21 @@ function view(settings, isDark) {
             style: {
               backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
               border: isDark ? "2px solid #CCCCCC" : "2px solid #333333",
+              borderRadius: "6px",
               color: isDark ? "#FFFFFF" : "#000000",
               cursor: "pointer",
               fontWeight: "600",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "6px"
+              padding: "0.75rem 1.5rem"
+            },
+            onClick: param => {
+              console.log("Settings changes cancelled");
             }
           })
         ],
         style: {
           display: "flex",
-          marginTop: "2rem",
-          gap: "1rem"
+          gap: "1rem",
+          marginTop: "2rem"
         }
       })
     ],

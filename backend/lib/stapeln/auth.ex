@@ -5,12 +5,15 @@ defmodule Stapeln.Auth do
   @moduledoc """
   Authentication context.
 
-  Users are stored in-memory via a GenServer (UserStore) for simplicity.
+  Tries Ecto-backed `Stapeln.DbStore` when PostgreSQL is available, and
+  falls back to in-memory `UserStore` otherwise.
+
   Passwords are hashed with :crypto.hash/2 (SHA-256). For production,
   swap to bcrypt/argon2.
   """
 
   alias Stapeln.Auth.{Token, UserStore}
+  alias Stapeln.DbStore
 
   @doc "Register a new user. Returns {:ok, token} or {:error, reason}."
   @spec register(String.t(), String.t()) :: {:ok, String.t()} | {:error, atom()}
@@ -22,7 +25,15 @@ defmodule Stapeln.Auth do
       String.length(password) < 6 -> {:error, :password_too_short}
       true ->
         hashed = hash_password(password)
-        case UserStore.create(email, hashed) do
+
+        result =
+          if DbStore.available?() do
+            DbStore.create_user(email, hashed)
+          else
+            UserStore.create(email, hashed)
+          end
+
+        case result do
           {:ok, user_id} -> {:ok, Token.generate(user_id)}
           {:error, _} = err -> err
         end
@@ -34,7 +45,14 @@ defmodule Stapeln.Auth do
   def login(email, password) when is_binary(email) and is_binary(password) do
     email = String.downcase(String.trim(email))
 
-    case UserStore.get_by_email(email) do
+    lookup =
+      if DbStore.available?() do
+        DbStore.get_user_by_email(email)
+      else
+        UserStore.get_by_email(email)
+      end
+
+    case lookup do
       {:ok, %{id: user_id, password_hash: stored_hash}} ->
         if Plug.Crypto.secure_compare(hash_password(password), stored_hash) do
           {:ok, Token.generate(user_id)}
@@ -52,7 +70,11 @@ defmodule Stapeln.Auth do
   @doc "Get user info by ID."
   @spec get_user(String.t()) :: {:ok, map()} | {:error, :not_found}
   def get_user(user_id) do
-    UserStore.get(user_id)
+    if DbStore.available?() do
+      DbStore.get_user(user_id)
+    else
+      UserStore.get(user_id)
+    end
   end
 
   defp hash_password(password) do

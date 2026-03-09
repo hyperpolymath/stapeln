@@ -27,11 +27,11 @@ let clampInt = (value: int, minValue: int, maxValue: int): int => {
   }
 }
 
-let toFixedCoord = (coord: float): int => int_of_float(coord *. coordScale)
-let fromFixedCoord = (coord: int): float => float_of_int(coord) /. coordScale
+let toFixedCoord = (coord: float): int => Float.toInt(coord *. coordScale)
+let fromFixedCoord = (coord: int): float => Int.toFloat(coord) /. coordScale
 
 let toProgressQ16 = (progress: float): int => {
-  let raw = int_of_float(progress *. progressScale)
+  let raw = Float.toInt(progress *. progressScale)
   clampInt(raw, 0, maxProgressQ16)
 }
 
@@ -46,7 +46,7 @@ let advanceProgress = (~progress: float, ~step: float): progressAdvance => {
   let nextQ16Raw = addQ16Unsafe(progressQ16, stepQ16)
   let nextQ16 = clampInt(nextQ16Raw, 0, maxProgressQ16)
   {
-    progress: float_of_int(nextQ16) /. progressScale,
+    progress: Int.toFloat(nextQ16) /. progressScale,
     arrived: nextQ16 >= maxProgressQ16,
   }
 }

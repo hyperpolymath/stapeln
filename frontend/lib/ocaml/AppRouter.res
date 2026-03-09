@@ -51,15 +51,15 @@ let getCurrentRoute = (): route => {
 
 // Navigate to route (pushState)
 let navigateTo = (route: route): unit => {
-  let path = routeToPath(route)
-  %raw(`window.history.pushState(null, "", path)`)
+  let _path = routeToPath(route)
+  ignore(%raw(`window.history.pushState(null, "", _path)`))
   %raw(`window.dispatchEvent(new PopStateEvent('popstate'))`)
 }
 
 // Replace current route (replaceState)
 let replaceRoute = (route: route): unit => {
-  let path = routeToPath(route)
-  %raw(`window.history.replaceState(null, "", path)`)
+  let _path = routeToPath(route)
+  %raw(`window.history.replaceState(null, "", _path)`)
 }
 
 // Go back in history
@@ -74,8 +74,9 @@ let goForward = (): unit => {
 
 // Subscribe to route changes
 let onRouteChange = (callback: route => unit): unit => {
-  let handler = %raw(`() => callback(pathToRoute(window.location.pathname))`)
-  %raw(`window.addEventListener('popstate', handler)`)
+  ignore(callback)
+  let _handler = %raw(`() => callback(pathToRoute(window.location.pathname))`)
+  %raw(`window.addEventListener('popstate', _handler)`)
 }
 
 // Route metadata for navigation UI

@@ -427,11 +427,11 @@ function confidenceBadge(confidence) {
     children: match[0],
     style: {
       background: match[1],
+      borderRadius: "6px",
       color: "white",
       fontSize: "11px",
       fontWeight: "700",
-      padding: "4px 10px",
-      borderRadius: "6px"
+      padding: "4px 10px"
     }
   });
 }
@@ -478,12 +478,12 @@ function viewGap(gap, fixStatus, dispatch) {
           style: {
             background: "linear-gradient(135deg, #4caf50, #66bb6a)",
             border: "none",
+            borderRadius: "8px",
             color: "white",
             cursor: "pointer",
             fontSize: "13px",
             fontWeight: "600",
-            padding: "10px 20px",
-            borderRadius: "8px"
+            padding: "10px 20px"
           },
           onClick: e => {
             e.stopPropagation();
@@ -500,13 +500,13 @@ function viewGap(gap, fixStatus, dispatch) {
           style: {
             background: "#4caf50",
             border: "none",
+            borderRadius: "8px",
             color: "white",
             cursor: "not-allowed",
             fontSize: "13px",
             fontWeight: "600",
-            padding: "10px 20px",
             opacity: "0.7",
-            borderRadius: "8px"
+            padding: "10px 20px"
           },
           disabled: true
         });
@@ -518,12 +518,12 @@ function viewGap(gap, fixStatus, dispatch) {
         style: {
           background: "linear-gradient(135deg, #2196f3, #42a5f5)",
           border: "none",
+          borderRadius: "8px",
           color: "white",
           cursor: "pointer",
           fontSize: "13px",
           fontWeight: "600",
-          padding: "10px 20px",
-          borderRadius: "8px"
+          padding: "10px 20px"
         },
         onClick: e => {
           e.stopPropagation();
@@ -555,9 +555,9 @@ function viewGap(gap, fixStatus, dispatch) {
             style: {
               background: "rgba(76, 175, 80, 0.1)",
               border: "1px solid #4caf50",
+              borderRadius: "8px",
               marginBottom: "12px",
-              padding: "12px",
-              borderRadius: "8px"
+              padding: "12px"
             }
           }) : null,
         commands !== undefined ? JsxRuntime.jsxs("div", {
@@ -605,10 +605,10 @@ function viewGap(gap, fixStatus, dispatch) {
       style: {
         background: "rgba(158, 158, 158, 0.1)",
         border: "1px solid #9e9e9e",
+        borderRadius: "8px",
         color: "#9e9e9e",
         fontSize: "12px",
-        padding: "12px",
-        borderRadius: "8px"
+        padding: "12px"
       }
     });
   }
@@ -623,22 +623,22 @@ function viewGap(gap, fixStatus, dispatch) {
                   children: categoryLabel(gap.category),
                   style: {
                     background: categoryColor(gap.category),
+                    borderRadius: "6px",
                     color: "white",
                     fontSize: "11px",
                     fontWeight: "700",
-                    padding: "4px 12px",
-                    borderRadius: "6px"
+                    padding: "4px 12px"
                   }
                 }),
                 JsxRuntime.jsx("span", {
                   children: severityLabel(gap.severity),
                   style: {
                     background: severityColor(gap.severity),
+                    borderRadius: "6px",
                     color: "white",
                     fontSize: "11px",
                     fontWeight: "700",
-                    padding: "4px 12px",
-                    borderRadius: "6px"
+                    padding: "4px 12px"
                   }
                 }),
                 gap.fixAvailable ? confidenceBadge(gap.fixConfidence) : null,
@@ -651,9 +651,9 @@ function viewGap(gap, fixStatus, dispatch) {
               ],
               style: {
                 display: "flex",
-                marginBottom: "8px",
                 flexWrap: "wrap",
-                gap: "8px"
+                gap: "8px",
+                marginBottom: "8px"
               }
             }),
             JsxRuntime.jsx("h3", {
@@ -671,10 +671,10 @@ function viewGap(gap, fixStatus, dispatch) {
           }
         }),
         style: {
-          display: "flex",
-          marginBottom: "12px",
           alignItems: "flex-start",
-          justifyContent: "space-between"
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "12px"
         }
       }),
       JsxRuntime.jsx("p", {
@@ -706,9 +706,9 @@ function viewGap(gap, fixStatus, dispatch) {
         style: {
           background: "rgba(244, 67, 54, 0.1)",
           border: "1px solid #f44336",
+          borderRadius: "8px",
           marginBottom: "12px",
-          padding: "12px",
-          borderRadius: "8px"
+          padding: "12px"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -770,9 +770,9 @@ function viewGap(gap, fixStatus, dispatch) {
         ],
         style: {
           display: "flex",
-          marginBottom: "16px",
           flexWrap: "wrap",
-          gap: "24px"
+          gap: "24px",
+          marginBottom: "16px"
         }
       }),
       JsxRuntime.jsx("div", {
@@ -783,18 +783,18 @@ function viewGap(gap, fixStatus, dispatch) {
           ],
           style: {
             background: "#2a3142",
+            borderRadius: "4px",
             color: "#8892a6",
             fontSize: "10px",
             fontWeight: "600",
-            padding: "3px 8px",
-            borderRadius: "4px"
+            padding: "3px 8px"
           }
         }, tag)),
         style: {
           display: "flex",
-          marginBottom: "16px",
           flexWrap: "wrap",
-          gap: "6px"
+          gap: "6px",
+          marginBottom: "16px"
         }
       }),
       tmp
@@ -802,10 +802,10 @@ function viewGap(gap, fixStatus, dispatch) {
     style: {
       background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       border: "2px solid #2a3142",
+      borderRadius: "12px",
       cursor: "pointer",
       marginBottom: "16px",
       padding: "20px",
-      borderRadius: "12px",
       transition: "all 0.2s"
     },
     onClick: param => dispatch({
@@ -929,17 +929,17 @@ function GapAnalysis(props) {
             style: {
               background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
               border: "2px solid #2a3142",
+              borderRadius: "12px",
               padding: "20px",
-              textAlign: "center",
-              borderRadius: "12px"
+              textAlign: "center"
             }
           }, label);
         }),
         style: {
           display: "grid",
-          marginBottom: "32px",
           gap: "16px",
-          gridTemplateColumns: "repeat(4, 1fr)"
+          gridTemplateColumns: "repeat(4, 1fr)",
+          marginBottom: "32px"
         }
       }),
       JsxRuntime.jsxs("div", {
@@ -951,12 +951,12 @@ function GapAnalysis(props) {
                 style: {
                   background: "linear-gradient(135deg, #4a9eff, #7b6cff)",
                   border: "none",
+                  borderRadius: "8px",
                   color: "white",
                   cursor: "pointer",
                   fontSize: "14px",
                   fontWeight: "600",
-                  padding: "10px 20px",
-                  borderRadius: "8px"
+                  padding: "10px 20px"
                 },
                 onClick: param => dispatch("RunGapAnalysis")
               }),
@@ -965,12 +965,12 @@ function GapAnalysis(props) {
                 style: {
                   background: "linear-gradient(135deg, #4caf50, #66bb6a)",
                   border: "none",
+                  borderRadius: "8px",
                   color: "white",
                   cursor: "pointer",
                   fontSize: "14px",
                   fontWeight: "600",
-                  padding: "10px 20px",
-                  borderRadius: "8px"
+                  padding: "10px 20px"
                 },
                 onClick: param => dispatch("ApplyAllAutoFixes")
               })
@@ -990,24 +990,24 @@ function GapAnalysis(props) {
               "Show only fixable"
             ],
             style: {
+              alignItems: "center",
               color: "#8892a6",
               cursor: "pointer",
               display: "flex",
               fontSize: "13px",
-              alignItems: "center",
               gap: "8px"
             }
           })
         ],
         style: {
+          alignItems: "center",
           background: "linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
           border: "2px solid #2a3142",
-          display: "flex",
-          marginBottom: "24px",
-          padding: "16px",
           borderRadius: "12px",
-          alignItems: "center",
-          justifyContent: "space-between"
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "24px",
+          padding: "16px"
         }
       }),
       JsxRuntime.jsx("div", {
@@ -1040,9 +1040,9 @@ function GapAnalysis(props) {
             style: {
               background: "rgba(76, 175, 80, 0.1)",
               border: "2px solid #4caf50",
+              borderRadius: "16px",
               padding: "60px",
-              textAlign: "center",
-              borderRadius: "16px"
+              textAlign: "center"
             }
           })
       }),
@@ -1069,9 +1069,9 @@ function GapAnalysis(props) {
         style: {
           background: "rgba(74, 158, 255, 0.1)",
           border: "2px solid #4a9eff",
+          borderRadius: "12px",
           marginTop: "32px",
-          padding: "20px",
-          borderRadius: "12px"
+          padding: "20px"
         }
       })
     ],

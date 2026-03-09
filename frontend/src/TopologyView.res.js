@@ -266,11 +266,11 @@ function renderConfigPanel(component, isDark, dispatch) {
                       style: {
                         backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                         border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                        borderRadius: "4px",
                         color: isDark ? "#FFFFFF" : "#000000",
                         marginTop: "0.25rem",
                         padding: "0.5rem",
-                        width: "100%",
-                        borderRadius: "4px"
+                        width: "100%"
                       },
                       min: "0.1",
                       step: 0.1,
@@ -291,11 +291,11 @@ function renderConfigPanel(component, isDark, dispatch) {
                       style: {
                         backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                         border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                        borderRadius: "4px",
                         color: isDark ? "#FFFFFF" : "#000000",
                         marginTop: "0.25rem",
                         padding: "0.5rem",
-                        width: "100%",
-                        borderRadius: "4px"
+                        width: "100%"
                       },
                       min: "128",
                       step: 128.0,
@@ -321,12 +321,12 @@ function renderConfigPanel(component, isDark, dispatch) {
                   style: {
                     backgroundColor: isDark ? "#66B2FF" : "#0052CC",
                     border: "none",
+                    borderRadius: "6px",
                     color: "white",
                     cursor: "pointer",
+                    flex: "1",
                     fontWeight: "600",
-                    padding: "0.75rem",
-                    borderRadius: "6px",
-                    flex: "1"
+                    padding: "0.75rem"
                   },
                   type: "submit"
                 }),
@@ -336,12 +336,12 @@ function renderConfigPanel(component, isDark, dispatch) {
                   style: {
                     backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5",
                     border: isDark ? "1px solid #CCCCCC" : "1px solid #333333",
+                    borderRadius: "6px",
                     color: isDark ? "#FFFFFF" : "#000000",
                     cursor: "pointer",
+                    flex: "1",
                     fontWeight: "600",
-                    padding: "0.75rem",
-                    borderRadius: "6px",
-                    flex: "1"
+                    padding: "0.75rem"
                   },
                   type: "button",
                   onClick: param => dispatch({
@@ -352,8 +352,8 @@ function renderConfigPanel(component, isDark, dispatch) {
               ],
               style: {
                 display: "flex",
-                marginTop: "1rem",
-                gap: "0.5rem"
+                gap: "0.5rem",
+                marginTop: "1rem"
               }
             })
           ],

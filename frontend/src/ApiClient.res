@@ -49,8 +49,8 @@ let fetchText = (url: string, init: WebAPI.fetchInit): promise<Result.t<string, 
   })
   ->Promise.catch(exn => {
     let msg = switch exn {
-    | Js.Exn.Error(e) =>
-      Belt.Option.getWithDefault(Js.Exn.message(e), "Network error")
+    | JsExn(e) =>
+      Belt.Option.getWithDefault(JsExn.message(e), "Network error")
     | _ => "Network error"
     }
     Promise.resolve(Error(msg))
@@ -70,8 +70,8 @@ let fetchJson = (url: string, init: WebAPI.fetchInit): promise<Result.t<JSON.t, 
   })
   ->Promise.catch(exn => {
     let msg = switch exn {
-    | Js.Exn.Error(e) =>
-      Belt.Option.getWithDefault(Js.Exn.message(e), "Network error")
+    | JsExn(e) =>
+      Belt.Option.getWithDefault(JsExn.message(e), "Network error")
     | _ => "Network error"
     }
     Promise.resolve(Error(msg))
@@ -174,12 +174,94 @@ let saveSettings = (settings: JSON.t): promise<Result.t<unit, string>> => {
   })
   ->Promise.catch(exn => {
     let msg = switch exn {
-    | Js.Exn.Error(e) =>
-      Belt.Option.getWithDefault(Js.Exn.message(e), "Network error")
+    | JsExn(e) =>
+      Belt.Option.getWithDefault(JsExn.message(e), "Network error")
     | _ => "Network error"
     }
     Promise.resolve(Error(msg))
   })
+}
+
+// ---------------------------------------------------------------------------
+// Firewall pinholes
+// ---------------------------------------------------------------------------
+
+// Create an ephemeral pinhole. Returns the created pinhole JSON on success.
+let createPinhole = (
+  ~source: string,
+  ~destination: string,
+  ~port: int,
+  ~ttlSeconds: int,
+  ~reason: string,
+  ~protocol: string="tcp",
+): promise<Result.t<JSON.t, string>> => {
+  let body = JSON.stringify(
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("source", JSON.Encode.string(source)),
+        ("destination", JSON.Encode.string(destination)),
+        ("port", JSON.Encode.int(port)),
+        ("ttl_seconds", JSON.Encode.int(ttlSeconds)),
+        ("reason", JSON.Encode.string(reason)),
+        ("protocol", JSON.Encode.string(protocol)),
+      ]),
+    ),
+  )
+  fetchJson(
+    baseUrl ++ "/firewall/pinholes",
+    {
+      method: "POST",
+      headers: authHeaders(),
+      body,
+    },
+  )
+}
+
+// List all active pinholes.
+let listPinholes = (): promise<Result.t<JSON.t, string>> => {
+  fetchJson(
+    baseUrl ++ "/firewall/pinholes",
+    {
+      method: "GET",
+      headers: authHeaders(),
+    },
+  )
+}
+
+// Revoke a pinhole by ID.
+let revokePinhole = (id: string): promise<Result.t<JSON.t, string>> => {
+  fetchJson(
+    baseUrl ++ "/firewall/pinholes/" ++ id,
+    {
+      method: "DELETE",
+      headers: authHeaders(),
+    },
+  )
+}
+
+// Check if traffic is allowed by any active pinhole.
+let checkFirewall = (
+  ~source: string,
+  ~destination: string,
+  ~port: int,
+): promise<Result.t<JSON.t, string>> => {
+  let body = JSON.stringify(
+    JSON.Encode.object(
+      Dict.fromArray([
+        ("source", JSON.Encode.string(source)),
+        ("destination", JSON.Encode.string(destination)),
+        ("port", JSON.Encode.int(port)),
+      ]),
+    ),
+  )
+  fetchJson(
+    baseUrl ++ "/firewall/check",
+    {
+      method: "POST",
+      headers: authHeaders(),
+      body,
+    },
+  )
 }
 
 // ---------------------------------------------------------------------------

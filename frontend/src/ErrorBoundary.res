@@ -15,7 +15,7 @@ let initialState = {
   error: None,
 }
 
-let reducer = (state, action) => {
+let reducer = (_state, action) => {
   switch action {
   | CatchError(errorMsg) => {
       hasError: true,
@@ -30,7 +30,7 @@ let make = (~children, ~fallback=?, ~onError=?) => {
   let (state, dispatch) = React.useReducer(reducer, initialState)
 
   // Error handler
-  let handleError = React.useCallback1((error, errorInfo) => {
+  let _handleError = React.useCallback1((error, errorInfo) => {
     let errorMsg = switch error {
     | Some(e) => String.make(e)
     | None => "Unknown error occurred"
