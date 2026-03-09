@@ -27,6 +27,25 @@ let initialAppState = {
   isDark: true,
 }
 
+// Serialise the current stack model to a JSON string suitable for the API.
+let serializeStack = (model: model): string => {
+  let services =
+    model.components
+    ->Array.map(comp => {
+      let port =
+        comp.config->Dict.get("port")->Belt.Option.mapWithDefault("0", p => p)
+      "{\"name\":\"" ++
+      comp.id ++
+      "\",\"kind\":\"" ++
+      Model.componentTypeToString(comp.componentType) ++
+      "\",\"port\":" ++
+      port ++
+      "}"
+    })
+    ->Js.Array2.joinWith(",")
+  "{\"name\":\"stapeln-stack\",\"services\":[" ++ services ++ "]}"
+}
+
 @react.component
 let make = () => {
   let (state, setState) = React.useState(() => initialAppState)
@@ -39,51 +58,104 @@ let make = () => {
     // Handle side effects (API calls)
     switch msg {
     | SaveStack => {
-        let services = newModel.components->Array.map(comp => {
-          let port = comp.config->Dict.get("port")->Belt.Option.mapWithDefault("0", p => p)
-          "{\"name\":\"" ++ comp.id ++ "\",\"kind\":\"" ++ Model.componentTypeToString(comp.componentType) ++ "\",\"port\":" ++ port ++ "}"
-        })->Js.Array2.joinWith(",")
-        let body = "{\"name\":\"stapeln-stack\",\"services\":[" ++ services ++ "]}"
+        let body = serializeStack(newModel)
         ignore(
-          WebAPI.fetch("/api/stacks", {method: "POST", headers: Dict.fromArray([("content-type", "application/json")]), body})
-          ->Promise.then(res => {
-            if WebAPI.fetchOk(res) {
-              WebAPI.text(res)->Promise.then(text => {
-                dispatch(StackSaved(Ok(text)))
+          ApiClient.saveStack(body)
+          ->Promise.then(result => {
+            dispatch(StackSaved(result))
+            Promise.resolve()
+          }),
+        )
+      }
+
+    | RunSecurityScan => {
+        // First save the stack, then run the security scan with the ID
+        let body = serializeStack(newModel)
+        ignore(
+          ApiClient.saveStack(body)
+          ->Promise.then(saveResult => {
+            switch saveResult {
+            | Ok(stackIdStr) => {
+                let stackId = switch Int.fromString(stackIdStr) {
+                | Some(id) => id
+                | None => 0
+                }
+                ApiClient.runSecurityScan(stackId)->Promise.then(scanResult => {
+                  dispatch(SecurityScanResult(scanResult))
+                  Promise.resolve()
+                })
+              }
+            | Error(err) => {
+                dispatch(SecurityScanResult(Error(err)))
                 Promise.resolve()
-              })
-            } else {
-              dispatch(StackSaved(Error("Save failed")))
-              Promise.resolve()
+              }
             }
           })
           ->Promise.catch(_ => {
-            dispatch(StackSaved(Error("Network error")))
+            dispatch(SecurityScanResult(Error("Network error")))
             Promise.resolve()
-          })
+          }),
         )
       }
-    | RunSecurityScan | RunGapAnalysis => {
+
+    | RunGapAnalysis => {
+        // First save the stack, then run gap analysis with the ID
+        let body = serializeStack(newModel)
         ignore(
-          WebAPI.fetch("/api/stacks", {method: "GET"})
-          ->Promise.then(res => {
-            if WebAPI.fetchOk(res) {
-              let result: Model.validationResult = {
-                valid: Array.length(newModel.components) > 0,
-                errors: [],
-                warnings: Array.length(newModel.components) === 0 ? ["Stack is empty - add components"] : [],
+          ApiClient.saveStack(body)
+          ->Promise.then(saveResult => {
+            switch saveResult {
+            | Ok(stackIdStr) => {
+                let stackId = switch Int.fromString(stackIdStr) {
+                | Some(id) => id
+                | None => 0
+                }
+                ApiClient.runGapAnalysis(stackId)->Promise.then(gapResult => {
+                  dispatch(GapAnalysisResult(gapResult))
+                  Promise.resolve()
+                })
               }
-              switch msg {
-              | RunSecurityScan => dispatch(SecurityScanResult(result))
-              | RunGapAnalysis => dispatch(GapAnalysisResult(result))
-              | _ => ()
+            | Error(err) => {
+                dispatch(GapAnalysisResult(Error(err)))
+                Promise.resolve()
               }
             }
-            Promise.resolve()
           })
-          ->Promise.catch(_ => Promise.resolve())
+          ->Promise.catch(_ => {
+            dispatch(GapAnalysisResult(Error("Network error")))
+            Promise.resolve()
+          }),
         )
       }
+
+    | SaveSettings => {
+        let settingsJson = JSON.Encode.object(
+          Dict.fromArray([
+            ("theme", JSON.Encode.string(newModel.settings.theme)),
+            ("defaultRuntime", JSON.Encode.string(newModel.settings.defaultRuntime)),
+            ("autoSave", JSON.Encode.bool(newModel.settings.autoSave)),
+            ("backendUrl", JSON.Encode.string(newModel.settings.backendUrl)),
+          ]),
+        )
+        ignore(
+          ApiClient.saveSettings(settingsJson)
+          ->Promise.then(result => {
+            dispatch(SettingsSaved(result))
+            Promise.resolve()
+          }),
+        )
+      }
+
+    | LoadSettings => {
+        ignore(
+          ApiClient.loadSettings()
+          ->Promise.then(result => {
+            dispatch(SettingsLoaded(result))
+            Promise.resolve()
+          }),
+        )
+      }
+
     | _ => ()
     }
   }
@@ -168,33 +240,29 @@ let make = () => {
         | StackView => StackView.view(state.model)
         | LagoGreyView => <LagoGreyImageDesigner />
         | PortConfigView => <PortConfigPanel />
-        | SecurityView => <SecurityInspector />
-        | GapAnalysisView => <GapAnalysis />
+        | SecurityView =>
+          <SecurityInspector initialState=?{state.model.securityState} />
+        | GapAnalysisView =>
+          <GapAnalysis initialState=?{state.model.gapState} />
         | SimulationView => <SimulationMode />
         | SettingsView =>
-          <div className="page settings-page">
-            <h1> {"Settings"->React.string} </h1>
-            <div className="settings-group">
-              <h2> {"Theme"->React.string} </h2>
-              <label>
-                <input
-                  type_="checkbox"
-                  checked={state.isDark}
-                  onChange={_ => setState(prev => {...prev, isDark: !prev.isDark})}
-                />
-                {" Dark Mode"->React.string}
-              </label>
-            </div>
-            <div className="settings-group">
-              <h2> {"Default Runtime"->React.string} </h2>
-              <p> {"Podman / Docker / nerdctl selection coming soon"->React.string} </p>
-            </div>
-          </div>
+          <SettingsPage
+            settings={state.model.settings}
+            isDark={state.isDark}
+            onSave={() => dispatch(SaveSettings)}
+            onSettingsChange={newSettings =>
+              setState(prev => {
+                ...prev,
+                model: {...prev.model, settings: newSettings},
+                isDark: newSettings.theme === "dark",
+              })
+            }
+          />
         }}
       </div>
 
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~position="fixed",
           ~bottom="16px",
           ~right="16px",

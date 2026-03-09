@@ -151,7 +151,7 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
   <div
     key={Int.toString(port.number)}
     className="port-row"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~alignItems="center",
       ~justifyContent="space-between",
@@ -165,24 +165,24 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
       (),
     )}
   >
-    <div style={ReactDOM.Style.make(~display="flex", ~alignItems="center", ~gap="16px", ())}>
-      <span style={ReactDOM.Style.make(~fontSize="24px", ())}>
+    <div style={Sx.make(~display="flex", ~alignItems="center", ~gap="16px", ())}>
+      <span style={Sx.make(~fontSize="24px", ())}>
         {riskIndicator(port.risk)->React.string}
       </span>
       <div>
-        <div style={ReactDOM.Style.make(~fontSize="16px", ~fontWeight="700", ~color="#e0e6ed", ())}>
+        <div style={Sx.make(~fontSize="16px", ~fontWeight="700", ~color="#e0e6ed", ())}>
           {("Port " ++ Int.toString(port.number))->React.string}
         </div>
-        <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ~marginTop="2px", ())}>
+        <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ~marginTop="2px", ())}>
           {(port.protocol ++ " - " ++ port.description)->React.string}
         </div>
       </div>
     </div>
 
-    <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
+    <div style={Sx.make(~display="flex", ~gap="8px", ())}>
       <button
         onClick={_ => dispatch(SetPortState(port.number, Closed))}
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="8px 16px",
           ~background=port.state == Closed ? "#4caf50" : "#2a3142",
           ~color="white",
@@ -199,7 +199,7 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
 
       <button
         onClick={_ => dispatch(SetPortState(port.number, Ephemeral(300)))}
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="8px 16px",
           ~background=switch port.state {
           | Ephemeral(_) => "#ff9800"
@@ -219,7 +219,7 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
 
       <button
         onClick={_ => dispatch(SetPortState(port.number, Open))}
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="8px 16px",
           ~background=port.state == Open ? "#f44336" : "#2a3142",
           ~color="white",
@@ -236,7 +236,7 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~padding="6px 12px",
         ~background=stateColor(port.state),
         ~color="white",
@@ -257,7 +257,7 @@ let viewPortRow = (port: port, dispatch: msg => unit): React.element => {
 let viewEphemeralConfig = (state: state, dispatch: msg => unit): React.element => {
   <div
     className="ephemeral-config"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="24px",
       ~background="#1e2431",
       ~border="2px solid #ff9800",
@@ -267,7 +267,7 @@ let viewEphemeralConfig = (state: state, dispatch: msg => unit): React.element =
     )}
   >
     <h3
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~fontSize="18px",
         ~fontWeight="700",
         ~color="#ff9800",
@@ -279,7 +279,7 @@ let viewEphemeralConfig = (state: state, dispatch: msg => unit): React.element =
     </h3>
 
     <p
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~fontSize="13px",
         ~color="#b0b8c4",
         ~marginBottom="16px",
@@ -290,9 +290,9 @@ let viewEphemeralConfig = (state: state, dispatch: msg => unit): React.element =
       {"Ephemeral pinholes automatically close after a set duration. Perfect for temporary access (SSH debugging, database migrations, etc.)."->React.string}
     </p>
 
-    <div style={ReactDOM.Style.make(~marginBottom="16px", ())}>
+    <div style={Sx.make(~marginBottom="16px", ())}>
       <label
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="12px",
           ~color="#8892a6",
           ~marginBottom="8px",
@@ -302,13 +302,13 @@ let viewEphemeralConfig = (state: state, dispatch: msg => unit): React.element =
       >
         {"Duration:"->React.string}
       </label>
-      <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ~flexWrap="wrap", ())}>
+      <div style={Sx.make(~display="flex", ~gap="8px", ~flexWrap="wrap", ())}>
         {[30, 60, 300, 600, 1800, 3600, 7200, 14400, 43200, 86400]
         ->Array.map(seconds => {
           <button
             key={Int.toString(seconds)}
             onClick={_ => dispatch(SetEphemeralDuration(seconds))}
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="8px 16px",
               ~background=state.ephemeralDuration == seconds ? "#4a9eff" : "#2a3142",
               ~color="white",
@@ -328,7 +328,7 @@ let viewEphemeralConfig = (state: state, dispatch: msg => unit): React.element =
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~padding="12px",
         ~background="rgba(255, 152, 0, 0.1)",
         ~border="1px solid #ff9800",
@@ -386,11 +386,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
   <div
     className="port-config-panel"
-    style={ReactDOM.Style.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
+    style={Sx.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
   >
-    <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
+    <div style={Sx.make(~marginBottom="32px", ())}>
       <h1
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
@@ -400,13 +400,13 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {"🔌 Port Configuration"->React.string}
       </h1>
-      <p style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
+      <p style={Sx.make(~fontSize="16px", ~color="#8892a6", ())}>
         {"Configure which ports are accessible and for how long"->React.string}
       </p>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="grid",
         ~gridTemplateColumns="repeat(4, 1fr)",
         ~gap="16px",
@@ -446,7 +446,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       ->Array.map(((label, count, color)) => {
         <div
           key={label}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="20px",
             ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
             ~border="2px solid #2a3142",
@@ -456,7 +456,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           )}
         >
           <div
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~fontSize="36px",
               ~fontWeight="700",
               ~color,
@@ -466,7 +466,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           >
             {Int.toString(count)->React.string}
           </div>
-          <div style={ReactDOM.Style.make(~fontSize="13px", ~color="#8892a6", ())}>
+          <div style={Sx.make(~fontSize="13px", ~color="#8892a6", ())}>
             {label->React.string}
           </div>
         </div>
@@ -476,7 +476,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
     <button
       onClick={_ => dispatch(ToggleEphemeralConfig)}
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~padding="12px 24px",
         ~background="linear-gradient(135deg, #ff9800, #f57c00)",
         ~color="white",
@@ -494,12 +494,12 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
     {state.showEphemeralConfig ? viewEphemeralConfig(state, dispatch) : React.null}
 
-    <div style={ReactDOM.Style.make(~marginTop="24px", ())}>
+    <div style={Sx.make(~marginTop="24px", ())}>
       {Array.map(state.ports, port => viewPortRow(port, dispatch))->React.array}
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginTop="32px",
         ~padding="20px",
         ~background="rgba(244, 67, 54, 0.1)",
@@ -509,7 +509,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       )}
     >
       <h4
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="16px",
           ~fontWeight="700",
           ~color="#f44336",
@@ -520,7 +520,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         {"⚠️ Security Best Practices"->React.string}
       </h4>
       <ul
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="13px",
           ~color="#b0b8c4",
           ~lineHeight="1.8",

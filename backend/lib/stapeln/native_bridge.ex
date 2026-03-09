@@ -12,9 +12,12 @@ defmodule Stapeln.NativeBridge do
 
   alias Stapeln.StackStore
   alias Stapeln.ValidationEngine
+  alias Stapeln.SecurityScanner
+  alias Stapeln.GapAnalyzer
 
   @type op ::
           :list_stacks | :create_stack | :get_stack | :update_stack | :validate_stack
+          | :security_scan | :gap_analysis
 
   @spec backend() :: :zig_cli | :elixir
   def backend do
@@ -47,6 +50,16 @@ defmodule Stapeln.NativeBridge do
   @spec validate_stack(pos_integer()) :: {:ok, map()} | {:error, :not_found}
   def validate_stack(id) when is_integer(id) and id > 0 do
     dispatch(:validate_stack, %{id: id})
+  end
+
+  @spec security_scan(pos_integer()) :: {:ok, map()} | {:error, :not_found}
+  def security_scan(id) when is_integer(id) and id > 0 do
+    dispatch(:security_scan, %{id: id})
+  end
+
+  @spec gap_analysis(pos_integer()) :: {:ok, map()} | {:error, :not_found}
+  def gap_analysis(id) when is_integer(id) and id > 0 do
+    dispatch(:gap_analysis, %{id: id})
   end
 
   defp dispatch(op, payload) do
@@ -101,6 +114,20 @@ defmodule Stapeln.NativeBridge do
     with {:ok, stack} <- StackStore.get(id) do
       report = ValidationEngine.validate(stack)
       {:ok, Map.put(report, :stack, stack)}
+    end
+  end
+
+  defp call_fallback(:security_scan, %{id: id}) do
+    with {:ok, stack} <- StackStore.get(id) do
+      report = SecurityScanner.scan(stack)
+      {:ok, report}
+    end
+  end
+
+  defp call_fallback(:gap_analysis, %{id: id}) do
+    with {:ok, stack} <- StackStore.get(id) do
+      report = GapAnalyzer.analyze(stack)
+      {:ok, report}
     end
   end
 end

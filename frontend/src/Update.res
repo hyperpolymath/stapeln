@@ -85,7 +85,7 @@ let update = (model: model, msg: msg): model => {
     }
 
   // Drag and drop
-  | StartDragComponent(component, mousePos) => {
+  | StartDragComponent(component, _mousePos) => {
       let newModel = {...model, dragState: DraggingComponent(component)}
       newModel
     }
@@ -260,22 +260,127 @@ let update = (model: model, msg: msg): model => {
   // Security
   | RunSecurityScan => {
       Console.log("Running security scan...")
-      model
+      {...model, securityLoading: true}
     }
 
-  | SecurityScanResult(result) => {
-      Console.log("Security scan complete")
-      {...model, validationResult: Some(result)}
+  | SecurityScanLoading => {
+      {...model, securityLoading: true}
+    }
+
+  | SecurityScanResult(result) => switch result {
+    | Ok(_json) => {
+        Console.log("Security scan complete")
+        // For now, use the default SecurityInspector state since the
+        // backend JSON schema is not yet finalised. When the backend
+        // returns real data, parse it here.
+        {...model, securityState: Some(SecurityInspector.init), securityLoading: false}
+      }
+    | Error(err) => {
+        Console.error2("Security scan failed:", err)
+        {...model, securityLoading: false}
+      }
     }
 
   | RunGapAnalysis => {
       Console.log("Running gap analysis...")
+      {...model, gapLoading: true}
+    }
+
+  | GapAnalysisLoading => {
+      {...model, gapLoading: true}
+    }
+
+  | GapAnalysisResult(result) => switch result {
+    | Ok(_json) => {
+        Console.log("Gap analysis complete")
+        // For now, use the default GapAnalysis state since the
+        // backend JSON schema is not yet finalised.
+        {...model, gapState: Some(GapAnalysis.init), gapLoading: false}
+      }
+    | Error(err) => {
+        Console.error2("Gap analysis failed:", err)
+        {...model, gapLoading: false}
+      }
+    }
+
+  // Settings
+  | SaveSettings => {
+      Console.log("Saving settings to backend...")
       model
     }
 
-  | GapAnalysisResult(result) => {
-      Console.log("Gap analysis complete")
-      {...model, validationResult: Some(result)}
+  | LoadSettings => {
+      Console.log("Loading settings from backend...")
+      model
+    }
+
+  | SettingsSaved(result) => switch result {
+    | Ok() => {
+        Console.log("Settings saved successfully")
+        model
+      }
+    | Error(err) => {
+        Console.error2("Failed to save settings:", err)
+        model
+      }
+    }
+
+  | SettingsLoaded(result) => switch result {
+    | Ok(json) => {
+        // Parse JSON into settings fields
+        let obj = switch JSON.Classify.classify(json) {
+        | Object(d) => Some(d)
+        | _ => None
+        }
+        switch obj {
+        | Some(d) => {
+            let theme = switch Dict.get(d, "theme") {
+            | Some(v) =>
+              switch JSON.Classify.classify(v) {
+              | String(s) => s
+              | _ => model.settings.theme
+              }
+            | None => model.settings.theme
+            }
+            let defaultRuntime = switch Dict.get(d, "defaultRuntime") {
+            | Some(v) =>
+              switch JSON.Classify.classify(v) {
+              | String(s) => s
+              | _ => model.settings.defaultRuntime
+              }
+            | None => model.settings.defaultRuntime
+            }
+            let autoSave = switch Dict.get(d, "autoSave") {
+            | Some(v) =>
+              switch JSON.Classify.classify(v) {
+              | Bool(b) => b
+              | _ => model.settings.autoSave
+              }
+            | None => model.settings.autoSave
+            }
+            let backendUrl = switch Dict.get(d, "backendUrl") {
+            | Some(v) =>
+              switch JSON.Classify.classify(v) {
+              | String(s) => s
+              | _ => model.settings.backendUrl
+              }
+            | None => model.settings.backendUrl
+            }
+            let newSettings: settingsConfig = {
+              theme,
+              defaultRuntime,
+              autoSave,
+              backendUrl,
+            }
+            {...model, settings: newSettings}
+          }
+        | None => model
+        }
+      }
+    | Error(err) => {
+        Console.error2("Failed to load settings:", err)
+        model
+      }
     }
   }
 }

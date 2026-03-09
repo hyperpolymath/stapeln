@@ -36,6 +36,21 @@ type dragState =
   | DraggingComponent(component)
   | DraggingCanvas(position)
 
+// Settings stored in the model for backend persistence
+type settingsConfig = {
+  theme: string, // "dark" or "light"
+  defaultRuntime: string, // "podman", "docker", or "nerdctl"
+  autoSave: bool,
+  backendUrl: string,
+}
+
+let defaultSettingsConfig: settingsConfig = {
+  theme: "dark",
+  defaultRuntime: "podman",
+  autoSave: false,
+  backendUrl: "/api",
+}
+
 type rec model = {
   components: array<component>,
   connections: array<connection>,
@@ -44,6 +59,14 @@ type rec model = {
   canvasOffset: position,
   zoomLevel: float,
   validationResult: option<validationResult>,
+  // Security and gap analysis state from backend
+  securityState: option<SecurityInspector.state>,
+  gapState: option<GapAnalysis.state>,
+  securityLoading: bool,
+  gapLoading: bool,
+  currentStackId: option<int>,
+  // Settings
+  settings: settingsConfig,
 }
 
 and validationResult = {
@@ -60,6 +83,12 @@ let initialModel = {
   canvasOffset: {x: 0.0, y: 0.0},
   zoomLevel: 1.0,
   validationResult: None,
+  securityState: None,
+  gapState: None,
+  securityLoading: false,
+  gapLoading: false,
+  currentStackId: None,
+  settings: defaultSettingsConfig,
 }
 
 // Helper functions

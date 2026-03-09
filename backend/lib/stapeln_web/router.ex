@@ -13,6 +13,8 @@ defmodule StapelnWeb.Router do
     pipe_through :api
 
     get "/healthz", HealthController, :show
+    post "/auth/register", AuthController, :register
+    post "/auth/login", AuthController, :login
   end
 
   scope "/api", StapelnWeb do
@@ -23,6 +25,11 @@ defmodule StapelnWeb.Router do
     get "/stacks/:id", StackController, :show
     put "/stacks/:id", StackController, :update
     post "/stacks/:id/validate", StackController, :validate
+    post "/stacks/:id/security-scan", StackController, :security_scan
+    post "/stacks/:id/gap-analysis", StackController, :gap_analysis
+    get "/auth/me", AuthController, :me
+    get "/settings", SettingsController, :show
+    put "/settings", SettingsController, :update
     post "/security/panic-attacker", SecurityController, :start
     post "/security/panic-attacker/stop", SecurityController, :stop
     get "/security/panic-attacker/status", SecurityController, :status

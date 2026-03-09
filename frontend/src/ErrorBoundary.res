@@ -62,7 +62,7 @@ let make = (~children, ~fallback=?, ~onError=?) => {
       <div
         role="alert"
         ariaLive=#assertive
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~display="flex",
           ~flexDirection="column",
           ~alignItems="center",
@@ -74,9 +74,9 @@ let make = (~children, ~fallback=?, ~onError=?) => {
           (),
         )}
       >
-        <div style={ReactDOM.Style.make(~maxWidth="600px", ~textAlign="center", ())}>
+        <div style={Sx.make(~maxWidth="600px", ~textAlign="center", ())}>
           <h1
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~fontSize="2rem",
               ~fontWeight="700",
               ~marginBottom="1rem",
@@ -87,7 +87,7 @@ let make = (~children, ~fallback=?, ~onError=?) => {
           </h1>
 
           <p
-            style={ReactDOM.Style.make(~fontSize="1rem", ~marginBottom="2rem", ~opacity="0.8", ())}
+            style={Sx.make(~fontSize="1rem", ~marginBottom="2rem", ~opacity="0.8", ())}
           >
             {switch state.error {
             | Some(msg) => msg
@@ -96,12 +96,12 @@ let make = (~children, ~fallback=?, ~onError=?) => {
           </p>
 
           <div
-            style={ReactDOM.Style.make(~display="flex", ~gap="1rem", ~justifyContent="center", ())}
+            style={Sx.make(~display="flex", ~gap="1rem", ~justifyContent="center", ())}
           >
             <button
               onClick={_ => handleReset()}
               ariaLabel="Try again"
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="0.75rem 1.5rem",
                 ~backgroundColor="#C53030",
                 ~color="white",
@@ -121,7 +121,7 @@ let make = (~children, ~fallback=?, ~onError=?) => {
                 %raw(`window.location.href = '/'`)
               }}
               ariaLabel="Go to home page"
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="0.75rem 1.5rem",
                 ~backgroundColor="white",
                 ~color="#C53030",

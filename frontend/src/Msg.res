@@ -42,6 +42,13 @@ type msg =
   | StackLoaded(Result.t<model, string>)
   // Security
   | RunSecurityScan
-  | SecurityScanResult(validationResult)
+  | SecurityScanLoading
+  | SecurityScanResult(Result.t<JSON.t, string>)
   | RunGapAnalysis
-  | GapAnalysisResult(validationResult)
+  | GapAnalysisLoading
+  | GapAnalysisResult(Result.t<JSON.t, string>)
+  // Settings
+  | SaveSettings
+  | LoadSettings
+  | SettingsSaved(Result.t<unit, string>)
+  | SettingsLoaded(Result.t<JSON.t, string>)

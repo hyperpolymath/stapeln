@@ -181,7 +181,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
     <aside
       role="complementary"
       ariaLabel={"Configuration for " ++ componentTypeToString(comp.componentType)}
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~width="300px",
         ~padding="1.5rem",
         ~backgroundColor=isDark ? "#000000" : "#FFFFFF",
@@ -247,7 +247,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               step=0.1
               min="0.1"
               ariaLabel="CPU cores"
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~width="100%",
                 ~padding="0.5rem",
                 ~marginTop="0.25rem",
@@ -267,7 +267,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
               step=128.0
               min="128"
               ariaLabel="Memory in megabytes"
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~width="100%",
                 ~padding="0.5rem",
                 ~marginTop="0.25rem",
@@ -282,11 +282,11 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
         </fieldset>
 
         // Actions
-        <div style={ReactDOM.Style.make(~display="flex", ~gap="0.5rem", ~marginTop="1rem", ())}>
+        <div style={Sx.make(~display="flex", ~gap="0.5rem", ~marginTop="1rem", ())}>
           <button
             type_="submit"
             ariaLabel="Apply configuration changes"
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~flex="1",
               ~padding="0.75rem",
               ~backgroundColor=isDark ? "#66B2FF" : "#0052CC",
@@ -304,7 +304,7 @@ let renderConfigPanel = (component: option<component>, isDark: bool, dispatch) =
             type_="button"
             onClick={_ => dispatch(SelectComponent(None))}
             ariaLabel="Cancel configuration"
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~flex="1",
               ~padding="0.75rem",
               ~backgroundColor=isDark ? "#1A1A1A" : "#F5F5F5",
@@ -331,7 +331,7 @@ let view = (model: model, isDark: bool, dispatch) => {
   <div
     role="main"
     ariaLabel="Cisco-style network topology designer"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~height="100vh",
       ~backgroundColor=isDark ? "#000000" : "#FFFFFF",
@@ -375,7 +375,7 @@ let view = (model: model, isDark: bool, dispatch) => {
         <g
           key=comp.id
           onClick={_ => dispatch(SelectComponent(Some(comp.id)))}
-          style={ReactDOM.Style.make(~cursor="pointer", ())}
+          style={Sx.make(~cursor="pointer", ())}
         >
           {renderShape(comp, isSelected, isDark)}
           <text
@@ -384,7 +384,7 @@ let view = (model: model, isDark: bool, dispatch) => {
             textAnchor="middle"
             dominantBaseline="middle"
             fill={isDark ? "#FFFFFF" : "#000000"}
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~fontSize="14px",
               ~fontWeight="600",
               ~pointerEvents="none",

@@ -49,6 +49,26 @@ defmodule StapelnWeb.StackController do
     end
   end
 
+  def security_scan(conn, %{"id" => raw_id}) do
+    with {:ok, id} <- parse_id(raw_id),
+         {:ok, report} <- Stacks.security_scan(id) do
+      json(conn, %{data: report})
+    else
+      {:error, :invalid_id} -> bad_request(conn, "invalid stack id")
+      {:error, :not_found} -> not_found(conn)
+    end
+  end
+
+  def gap_analysis(conn, %{"id" => raw_id}) do
+    with {:ok, id} <- parse_id(raw_id),
+         {:ok, report} <- Stacks.gap_analysis(id) do
+      json(conn, %{data: report})
+    else
+      {:error, :invalid_id} -> bad_request(conn, "invalid stack id")
+      {:error, :not_found} -> not_found(conn)
+    end
+  end
+
   defp serialize_report(report) do
     %{
       score: report.score,

@@ -5,20 +5,20 @@
     "strict": true
   },
   "tasks": {
-    "dev": "deno run --allow-net --allow-read --allow-env --watch server.ts",
+    "dev": "deno run --allow-net --allow-read --allow-env --watch server.js",
     "build": "rescript build && deno bundle src/App.res.js dist/bundle.js",
     "clean": "rescript clean",
-    "serve": "deno run --allow-net --allow-read server.ts"
+    "serve": "deno run --allow-net --allow-read server.js"
   },
   "importMap": "./import_map.json",
   "fmt": {
     "files": {
-      "include": ["src/", "server.ts"]
+      "include": ["src/", "server.js"]
     }
   },
   "lint": {
     "files": {
-      "include": ["src/", "server.ts"]
+      "include": ["src/", "server.js"]
     }
   }
 }

@@ -325,24 +325,24 @@ let gradeColor = (grade: grade): string => {
 
 // View: Metric bar
 let viewMetricBar = (label: string, value: int, color: string): React.element => {
-  <div style={ReactDOM.Style.make(~marginBottom="16px", ())}>
+  <div style={Sx.make(~marginBottom="16px", ())}>
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~justifyContent="space-between",
         ~marginBottom="8px",
         (),
       )}
     >
-      <span style={ReactDOM.Style.make(~fontSize="14px", ~fontWeight="600", ~color="#e0e6ed", ())}>
+      <span style={Sx.make(~fontSize="14px", ~fontWeight="600", ~color="#e0e6ed", ())}>
         {label->React.string}
       </span>
-      <span style={ReactDOM.Style.make(~fontSize="14px", ~fontWeight="700", ~color, ())}>
+      <span style={Sx.make(~fontSize="14px", ~fontWeight="700", ~color, ())}>
         {(Int.toString(value) ++ "%")->React.string}
       </span>
     </div>
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~width="100%",
         ~height="8px",
         ~background="#2a3142",
@@ -352,7 +352,7 @@ let viewMetricBar = (label: string, value: int, color: string): React.element =>
       )}
     >
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~width=Int.toString(value) ++ "%",
           ~height="100%",
           ~background=color,
@@ -368,7 +368,7 @@ let viewMetricBar = (label: string, value: int, color: string): React.element =>
 let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.element => {
   <div
     key={vuln.id}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="16px",
       ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
       ~border="2px solid #2a3142",
@@ -380,9 +380,9 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
     )}
     onClick={_ => dispatch(SelectVulnerability(vuln.id))}
   >
-    <div style={ReactDOM.Style.make(~display="flex", ~alignItems="flex-start", ~gap="12px", ())}>
+    <div style={Sx.make(~display="flex", ~alignItems="flex-start", ~gap="12px", ())}>
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="4px 12px",
           ~background=severityColor(vuln.severity),
           ~color="white",
@@ -398,9 +398,9 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
         {severityLabel(vuln.severity)->React.string}
       </div>
 
-      <div style={ReactDOM.Style.make(~flex="1", ())}>
+      <div style={Sx.make(~flex="1", ())}>
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="15px",
             ~fontWeight="700",
             ~color="#e0e6ed",
@@ -411,7 +411,7 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
           {vuln.title->React.string}
         </div>
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="13px",
             ~color="#8892a6",
             ~marginBottom="8px",
@@ -422,19 +422,19 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
           {vuln.description->React.string}
         </div>
 
-        <div style={ReactDOM.Style.make(~display="flex", ~gap="16px", ~alignItems="center", ())}>
-          <span style={ReactDOM.Style.make(~fontSize="12px", ~color="#6b7a90", ())}>
+        <div style={Sx.make(~display="flex", ~gap="16px", ~alignItems="center", ())}>
+          <span style={Sx.make(~fontSize="12px", ~color="#6b7a90", ())}>
             {"Component: "->React.string}
-            <strong style={ReactDOM.Style.make(~color="#4a9eff", ())}>
+            <strong style={Sx.make(~color="#4a9eff", ())}>
               {vuln.affectedComponent->React.string}
             </strong>
           </span>
 
           {switch vuln.cveId {
           | Some(cveId) =>
-            <span style={ReactDOM.Style.make(~fontSize="12px", ~color="#6b7a90", ())}>
+            <span style={Sx.make(~fontSize="12px", ~color="#6b7a90", ())}>
               {"CVE: "->React.string}
-              <strong style={ReactDOM.Style.make(~color="#ff9800", ())}>
+              <strong style={Sx.make(~color="#ff9800", ())}>
                 {cveId->React.string}
               </strong>
             </span>
@@ -447,7 +447,7 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
                   ReactEvent.Mouse.stopPropagation(e)
                   dispatch(ApplyFix(vuln.id))
                 }}
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~padding="6px 12px",
                   ~background="linear-gradient(135deg, #4caf50, #66bb6a)",
                   ~color="white",
@@ -467,7 +467,7 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
         {switch vuln.fixDescription {
         | Some(desc) =>
           <div
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~marginTop="12px",
               ~padding="12px",
               ~background="rgba(76, 175, 80, 0.1)",
@@ -478,7 +478,7 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
               (),
             )}
           >
-            <strong style={ReactDOM.Style.make(~color="#4caf50", ())}>
+            <strong style={Sx.make(~color="#4caf50", ())}>
               {"Fix: "->React.string}
             </strong>
             {desc->React.string}
@@ -494,7 +494,7 @@ let viewVulnerability = (vuln: vulnerability, dispatch: msg => unit): React.elem
 let viewSecurityCheck = (check: securityCheck): React.element => {
   <div
     key={check.name}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~alignItems="center",
       ~justifyContent="space-between",
@@ -506,21 +506,21 @@ let viewSecurityCheck = (check: securityCheck): React.element => {
       (),
     )}
   >
-    <div style={ReactDOM.Style.make(~display="flex", ~alignItems="center", ~gap="12px", ())}>
-      <span style={ReactDOM.Style.make(~fontSize="24px", ())}>
+    <div style={Sx.make(~display="flex", ~alignItems="center", ~gap="12px", ())}>
+      <span style={Sx.make(~fontSize="24px", ())}>
         {checkResultIcon(check.result)->React.string}
       </span>
       <div>
-        <div style={ReactDOM.Style.make(~fontSize="14px", ~fontWeight="600", ~color="#e0e6ed", ())}>
+        <div style={Sx.make(~fontSize="14px", ~fontWeight="600", ~color="#e0e6ed", ())}>
           {check.name->React.string}
         </div>
-        <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ~marginTop="2px", ())}>
+        <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ~marginTop="2px", ())}>
           {check.description->React.string}
         </div>
       </div>
     </div>
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~padding="6px 12px",
         ~background=checkResultColor(check.result),
         ~color="white",
@@ -541,7 +541,7 @@ let viewSecurityCheck = (check: securityCheck): React.element => {
 let viewExposedPort = (port: exposedPort): React.element => {
   <div
     key={Int.toString(port.port)}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~alignItems="center",
       ~justifyContent="space-between",
@@ -553,24 +553,24 @@ let viewExposedPort = (port: exposedPort): React.element => {
       (),
     )}
   >
-    <div style={ReactDOM.Style.make(~display="flex", ~alignItems="center", ~gap="12px", ())}>
-      <span style={ReactDOM.Style.make(~fontSize="16px", ~fontWeight="700", ~color="#4a9eff", ())}>
+    <div style={Sx.make(~display="flex", ~alignItems="center", ~gap="12px", ())}>
+      <span style={Sx.make(~fontSize="16px", ~fontWeight="700", ~color="#4a9eff", ())}>
         {Int.toString(port.port)->React.string}
       </span>
       <div>
-        <div style={ReactDOM.Style.make(~fontSize="13px", ~fontWeight="600", ~color="#e0e6ed", ())}>
+        <div style={Sx.make(~fontSize="13px", ~fontWeight="600", ~color="#e0e6ed", ())}>
           {port.service->React.string}
         </div>
-        <div style={ReactDOM.Style.make(~fontSize="11px", ~color="#8892a6", ())}>
+        <div style={Sx.make(~fontSize="11px", ~color="#8892a6", ())}>
           {port.protocol->React.string}
         </div>
       </div>
     </div>
 
-    <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ~alignItems="center", ())}>
+    <div style={Sx.make(~display="flex", ~gap="8px", ~alignItems="center", ())}>
       {port.publiclyAccessible
         ? <span
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="4px 8px",
               ~background="rgba(244, 67, 54, 0.2)",
               ~border="1px solid #f44336",
@@ -586,7 +586,7 @@ let viewExposedPort = (port: exposedPort): React.element => {
         : React.null}
 
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="4px 8px",
           ~background=switch port.risk {
           | "Critical" => "#d32f2f"
@@ -629,11 +629,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
   <div
     className="security-inspector"
-    style={ReactDOM.Style.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
+    style={Sx.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
   >
-    <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
+    <div style={Sx.make(~marginBottom="32px", ())}>
       <h1
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #f44336, #ff9800)",
@@ -643,13 +643,13 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {"🛡️ Security Inspector"->React.string}
       </h1>
-      <p style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
+      <p style={Sx.make(~fontSize="16px", ~color="#8892a6", ())}>
         {"Real-time attack surface analysis and vulnerability assessment"->React.string}
       </p>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~alignItems="center",
         ~justifyContent="center",
@@ -661,9 +661,9 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         (),
       )}
     >
-      <div style={ReactDOM.Style.make(~textAlign="center", ())}>
+      <div style={Sx.make(~textAlign="center", ())}>
         <div
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~fontSize="72px",
             ~fontWeight="900",
             ~color=gradeColor(state.grade),
@@ -673,14 +673,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         >
           {gradeDisplay(state.grade)->React.string}
         </div>
-        <div style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
+        <div style={Sx.make(~fontSize="16px", ~color="#8892a6", ())}>
           {"Security Grade"->React.string}
         </div>
       </div>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~padding="24px",
         ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
         ~border="2px solid #2a3142",
@@ -690,7 +690,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       )}
     >
       <h3
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="20px",
           ~fontWeight="700",
           ~color="#e0e6ed",
@@ -707,9 +707,9 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {viewMetricBar("Compliance", state.metrics.compliance, "#9c27b0")}
     </div>
 
-    <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
+    <div style={Sx.make(~marginBottom="32px", ())}>
       <h3
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="20px",
           ~fontWeight="700",
           ~color="#e0e6ed",
@@ -722,9 +722,9 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {Array.map(state.checks, check => viewSecurityCheck(check))->React.array}
     </div>
 
-    <div style={ReactDOM.Style.make(~marginBottom="32px", ())}>
+    <div style={Sx.make(~marginBottom="32px", ())}>
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~display="flex",
           ~justifyContent="space-between",
           ~alignItems="center",
@@ -732,14 +732,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
           (),
         )}
       >
-        <h3 style={ReactDOM.Style.make(~fontSize="20px", ~fontWeight="700", ~color="#e0e6ed", ())}>
+        <h3 style={Sx.make(~fontSize="20px", ~fontWeight="700", ~color="#e0e6ed", ())}>
           {"🚨 Vulnerabilities ("->React.string}
           {Int.toString(Array.length(state.vulnerabilities))->React.string}
           {")"->React.string}
         </h3>
         <button
           onClick={_ => dispatch(RunSecurityScan)}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="10px 20px",
             ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
             ~color="white",
@@ -758,7 +758,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       {Array.length(state.vulnerabilities) > 0
         ? Array.map(state.vulnerabilities, vuln => viewVulnerability(vuln, dispatch))->React.array
         : <div
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="40px",
               ~background="rgba(76, 175, 80, 0.1)",
               ~border="2px solid #4caf50",
@@ -767,11 +767,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               (),
             )}
           >
-            <div style={ReactDOM.Style.make(~fontSize="48px", ~marginBottom="16px", ())}>
+            <div style={Sx.make(~fontSize="48px", ~marginBottom="16px", ())}>
               {"✅"->React.string}
             </div>
             <div
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~fontSize="18px",
                 ~fontWeight="700",
                 ~color="#4caf50",
@@ -781,7 +781,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             >
               {"No Vulnerabilities Detected"->React.string}
             </div>
-            <div style={ReactDOM.Style.make(~fontSize="14px", ~color="#8892a6", ())}>
+            <div style={Sx.make(~fontSize="14px", ~color="#8892a6", ())}>
               {"Your stack meets all security requirements"->React.string}
             </div>
           </div>}
@@ -789,7 +789,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
     <div>
       <h3
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="20px",
           ~fontWeight="700",
           ~color="#e0e6ed",
@@ -803,7 +803,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginTop="32px",
         ~padding="20px",
         ~background="rgba(255, 152, 0, 0.1)",
@@ -813,7 +813,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       )}
     >
       <h4
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="16px",
           ~fontWeight="700",
           ~color="#ff9800",
@@ -823,7 +823,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {"⚠️ Security Intelligence"->React.string}
       </h4>
-      <p style={ReactDOM.Style.make(~fontSize="13px", ~color="#b0b8c4", ~lineHeight="1.8", ())}>
+      <p style={Sx.make(~fontSize="13px", ~color="#b0b8c4", ~lineHeight="1.8", ())}>
         {"Security analysis powered by miniKanren reasoning engine. All findings logged to VeriSimDB for compliance audit. Auto-fix applies verified security patches with formal verification proofs."->React.string}
       </p>
     </div>

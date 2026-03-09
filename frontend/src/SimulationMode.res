@@ -352,7 +352,7 @@ let speedLabel = (speed: simSpeed): string => {
 let viewNode = (node: nodePosition): React.element => {
   <div
     key={node.id}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~position="absolute",
       ~left=Float.toString(node.x -. 50.0) ++ "px",
       ~top=Float.toString(node.y -. 40.0) ++ "px",
@@ -370,11 +370,11 @@ let viewNode = (node: nodePosition): React.element => {
       (),
     )}
   >
-    <div style={ReactDOM.Style.make(~fontSize="24px", ~marginBottom="4px", ())}>
+    <div style={Sx.make(~fontSize="24px", ~marginBottom="4px", ())}>
       {"🖥️"->React.string}
     </div>
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~fontSize="11px",
         ~fontWeight="600",
         ~color="#e0e6ed",
@@ -395,7 +395,7 @@ let viewPacket = (packet: packet, dispatch: msg => unit): React.element => {
   <div
     key={packet.id}
     onClick={_ => dispatch(SelectPacket(packet.id))}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~position="absolute",
       ~left=Float.toString(x -. 15.0) ++ "px",
       ~top=Float.toString(y -. 15.0) ++ "px",
@@ -456,7 +456,7 @@ let viewEvent = (event: networkEvent, index: int): React.element => {
 
   <div
     key={Int.toString(index)}
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="8px 12px",
       ~background="rgba(255, 255, 255, 0.05)",
       ~borderLeft="3px solid " ++ color,
@@ -467,7 +467,7 @@ let viewEvent = (event: networkEvent, index: int): React.element => {
       (),
     )}
   >
-    <span style={ReactDOM.Style.make(~marginRight="8px", ())}> {icon->React.string} </span>
+    <span style={Sx.make(~marginRight="8px", ())}> {icon->React.string} </span>
     {message->React.string}
   </div>
 }
@@ -515,11 +515,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
   <div
     className="simulation-mode"
-    style={ReactDOM.Style.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
+    style={Sx.make(~padding="32px", ~background="#0a0e1a", ~minHeight="100vh", ())}
   >
-    <div style={ReactDOM.Style.make(~marginBottom="24px", ())}>
+    <div style={Sx.make(~marginBottom="24px", ())}>
       <h1
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="32px",
           ~fontWeight="700",
           ~background="linear-gradient(135deg, #4a9eff, #00bcd4)",
@@ -529,13 +529,13 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {"🎮 Simulation Mode"->React.string}
       </h1>
-      <p style={ReactDOM.Style.make(~fontSize="16px", ~color="#8892a6", ())}>
+      <p style={Sx.make(~fontSize="16px", ~color="#8892a6", ())}>
         {"Cisco Packet Tracer-style network simulation"->React.string}
       </p>
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~display="flex",
         ~gap="16px",
         ~padding="16px",
@@ -546,11 +546,11 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         (),
       )}
     >
-      <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
+      <div style={Sx.make(~display="flex", ~gap="8px", ())}>
         {!state.isRunning
           ? <button
               onClick={_ => dispatch(StartSimulation)}
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="10px 20px",
                 ~background="linear-gradient(135deg, #4caf50, #66bb6a)",
                 ~color="white",
@@ -566,7 +566,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
             </button>
           : <button
               onClick={_ => dispatch(PauseSimulation)}
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="10px 20px",
                 ~background="linear-gradient(135deg, #ff9800, #ffb74d)",
                 ~color="white",
@@ -583,7 +583,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
         <button
           onClick={_ => dispatch(StopSimulation)}
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~padding="10px 20px",
             ~background="linear-gradient(135deg, #f44336, #e57373)",
             ~color="white",
@@ -599,13 +599,13 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         </button>
       </div>
 
-      <div style={ReactDOM.Style.make(~display="flex", ~gap="8px", ())}>
+      <div style={Sx.make(~display="flex", ~gap="8px", ())}>
         {[Slow, Normal, Fast, VeryFast]
         ->Array.map(speed =>
           <button
             key={speedLabel(speed)}
             onClick={_ => dispatch(SetSpeed(speed))}
-            style={ReactDOM.Style.make(
+            style={Sx.make(
               ~padding="8px 16px",
               ~background=state.speed == speed ? "#4a9eff" : "#2a3142",
               ~color="white",
@@ -625,7 +625,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
       <button
         onClick={_ => dispatch(SendPacket("node-1", "node-3", HTTPS))}
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~padding="10px 20px",
           ~background="linear-gradient(135deg, #4a9eff, #7b6cff)",
           ~color="white",
@@ -641,9 +641,9 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </button>
     </div>
 
-    <div style={ReactDOM.Style.make(~display="flex", ~gap="24px", ())}>
+    <div style={Sx.make(~display="flex", ~gap="24px", ())}>
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~flex="1",
           ~position="relative",
           ~height="600px",
@@ -659,7 +659,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         {Array.map(state.packets, packet => viewPacket(packet, dispatch))->React.array}
 
         <svg
-          style={ReactDOM.Style.make(
+          style={Sx.make(
             ~position="absolute",
             ~top="0",
             ~left="0",
@@ -692,7 +692,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       </div>
 
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~width="300px",
           ~display="flex",
           ~flexDirection="column",
@@ -702,7 +702,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
       >
         {state.showStats
           ? <div
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~padding="20px",
                 ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
                 ~border="2px solid #2a3142",
@@ -711,7 +711,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               )}
             >
               <h3
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~fontSize="16px",
                   ~fontWeight="700",
                   ~color="#e0e6ed",
@@ -723,7 +723,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               </h3>
 
               <div
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~display="flex",
                   ~flexDirection="column",
                   ~gap="12px",
@@ -732,7 +732,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               >
                 <div>
                   <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="24px",
                       ~fontWeight="700",
                       ~color="#4a9eff",
@@ -741,14 +741,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   >
                     {Int.toString(state.totalPacketsSent)->React.string}
                   </div>
-                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                  <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Packets Sent"->React.string}
                   </div>
                 </div>
 
                 <div>
                   <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="24px",
                       ~fontWeight="700",
                       ~color="#4caf50",
@@ -757,14 +757,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   >
                     {Int.toString(state.totalPacketsDelivered)->React.string}
                   </div>
-                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                  <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Delivered"->React.string}
                   </div>
                 </div>
 
                 <div>
                   <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="24px",
                       ~fontWeight="700",
                       ~color="#f44336",
@@ -773,14 +773,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   >
                     {Int.toString(state.totalPacketsDropped)->React.string}
                   </div>
-                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                  <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Dropped"->React.string}
                   </div>
                 </div>
 
                 <div>
                   <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="24px",
                       ~fontWeight="700",
                       ~color="#ff9800",
@@ -789,14 +789,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   >
                     {Int.toString(Array.length(state.packets))->React.string}
                   </div>
-                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                  <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"In Transit"->React.string}
                   </div>
                 </div>
 
                 <div>
                   <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="20px",
                       ~fontWeight="700",
                       ~color="#8892a6",
@@ -805,14 +805,14 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   >
                     {Int.toString(maxActivePackets)->React.string}
                   </div>
-                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                  <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Packet Cap"->React.string}
                   </div>
                 </div>
 
                 <div>
                   <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="20px",
                       ~fontWeight="700",
                       ~color="#00bcd4",
@@ -821,7 +821,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                   >
                     {(isBatchWasmActive() ? "WASM" : "JS")->React.string}
                   </div>
-                  <div style={ReactDOM.Style.make(~fontSize="12px", ~color="#8892a6", ())}>
+                  <div style={Sx.make(~fontSize="12px", ~color="#8892a6", ())}>
                     {"Packet Kernel"->React.string}
                   </div>
                 </div>
@@ -831,7 +831,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
 
         {state.showEventLog
           ? <div
-              style={ReactDOM.Style.make(
+              style={Sx.make(
                 ~flex="1",
                 ~padding="20px",
                 ~background="linear-gradient(135deg, #1e2431 0%, #252d3d 100%)",
@@ -843,7 +843,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
               )}
             >
               <div
-                style={ReactDOM.Style.make(
+                style={Sx.make(
                   ~display="flex",
                   ~justifyContent="space-between",
                   ~marginBottom="12px",
@@ -851,7 +851,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 )}
               >
                 <h3
-                  style={ReactDOM.Style.make(
+                  style={Sx.make(
                     ~fontSize="16px",
                     ~fontWeight="700",
                     ~color="#e0e6ed",
@@ -862,7 +862,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                 </h3>
                 <button
                   onClick={_ => dispatch(ClearEvents)}
-                  style={ReactDOM.Style.make(
+                  style={Sx.make(
                     ~padding="4px 12px",
                     ~background="#2a3142",
                     ~color="#8892a6",
@@ -882,7 +882,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
                     viewEvent(event, index)
                   )->React.array
                 : <div
-                    style={ReactDOM.Style.make(
+                    style={Sx.make(
                       ~fontSize="12px",
                       ~color="#8892a6",
                       ~textAlign="center",
@@ -898,7 +898,7 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
     </div>
 
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~marginTop="24px",
         ~padding="16px",
         ~background="rgba(74, 158, 255, 0.1)",
@@ -907,10 +907,10 @@ let make = (~initialState: option<state>=?, ~onStateChange: option<state => unit
         (),
       )}
     >
-      <strong style={ReactDOM.Style.make(~fontSize="13px", ~color="#4a9eff", ())}>
+      <strong style={Sx.make(~fontSize="13px", ~color="#4a9eff", ())}>
         {"💡 Simulation Tips: "->React.string}
       </strong>
-      <span style={ReactDOM.Style.make(~fontSize="13px", ~color="#b0b8c4", ())}>
+      <span style={Sx.make(~fontSize="13px", ~color="#b0b8c4", ())}>
         {"Click packets for details. Adjust speed to observe traffic patterns. Use test packets to verify connectivity."->React.string}
       </span>
     </div>

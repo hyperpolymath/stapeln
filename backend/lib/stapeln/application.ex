@@ -12,6 +12,8 @@ defmodule Stapeln.Application do
       {DNSCluster, query: Application.get_env(:stapeln, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Stapeln.PubSub},
       Stapeln.StackStore,
+      Stapeln.Auth.UserStore,
+      Stapeln.SettingsStore,
       {Task.Supervisor, name: Stapeln.TaskSupervisor},
       # Start a worker by calling: Stapeln.Worker.start_link(arg)
       # {Stapeln.Worker, arg},

@@ -95,7 +95,7 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
   <div
     key={toast.id}
     className="toast"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~position="relative",
       ~display="flex",
       ~alignItems="center",
@@ -113,7 +113,7 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
     )}
   >
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~fontSize="24px",
         ~lineHeight="1",
         ~color=toastColor(toast.toastType),
@@ -123,9 +123,9 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
       {toastIcon(toast.toastType)->React.string}
     </div>
 
-    <div style={ReactDOM.Style.make(~flex="1", ())}>
+    <div style={Sx.make(~flex="1", ())}>
       <div
-        style={ReactDOM.Style.make(
+        style={Sx.make(
           ~fontSize="12px",
           ~fontWeight="600",
           ~color=toastColor(toast.toastType),
@@ -137,14 +137,14 @@ let viewToast = (toast: toast, dispatch: msg => unit): React.element => {
       >
         {toastLabel(toast.toastType)->React.string}
       </div>
-      <div style={ReactDOM.Style.make(~fontSize="14px", ~color="#e0e6ed", ~lineHeight="1.4", ())}>
+      <div style={Sx.make(~fontSize="14px", ~color="#e0e6ed", ~lineHeight="1.4", ())}>
         {toast.message->React.string}
       </div>
     </div>
 
     <button
       onClick={_ => dispatch(DismissToast(toast.id))}
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~background="transparent",
         ~border="none",
         ~color="#8892a6",
@@ -184,7 +184,7 @@ let make = (~toasts: array<toast>, ~dispatch: msg => unit) => {
 
   <div
     className="toast-container"
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~position="fixed",
       ~top="24px",
       ~right="24px",

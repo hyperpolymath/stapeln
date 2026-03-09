@@ -13,7 +13,7 @@ let spinner = (~size="default", ~color="#0052CC", ~label="Loading...") => {
     role="status"
     ariaLabel=label
     ariaLive=#polite
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~display="flex",
       ~alignItems="center",
       ~justifyContent="center",
@@ -22,7 +22,7 @@ let spinner = (~size="default", ~color="#0052CC", ~label="Loading...") => {
     )}
   >
     <div
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~width=spinnerSize,
         ~height=spinnerSize,
         ~border="4px solid #E2E8F0",
@@ -33,7 +33,7 @@ let spinner = (~size="default", ~color="#0052CC", ~label="Loading...") => {
       )}
     />
     <span
-      style={ReactDOM.Style.make(
+      style={Sx.make(
         ~position="absolute",
         ~left="-10000px",
         ~width="1px",
@@ -52,7 +52,7 @@ let skeleton = (~width="100%", ~height="20px", ~borderRadius="4px", ~marginBotto
   <div
     role="status"
     ariaLabel="Loading content..."
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~width,
       ~height,
       ~backgroundColor="#E2E8F0",
@@ -67,7 +67,7 @@ let skeleton = (~width="100%", ~height="20px", ~borderRadius="4px", ~marginBotto
 // Skeleton for a list item
 let skeletonListItem = () => {
   <div
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~padding="1rem",
       ~marginBottom="0.5rem",
       ~border="1px solid #E2E8F0",
@@ -87,7 +87,7 @@ let overlay = (~message="Loading...", ~isDark=false) => {
     role="status"
     ariaLabel=message
     ariaLive=#polite
-    style={ReactDOM.Style.make(
+    style={Sx.make(
       ~position="fixed",
       ~top="0",
       ~left="0",
@@ -104,7 +104,7 @@ let overlay = (~message="Loading...", ~isDark=false) => {
     )}
   >
     {spinner(~size="large", ~color=isDark ? "#66B2FF" : "#0052CC", ~label=message)}
-    <p style={ReactDOM.Style.make(~marginTop="1rem", ~fontSize="1.1rem", ~fontWeight="600", ())}>
+    <p style={Sx.make(~marginTop="1rem", ~fontSize="1.1rem", ~fontWeight="600", ())}>
       {message->React.string}
     </p>
   </div>
