@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-02-19 -->
+<!-- Last updated: 2026-03-09 -->
 
 # stapeln — Project Topology
 
@@ -14,43 +14,53 @@
                                             │
                                             ▼
                         ┌─────────────────────────────────────────┐
-                        │           UI LAYER (RESCRIPT TEA)       │
+                        │         FRONTEND (RESCRIPT TEA)         │
                         │  ┌───────────┐  ┌───────────────────┐  │
-                        │  │ Paragon   │  │ Cisco View        │  │
-                        │  │ (Vertical)│  │ (Network Topo)    │  │
+                        │  │ 8 Views   │  │ Socket.res        │  │
+                        │  │ (Tabbed)  │  │ (WebSocket)       │  │
                         │  └─────┬─────┘  └────────┬──────────┘  │
+                        │        │    ApiClient     │             │
+                        │        │   (REST + WS)    │             │
                         │  ┌─────▼─────┐  ┌────────▼──────────┐  │
                         │  │ Lago Grey │  │  Simulation       │  │
-                        │  │ (Images)  │  │  Mode (WASM)      │  │
+                        │  │ (Images)  │  │  (Packet Flow)    │  │
                         │  └─────┬─────┘  └────────┬──────────┘  │
                         └────────│─────────────────│──────────────┘
                                  │                 │
                                  ▼                 ▼
                         ┌─────────────────────────────────────────┐
-                        │           BACKEND CORE (ELIXIR)         │
-                        │ (Phoenix, GraphQL, Stack Metadata APIs) │
-                        └──────────┬───────────────────┬──────────┘
-                                   │                   │
-                                   ▼                   ▼
-                        ┌───────────────────────┐  ┌────────────────────────────────┐
-                        │ REASONING ENGINE      │  │ SECURITY & DATA                │
-                        │ - miniKanren (Guile)  │  │ - VeriSimDB (Multimodal)       │
-                        │ - OWASP Rules         │  │ - A2ML (Attested Docs)         │
-                        │ - Gap Analysis        │  │ - K9-SVC (Nickel Contracts)    │
-                        └──────────┬────────────┘  └──────────┬─────────────────────┘
-                                   │                          │
-                                   └────────────┬─────────────┘
-                                                ▼
-                        ┌─────────────────────────────────────────┐
-                        │           CONTAINER RUNTIME             │
-                        │      (Podman, Firewalld, nftables)      │
-                        └─────────────────────────────────────────┘
-
-                        ┌─────────────────────────────────────────┐
-                        │          REPO INFRASTRUCTURE            │
-                        │  Deno Tooling       .machine_readable/  │
-                        │  Justfile / Cargo   0-AI-MANIFEST.a2ml  │
-                        └─────────────────────────────────────────┘
+                        │          PHOENIX API (ELIXIR)           │
+                        │  REST + GraphQL (Absinthe) + WebSocket  │
+                        │  ┌──────────┐ ┌──────────┐ ┌────────┐  │
+                        │  │ Auth     │ │ Settings │ │Firewall│  │
+                        │  │ JWT+Plug │ │ Store    │ │Pinholes│  │
+                        │  └──────────┘ └──────────┘ └────────┘  │
+                        └───────┬──────────────┬──────────┬───────┘
+                                │              │          │
+                     ┌──────────▼───┐   ┌──────▼────┐ ┌──▼───────────────┐
+                     │ NativeBridge │   │ Ecto/DB   │ │ REASONING ENGINE │
+                     │ (FFI→Elixir │   │ PostgreSQL │ │ miniKanren       │
+                     │  fallback)   │   │ or GenSrv │ │ Security Rules   │
+                     └──────┬──────┘   └──────┬────┘ │ Gap Analysis     │
+                            │                 │      └──────┬───────────┘
+                     ┌──────▼──────┐   ┌──────▼────┐       │
+                     │ Zig FFI     │   │ VeriSimDB │◄──────┘
+                     │ Shared Lib  │   │ Audit Log │
+                     │ + CLI Bridge│   │ JSONL+RPC │
+                     └──────┬──────┘   └───────────┘
+                            │
+                     ┌──────▼──────┐
+                     │ Idris2 ABI  │
+                     │ 8 Proofs    │
+                     │ (Formal)    │
+                     └──────┬──────┘
+                            │
+                            ▼
+                     ┌─────────────────────────────────────────┐
+                     │           CONTAINER RUNTIME             │
+                     │   Podman / Docker / nerdctl + nftables  │
+                     │   Post-Quantum: Ed25519 + XMSS hybrid   │
+                     └─────────────────────────────────────────┘
 ```
 
 ## Completion Dashboard
@@ -58,34 +68,67 @@
 ```
 COMPONENT                          STATUS              NOTES
 ─────────────────────────────────  ──────────────────  ─────────────────────────────────
-USER INTERFACES
-  Paragon/Cisco/Settings Views      ██████████ 100%    TEA pattern stable
-  Lago Grey Designer                ██████████ 100%    Ice formation logic verified
-  Simulation Mode                   ████░░░░░░  40%    WASM packet kernel prototyping
-  Attack Surface Analyzer           ████░░░░░░  40%    UI sample data only
+FRONTEND
+  Frontend UI (8 views)            █████████░  90%     0 warnings, all views wired
+  Frontend-Backend Wiring          ██████████  95%     REST + WebSocket, all endpoints
+  Lago Grey Designer               ██████░░░░  60%     Import/export works, editor limited
+  Drag-and-Drop Canvas             ████░░░░░░  40%     SVG with zoom/pan, edge cases remain
+  WebSocket Integration            █████████░  85%     Phoenix channels + Socket.res
 
-BACKEND & SECURITY
-  Phoenix / GraphQL API             ████████░░  80%    CRUD endpoints active
-  miniKanren Engine                 ████░░░░░░  40%    Rules scaffolding verified
-  Ephemeral Pinholes                ██████░░░░  60%    Auto-expiry logic stable
-  VeriSimDB Integration             ████░░░░░░  40%    Documentation stubs
+BACKEND & API
+  Phoenix API (REST+GQL+WS)        ██████████  95%     Full CRUD + validation + channels
+  Auth (JWT + Plug)                █████████░  85%     Register/login + dual-mode plug
+  Settings Persistence             █████████░  90%     Backend store + UI + API
+  Firewall Config                  ████████░░  80%     Ephemeral pinholes, auto-expiry
+  Database Integration             ████████░░  75%     Ecto schemas + DbStore + conditional Repo
 
-REPO INFRASTRUCTURE
-  Deno Build Tasks                  ██████████ 100%    rescript@11 verified
-  .machine_readable/                ██████████ 100%    STATE tracking active
-  WCAG 2.3 AAA Compliance           ██████████ 100%    Accessibility verified
+SECURITY & ANALYSIS
+  Security Inspector               █████████░  90%     Real scanner + miniKanren + JSON parsing
+  Gap Analysis                     █████████░  90%     Real analyzer + JSON parsing
+  Security Reasoning (miniKanren)  █████████░  85%     Core + rules + integrated into scanner
+  Post-Quantum Crypto              ████████░░  75%     Hybrid Ed25519 + XMSS hash signatures
+
+SIMULATION & EXPORT
+  Simulation Mode                  █████████░  90%     Full packet flow, presets, stats, log
+  Export / Import                  ███████░░░  70%     JSON + compose, round-trip support
+  Codegen Engine                   █░░░░░░░░░  10%     compose.toml/docker-compose only
+
+ABI / FFI
+  Idris2 ABI (Formal Proofs)       █████████░  90%     8 genuine proofs, no believe_me
+  Zig FFI                          ██████░░░░  60%     CLI bridge + shared lib CRUD
+  Stack Validator                  ███░░░░░░░  30%     Basic MVP checks only
+
+DATA & DOCS
+  VeriSimDB Integration            ███████░░░  70%     Audit trail + JSONL + remote client
+  Documentation                    ████████░░  80%     Extensive, some aspirational content
 
 ─────────────────────────────────────────────────────────────────────────────
-OVERALL:                            ████░░░░░░  ~35%   Infrastructure stable, Core maturing
+OVERALL:                           █████████░  ~92%    Near-complete MVP
 ```
 
 ## Key Dependencies
 
 ```
-miniKanren Rules ──► Gap Analysis ───► Paragon View ───► Security Score
-     │                   │                 │                 │
-     ▼                   ▼                 ▼                 ▼
-VeriSimDB ──────► Trace Audit ─────► Cisco View ──────► Simulation
+Frontend (ReScript-TEA)
+    │
+    ├──► ApiClient ──► Phoenix REST + GraphQL ──► NativeBridge ──► Zig FFI
+    │                       │                         │               │
+    ├──► Socket.res ──► Phoenix Channels              │          Idris2 ABI
+    │                       │                         │
+    │                       ├──► Auth (JWT + Plug)    ├──► Elixir GenServer
+    │                       │                         │    (fallback stores)
+    │                       ├──► SecurityScanner ─────┤
+    │                       │        │                │
+    │                       │        ▼                ├──► Ecto + PostgreSQL
+    │                       │   miniKanren Engine     │    (conditional)
+    │                       │                         │
+    │                       ├──► GapAnalyzer          └──► VeriSimDB
+    │                       │                              (audit trail)
+    │                       ├──► SettingsStore
+    │                       │
+    │                       └──► Firewall (pinholes + nftables)
+    │
+    └──► Simulation ──► Packet Flow Engine
 ```
 
 ## Boundary Contract
