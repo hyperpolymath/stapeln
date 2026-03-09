@@ -8,7 +8,15 @@
 import Config
 
 config :stapeln,
+  ecto_repos: [Stapeln.Repo],
   generators: [timestamp_type: :utc_datetime]
+
+config :stapeln, Stapeln.Repo,
+  database: "stapeln_dev",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  port: 5432
 
 config :stapeln, :api_auth,
   enabled: true,

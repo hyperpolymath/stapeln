@@ -1,5 +1,16 @@
 import Config
 
+# Configure the Repo for development
+config :stapeln, Stapeln.Repo,
+  database: "stapeln_dev",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  port: 5432,
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #

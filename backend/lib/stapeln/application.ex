@@ -7,19 +7,32 @@ defmodule Stapeln.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      StapelnWeb.Telemetry,
-      {DNSCluster, query: Application.get_env(:stapeln, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Stapeln.PubSub},
-      Stapeln.StackStore,
-      Stapeln.Auth.UserStore,
-      Stapeln.SettingsStore,
-      {Task.Supervisor, name: Stapeln.TaskSupervisor},
-      # Start a worker by calling: Stapeln.Worker.start_link(arg)
-      # {Stapeln.Worker, arg},
-      # Start to serve requests, typically the last entry
-      StapelnWeb.Endpoint
-    ]
+    # Optionally start the Ecto Repo when ecto_sql is available and
+    # PostgreSQL is configured. Falls back to GenServer stores otherwise.
+    repo_children =
+      if Code.ensure_loaded?(Stapeln.Repo) do
+        [Stapeln.Repo]
+      else
+        []
+      end
+
+    children =
+      [
+        StapelnWeb.Telemetry,
+        {DNSCluster, query: Application.get_env(:stapeln, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: Stapeln.PubSub}
+      ] ++
+        repo_children ++
+        [
+          Stapeln.StackStore,
+          Stapeln.Auth.UserStore,
+          Stapeln.SettingsStore,
+          {Task.Supervisor, name: Stapeln.TaskSupervisor},
+          # Start a worker by calling: Stapeln.Worker.start_link(arg)
+          # {Stapeln.Worker, arg},
+          # Start to serve requests, typically the last entry
+          StapelnWeb.Endpoint
+        ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

@@ -4,6 +4,446 @@ import * as Model from "./Model.res.js";
 import * as Export from "./Export.res.js";
 import * as Import from "./Import.res.js";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
+import * as GapAnalysis from "./GapAnalysis.res.js";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as SecurityInspector from "./SecurityInspector.res.js";
+
+function jsonString(json, fallback) {
+  let s = Stdlib_JSON.Classify.classify(json);
+  if (typeof s !== "object" || s.TAG !== "String") {
+    return fallback;
+  } else {
+    return s._0;
+  }
+}
+
+function jsonInt(json, fallback) {
+  let n = Stdlib_JSON.Classify.classify(json);
+  if (typeof n !== "object" || n.TAG !== "Number") {
+    return fallback;
+  } else {
+    return n._0 | 0;
+  }
+}
+
+function jsonBool(json, fallback) {
+  let b = Stdlib_JSON.Classify.classify(json);
+  if (typeof b !== "object" || b.TAG !== "Bool") {
+    return fallback;
+  } else {
+    return b._0;
+  }
+}
+
+function jsonDict(json) {
+  let d = Stdlib_JSON.Classify.classify(json);
+  if (typeof d !== "object" || d.TAG !== "Object") {
+    return;
+  } else {
+    return d._0;
+  }
+}
+
+function jsonArray(json) {
+  let arr = Stdlib_JSON.Classify.classify(json);
+  if (typeof arr !== "object") {
+    return [];
+  } else if (arr.TAG === "Array") {
+    return arr._0;
+  } else {
+    return [];
+  }
+}
+
+function jsonOptString(json) {
+  let s = Stdlib_JSON.Classify.classify(json);
+  if (typeof s !== "object" || s.TAG !== "String") {
+    return;
+  } else {
+    return s._0;
+  }
+}
+
+function jsonOptStringArray(json) {
+  let arr = Stdlib_JSON.Classify.classify(json);
+  if (typeof arr !== "object" || arr.TAG !== "Array") {
+    return;
+  } else {
+    return Belt_Array.map(arr._0, item => jsonString(item, ""));
+  }
+}
+
+function jsonStringArray(json) {
+  let arr = Stdlib_JSON.Classify.classify(json);
+  if (typeof arr !== "object") {
+    return [];
+  } else if (arr.TAG === "Array") {
+    return Belt_Array.map(arr._0, item => jsonString(item, ""));
+  } else {
+    return [];
+  }
+}
+
+function field(d, key) {
+  return d[key];
+}
+
+function parseSeverity(s) {
+  let match = s.toLowerCase();
+  switch (match) {
+    case "critical" :
+      return "Critical";
+    case "high" :
+      return "High";
+    case "low" :
+      return "Low";
+    case "medium" :
+      return "Medium";
+    default:
+      return "Info";
+  }
+}
+
+function parseCheckResult(s) {
+  let match = s.toLowerCase();
+  switch (match) {
+    case "fail" :
+      return "Fail";
+    case "pass" :
+      return "Pass";
+    case "warning" :
+      return "Warning";
+    default:
+      return "Unknown";
+  }
+}
+
+function parseGrade(s) {
+  switch (s) {
+    case "A" :
+      return "A";
+    case "A+" :
+      return "APlus";
+    case "A-" :
+      return "AMinus";
+    case "B" :
+      return "B";
+    case "B+" :
+      return "BPlus";
+    case "B-" :
+      return "BMinus";
+    case "C" :
+      return "C";
+    case "C+" :
+      return "CPlus";
+    case "C-" :
+      return "CMinus";
+    case "D" :
+      return "D";
+    default:
+      return "F";
+  }
+}
+
+function parseVulnerability(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return;
+  }
+  let v = d["id"];
+  let id = v !== undefined ? jsonString(v, "") : "";
+  if (id === "") {
+    return;
+  }
+  let v$1 = d["title"];
+  let v$2 = d["severity"];
+  let v$3 = d["description"];
+  let v$4 = d["affectedComponent"];
+  let v$5 = d["cveId"];
+  let v$6 = d["fixAvailable"];
+  let v$7 = d["fixDescription"];
+  return {
+    id: id,
+    title: v$1 !== undefined ? jsonString(v$1, "Unknown") : "Unknown",
+    severity: v$2 !== undefined ? parseSeverity(jsonString(v$2, "info")) : "Info",
+    description: v$3 !== undefined ? jsonString(v$3, "") : "",
+    affectedComponent: v$4 !== undefined ? jsonString(v$4, "") : "",
+    cveId: v$5 !== undefined ? jsonOptString(v$5) : undefined,
+    fixAvailable: v$6 !== undefined ? jsonBool(v$6, false) : false,
+    fixDescription: v$7 !== undefined ? jsonOptString(v$7) : undefined
+  };
+}
+
+function parseSecurityCheck(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return;
+  }
+  let v = d["name"];
+  let v$1 = d["description"];
+  let v$2 = d["result"];
+  let v$3 = d["details"];
+  return {
+    name: v !== undefined ? jsonString(v, "Unknown") : "Unknown",
+    description: v$1 !== undefined ? jsonString(v$1, "") : "",
+    result: v$2 !== undefined ? parseCheckResult(jsonString(v$2, "unknown")) : "Unknown",
+    details: v$3 !== undefined ? jsonString(v$3, "") : ""
+  };
+}
+
+function parseExposedPort(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return;
+  }
+  let v = d["port"];
+  let v$1 = d["protocol"];
+  let v$2 = d["service"];
+  let v$3 = d["risk"];
+  let v$4 = d["publiclyAccessible"];
+  return {
+    port: v !== undefined ? jsonInt(v, 0) : 0,
+    protocol: v$1 !== undefined ? jsonString(v$1, "TCP") : "TCP",
+    service: v$2 !== undefined ? jsonString(v$2, "Unknown") : "Unknown",
+    risk: v$3 !== undefined ? jsonString(v$3, "Low") : "Low",
+    publiclyAccessible: v$4 !== undefined ? jsonBool(v$4, false) : false
+  };
+}
+
+function parseMetrics(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return {
+      security: 0,
+      performance: 0,
+      reliability: 0,
+      compliance: 0
+    };
+  }
+  let v = d["security"];
+  let v$1 = d["performance"];
+  let v$2 = d["reliability"];
+  let v$3 = d["compliance"];
+  return {
+    security: v !== undefined ? jsonInt(v, 0) : 0,
+    performance: v$1 !== undefined ? jsonInt(v$1, 0) : 0,
+    reliability: v$2 !== undefined ? jsonInt(v$2, 0) : 0,
+    compliance: v$3 !== undefined ? jsonInt(v$3, 0) : 0
+  };
+}
+
+function filterMap(arr, f) {
+  return Belt_Array.reduce(arr, [], (acc, item) => {
+    let v = f(item);
+    if (v !== undefined) {
+      return Belt_Array.concat(acc, [Primitive_option.valFromOption(v)]);
+    } else {
+      return acc;
+    }
+  });
+}
+
+function parseSecurityScanJson(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return SecurityInspector.init;
+  }
+  let v = d["metrics"];
+  let metrics = v !== undefined ? parseMetrics(v) : ({
+      security: 0,
+      performance: 0,
+      reliability: 0,
+      compliance: 0
+    });
+  let v$1 = d["grade"];
+  let grade = v$1 !== undefined ? parseGrade(jsonString(v$1, "F")) : "F";
+  let v$2 = d["vulnerabilities"];
+  let vulnerabilities = v$2 !== undefined ? filterMap(jsonArray(v$2), parseVulnerability) : [];
+  let v$3 = d["checks"];
+  let checks = v$3 !== undefined ? filterMap(jsonArray(v$3), parseSecurityCheck) : [];
+  let v$4 = d["exposedPorts"];
+  let exposedPorts = v$4 !== undefined ? filterMap(jsonArray(v$4), parseExposedPort) : [];
+  return {
+    metrics: metrics,
+    grade: grade,
+    vulnerabilities: vulnerabilities,
+    checks: checks,
+    exposedPorts: exposedPorts,
+    selectedVulnerability: undefined,
+    showDetails: true,
+    filterSeverity: undefined
+  };
+}
+
+function parseGapCategory(s) {
+  let match = s.toLowerCase();
+  switch (match) {
+    case "compliance" :
+      return "Compliance";
+    case "performance" :
+      return "Performance";
+    case "reliability" :
+      return "Reliability";
+    case "security" :
+      return "Security";
+    default:
+      return "BestPractice";
+  }
+}
+
+function parseGapSeverity(s) {
+  let match = s.toLowerCase();
+  switch (match) {
+    case "critical" :
+      return "Critical";
+    case "high" :
+      return "High";
+    case "medium" :
+      return "Medium";
+    default:
+      return "Low";
+  }
+}
+
+function parseFixConfidence(s) {
+  let match = s.toLowerCase();
+  switch (match) {
+    case "high" :
+      return "High";
+    case "low" :
+      return "Low";
+    case "medium" :
+      return "Medium";
+    case "verified" :
+      return "Verified";
+    default:
+      return "Manual";
+  }
+}
+
+function parseIssueSource(s) {
+  let other = s.toLowerCase();
+  switch (other) {
+    case "automated_scan" :
+    case "automatedscan" :
+      return "AutomatedScan";
+    case "ci_workflow" :
+    case "ciworkflow" :
+      return "CIWorkflow";
+    case "hypatia_agent" :
+    case "hypatiaagent" :
+      return "HypatiaAgent";
+    case "manual_review" :
+    case "manualreview" :
+      return "ManualReview";
+    case "minikanren_reasoning" :
+    case "minikanrenreasoning" :
+      return "MiniKanrenReasoning";
+    case "verisimdb_query" :
+    case "verisimdbquery" :
+      return "VeriSimDBQuery";
+    default:
+      return {
+        TAG: "ThirdPartyTool",
+        _0: other
+      };
+  }
+}
+
+function parseImpactScope(s, components) {
+  let match = s.toLowerCase();
+  switch (match) {
+    case "external_dependencies" :
+    case "externaldependencies" :
+      return "ExternalDependencies";
+    case "multiple_components" :
+    case "multiplecomponents" :
+      return {
+        TAG: "MultipleComponents",
+        _0: components
+      };
+    case "single_component" :
+    case "singlecomponent" :
+      break;
+    default:
+      return "EntireStack";
+  }
+  let c = Belt_Array.get(components, 0);
+  if (c !== undefined) {
+    return {
+      TAG: "SingleComponent",
+      _0: c
+    };
+  } else {
+    return {
+      TAG: "SingleComponent",
+      _0: "unknown"
+    };
+  }
+}
+
+function parseGap(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return;
+  }
+  let v = d["id"];
+  let id = v !== undefined ? jsonString(v, "") : "";
+  if (id === "") {
+    return;
+  }
+  let v$1 = d["affectedComponents"];
+  let affectedComponents = v$1 !== undefined ? jsonStringArray(v$1) : [];
+  let v$2 = d["title"];
+  let v$3 = d["category"];
+  let v$4 = d["severity"];
+  let v$5 = d["description"];
+  let v$6 = d["impact"];
+  let v$7 = d["source"];
+  let v$8 = d["scope"];
+  let v$9 = d["fixAvailable"];
+  let v$10 = d["fixConfidence"];
+  let v$11 = d["fixDescription"];
+  let v$12 = d["fixCommands"];
+  let v$13 = d["estimatedEffort"];
+  let v$14 = d["tags"];
+  return {
+    id: id,
+    title: v$2 !== undefined ? jsonString(v$2, "Unknown") : "Unknown",
+    category: v$3 !== undefined ? parseGapCategory(jsonString(v$3, "best_practice")) : "BestPractice",
+    severity: v$4 !== undefined ? parseGapSeverity(jsonString(v$4, "low")) : "Low",
+    description: v$5 !== undefined ? jsonString(v$5, "") : "",
+    impact: v$6 !== undefined ? jsonString(v$6, "") : "",
+    source: v$7 !== undefined ? parseIssueSource(jsonString(v$7, "automated_scan")) : "AutomatedScan",
+    scope: v$8 !== undefined ? parseImpactScope(jsonString(v$8, "entire_stack"), affectedComponents) : "EntireStack",
+    affectedComponents: affectedComponents,
+    fixAvailable: v$9 !== undefined ? jsonBool(v$9, false) : false,
+    fixConfidence: v$10 !== undefined ? parseFixConfidence(jsonString(v$10, "manual")) : "Manual",
+    fixDescription: v$11 !== undefined ? jsonOptString(v$11) : undefined,
+    fixCommands: v$12 !== undefined ? jsonOptStringArray(v$12) : undefined,
+    estimatedEffort: v$13 !== undefined ? jsonString(v$13, "unknown") : "unknown",
+    tags: v$14 !== undefined ? jsonStringArray(v$14) : []
+  };
+}
+
+function parseGapAnalysisJson(json) {
+  let d = jsonDict(json);
+  if (d === undefined) {
+    return GapAnalysis.init;
+  }
+  let v = d["gaps"];
+  let gaps = v !== undefined ? filterMap(jsonArray(v), parseGap) : [];
+  return {
+    gaps: gaps,
+    appliedFixes: undefined,
+    selectedGap: undefined,
+    filterCategory: undefined,
+    filterSeverity: undefined,
+    showOnlyFixable: false,
+    sortBy: "BySeverity"
+  };
+}
 
 function update(model, msg) {
   if (typeof msg !== "object") {
@@ -16,7 +456,13 @@ function update(model, msg) {
           dragState: "NotDragging",
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ZoomIn" :
         let newZoom = Math.min(model.zoomLevel * 1.2, 3.0);
@@ -27,7 +473,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: newZoom,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ZoomOut" :
         let newZoom$1 = Math.max(model.zoomLevel / 1.2, 0.5);
@@ -38,7 +490,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: newZoom$1,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ResetZoom" :
         return {
@@ -51,7 +509,13 @@ function update(model, msg) {
             y: 0.0
           },
           zoomLevel: 1.0,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ValidateStack" :
         let result_valid = model.components.length !== 0;
@@ -69,7 +533,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: result
+          validationResult: result,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ExportToSelurCompose" :
         Export.exportToSelurCompose(model);
@@ -88,7 +558,79 @@ function update(model, msg) {
         });
         return model;
       case "SaveStack" :
-        console.log("Saving stack...");
+        console.log("Saving stack to backend...");
+        return model;
+      case "RunSecurityScan" :
+        console.log("Running security scan...");
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: true,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
+        };
+      case "SecurityScanLoading" :
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: true,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
+        };
+      case "RunGapAnalysis" :
+        console.log("Running gap analysis...");
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: true,
+          currentStackId: model.currentStackId,
+          settings: model.settings
+        };
+      case "GapAnalysisLoading" :
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: true,
+          currentStackId: model.currentStackId,
+          settings: model.settings
+        };
+      case "SaveSettings" :
+        console.log("Saving settings to backend...");
+        return model;
+      case "LoadSettings" :
+        console.log("Loading settings from backend...");
         return model;
     }
   } else {
@@ -111,7 +653,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "RemoveComponent" :
         let id = msg._0;
@@ -130,7 +678,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "UpdateComponentPosition" :
         let position = msg._1;
@@ -154,7 +708,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "UpdateComponentConfig" :
         let config = msg._1;
@@ -178,7 +738,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "SelectComponent" :
         return {
@@ -188,7 +754,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "AddConnection" :
         let toId = msg._1;
@@ -211,7 +783,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "RemoveConnection" :
         let id$3 = msg._0;
@@ -223,7 +801,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "StartDragComponent" :
         return {
@@ -236,7 +820,13 @@ function update(model, msg) {
           },
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "StartDragCanvas" :
         return {
@@ -249,7 +839,13 @@ function update(model, msg) {
           },
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "DragMove" :
         let mousePos = msg._0;
@@ -286,7 +882,13 @@ function update(model, msg) {
             },
             canvasOffset: model.canvasOffset,
             zoomLevel: model.zoomLevel,
-            validationResult: model.validationResult
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: model.gapState,
+            securityLoading: model.securityLoading,
+            gapLoading: model.gapLoading,
+            currentStackId: model.currentStackId,
+            settings: model.settings
           };
         }
         let startPos = component._0;
@@ -308,7 +910,13 @@ function update(model, msg) {
           },
           canvasOffset: newOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "PanCanvas" :
         return {
@@ -318,7 +926,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: msg._0,
           zoomLevel: model.zoomLevel,
-          validationResult: model.validationResult
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ValidationResult" :
         return {
@@ -328,7 +942,13 @@ function update(model, msg) {
           dragState: model.dragState,
           canvasOffset: model.canvasOffset,
           zoomLevel: model.zoomLevel,
-          validationResult: msg._0
+          validationResult: msg._0,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
         };
       case "ExportDesignToJson" :
         Export.exportDesignToJson(model, msg._0);
@@ -358,11 +978,183 @@ function update(model, msg) {
         }
         console.error("Failed to load stack:", result$2._0);
         return model;
+      case "SecurityScanResult" :
+        let result$3 = msg._0;
+        if (result$3.TAG === "Ok") {
+          console.log("Security scan complete");
+          let parsed = parseSecurityScanJson(result$3._0);
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: parsed,
+            gapState: model.gapState,
+            securityLoading: false,
+            gapLoading: model.gapLoading,
+            currentStackId: model.currentStackId,
+            settings: model.settings
+          };
+        }
+        console.error("Security scan failed:", result$3._0);
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: false,
+          gapLoading: model.gapLoading,
+          currentStackId: model.currentStackId,
+          settings: model.settings
+        };
+      case "GapAnalysisResult" :
+        let result$4 = msg._0;
+        if (result$4.TAG === "Ok") {
+          console.log("Gap analysis complete");
+          let parsed$1 = parseGapAnalysisJson(result$4._0);
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: parsed$1,
+            securityLoading: model.securityLoading,
+            gapLoading: false,
+            currentStackId: model.currentStackId,
+            settings: model.settings
+          };
+        }
+        console.error("Gap analysis failed:", result$4._0);
+        return {
+          components: model.components,
+          connections: model.connections,
+          selectedComponent: model.selectedComponent,
+          dragState: model.dragState,
+          canvasOffset: model.canvasOffset,
+          zoomLevel: model.zoomLevel,
+          validationResult: model.validationResult,
+          securityState: model.securityState,
+          gapState: model.gapState,
+          securityLoading: model.securityLoading,
+          gapLoading: false,
+          currentStackId: model.currentStackId,
+          settings: model.settings
+        };
+      case "SettingsSaved" :
+        let result$5 = msg._0;
+        if (result$5.TAG === "Ok") {
+          console.log("Settings saved successfully");
+          return model;
+        }
+        console.error("Failed to save settings:", result$5._0);
+        return model;
+      case "SettingsLoaded" :
+        let result$6 = msg._0;
+        if (result$6.TAG === "Ok") {
+          let d = Stdlib_JSON.Classify.classify(result$6._0);
+          let obj;
+          obj = typeof d !== "object" || d.TAG !== "Object" ? undefined : d._0;
+          if (obj === undefined) {
+            return model;
+          }
+          let v = obj["theme"];
+          let theme;
+          if (v !== undefined) {
+            let s = Stdlib_JSON.Classify.classify(v);
+            theme = typeof s !== "object" || s.TAG !== "String" ? model.settings.theme : s._0;
+          } else {
+            theme = model.settings.theme;
+          }
+          let v$1 = obj["defaultRuntime"];
+          let defaultRuntime;
+          if (v$1 !== undefined) {
+            let s$1 = Stdlib_JSON.Classify.classify(v$1);
+            defaultRuntime = typeof s$1 !== "object" || s$1.TAG !== "String" ? model.settings.defaultRuntime : s$1._0;
+          } else {
+            defaultRuntime = model.settings.defaultRuntime;
+          }
+          let v$2 = obj["autoSave"];
+          let autoSave;
+          if (v$2 !== undefined) {
+            let b = Stdlib_JSON.Classify.classify(v$2);
+            autoSave = typeof b !== "object" || b.TAG !== "Bool" ? model.settings.autoSave : b._0;
+          } else {
+            autoSave = model.settings.autoSave;
+          }
+          let v$3 = obj["backendUrl"];
+          let backendUrl;
+          if (v$3 !== undefined) {
+            let s$2 = Stdlib_JSON.Classify.classify(v$3);
+            backendUrl = typeof s$2 !== "object" || s$2.TAG !== "String" ? model.settings.backendUrl : s$2._0;
+          } else {
+            backendUrl = model.settings.backendUrl;
+          }
+          let newSettings = {
+            theme: theme,
+            defaultRuntime: defaultRuntime,
+            autoSave: autoSave,
+            backendUrl: backendUrl
+          };
+          return {
+            components: model.components,
+            connections: model.connections,
+            selectedComponent: model.selectedComponent,
+            dragState: model.dragState,
+            canvasOffset: model.canvasOffset,
+            zoomLevel: model.zoomLevel,
+            validationResult: model.validationResult,
+            securityState: model.securityState,
+            gapState: model.gapState,
+            securityLoading: model.securityLoading,
+            gapLoading: model.gapLoading,
+            currentStackId: model.currentStackId,
+            settings: newSettings
+          };
+        }
+        console.error("Failed to load settings:", result$6._0);
+        return model;
     }
   }
 }
 
 export {
+  jsonString,
+  jsonInt,
+  jsonBool,
+  jsonDict,
+  jsonArray,
+  jsonOptString,
+  jsonOptStringArray,
+  jsonStringArray,
+  field,
+  parseSeverity,
+  parseCheckResult,
+  parseGrade,
+  parseVulnerability,
+  parseSecurityCheck,
+  parseExposedPort,
+  parseMetrics,
+  filterMap,
+  parseSecurityScanJson,
+  parseGapCategory,
+  parseGapSeverity,
+  parseFixConfidence,
+  parseIssueSource,
+  parseImpactScope,
+  parseGap,
+  parseGapAnalysisJson,
   update,
 }
 /* Export Not a pure module */

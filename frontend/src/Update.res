@@ -4,6 +4,439 @@
 open Model
 open Msg
 
+// ---------------------------------------------------------------------------
+// JSON parsing helpers
+// ---------------------------------------------------------------------------
+
+// Extract a string from a JSON value, with a default fallback
+let jsonString = (json: JSON.t, fallback: string): string =>
+  switch JSON.Classify.classify(json) {
+  | String(s) => s
+  | _ => fallback
+  }
+
+// Extract an int from a JSON value (JSON numbers are floats), with a default
+let jsonInt = (json: JSON.t, fallback: int): int =>
+  switch JSON.Classify.classify(json) {
+  | Number(n) => Float.toInt(n)
+  | _ => fallback
+  }
+
+// Extract a bool from a JSON value, with a default
+let jsonBool = (json: JSON.t, fallback: bool): bool =>
+  switch JSON.Classify.classify(json) {
+  | Bool(b) => b
+  | _ => fallback
+  }
+
+// Extract a dict from a JSON value
+let jsonDict = (json: JSON.t): option<Dict.t<JSON.t>> =>
+  switch JSON.Classify.classify(json) {
+  | Object(d) => Some(d)
+  | _ => None
+  }
+
+// Extract a JSON array, returning empty array on failure
+let jsonArray = (json: JSON.t): array<JSON.t> =>
+  switch JSON.Classify.classify(json) {
+  | Array(arr) => arr
+  | _ => []
+  }
+
+// Extract an optional string (returns None for JSON null or missing)
+let jsonOptString = (json: JSON.t): option<string> =>
+  switch JSON.Classify.classify(json) {
+  | String(s) => Some(s)
+  | Null => None
+  | _ => None
+  }
+
+// Extract an optional string array
+let jsonOptStringArray = (json: JSON.t): option<array<string>> =>
+  switch JSON.Classify.classify(json) {
+  | Array(arr) => Some(Array.map(arr, item => jsonString(item, "")))
+  | Null => None
+  | _ => None
+  }
+
+// Extract a string array, returning empty array on failure
+let jsonStringArray = (json: JSON.t): array<string> =>
+  switch JSON.Classify.classify(json) {
+  | Array(arr) => Array.map(arr, item => jsonString(item, ""))
+  | _ => []
+  }
+
+// Safe dict field accessor
+let field = (d: Dict.t<JSON.t>, key: string): option<JSON.t> => Dict.get(d, key)
+
+// ---------------------------------------------------------------------------
+// SecurityInspector JSON parsing
+// ---------------------------------------------------------------------------
+
+let parseSeverity = (s: string): SecurityInspector.severity =>
+  switch String.toLowerCase(s) {
+  | "critical" => Critical
+  | "high" => High
+  | "medium" => Medium
+  | "low" => Low
+  | _ => Info
+  }
+
+let parseCheckResult = (s: string): SecurityInspector.checkResult =>
+  switch String.toLowerCase(s) {
+  | "pass" => Pass
+  | "fail" => Fail
+  | "warning" => Warning
+  | _ => Unknown
+  }
+
+let parseGrade = (s: string): SecurityInspector.grade =>
+  switch s {
+  | "A+" => APlus
+  | "A" => A
+  | "A-" => AMinus
+  | "B+" => BPlus
+  | "B" => B
+  | "B-" => BMinus
+  | "C+" => CPlus
+  | "C" => C
+  | "C-" => CMinus
+  | "D" => D
+  | _ => F
+  }
+
+let parseVulnerability = (json: JSON.t): option<SecurityInspector.vulnerability> =>
+  switch jsonDict(json) {
+  | None => None
+  | Some(d) => {
+      let id = switch field(d, "id") {
+      | Some(v) => jsonString(v, "")
+      | None => ""
+      }
+      if id === "" {
+        None
+      } else {
+        let vuln: SecurityInspector.vulnerability = {
+          id,
+          title: switch field(d, "title") {
+          | Some(v) => jsonString(v, "Unknown")
+          | None => "Unknown"
+          },
+          severity: switch field(d, "severity") {
+          | Some(v) => parseSeverity(jsonString(v, "info"))
+          | None => Info
+          },
+          description: switch field(d, "description") {
+          | Some(v) => jsonString(v, "")
+          | None => ""
+          },
+          affectedComponent: switch field(d, "affectedComponent") {
+          | Some(v) => jsonString(v, "")
+          | None => ""
+          },
+          cveId: switch field(d, "cveId") {
+          | Some(v) => jsonOptString(v)
+          | None => None
+          },
+          fixAvailable: switch field(d, "fixAvailable") {
+          | Some(v) => jsonBool(v, false)
+          | None => false
+          },
+          fixDescription: switch field(d, "fixDescription") {
+          | Some(v) => jsonOptString(v)
+          | None => None
+          },
+        }
+        Some(vuln)
+      }
+    }
+  }
+
+let parseSecurityCheck = (json: JSON.t): option<SecurityInspector.securityCheck> =>
+  switch jsonDict(json) {
+  | None => None
+  | Some(d) => {
+      let check: SecurityInspector.securityCheck = {
+        name: switch field(d, "name") {
+        | Some(v) => jsonString(v, "Unknown")
+        | None => "Unknown"
+        },
+        description: switch field(d, "description") {
+        | Some(v) => jsonString(v, "")
+        | None => ""
+        },
+        result: switch field(d, "result") {
+        | Some(v) => parseCheckResult(jsonString(v, "unknown"))
+        | None => Unknown
+        },
+        details: switch field(d, "details") {
+        | Some(v) => jsonString(v, "")
+        | None => ""
+        },
+      }
+      Some(check)
+    }
+  }
+
+let parseExposedPort = (json: JSON.t): option<SecurityInspector.exposedPort> =>
+  switch jsonDict(json) {
+  | None => None
+  | Some(d) => {
+      let port: SecurityInspector.exposedPort = {
+        port: switch field(d, "port") {
+        | Some(v) => jsonInt(v, 0)
+        | None => 0
+        },
+        protocol: switch field(d, "protocol") {
+        | Some(v) => jsonString(v, "TCP")
+        | None => "TCP"
+        },
+        service: switch field(d, "service") {
+        | Some(v) => jsonString(v, "Unknown")
+        | None => "Unknown"
+        },
+        risk: switch field(d, "risk") {
+        | Some(v) => jsonString(v, "Low")
+        | None => "Low"
+        },
+        publiclyAccessible: switch field(d, "publiclyAccessible") {
+        | Some(v) => jsonBool(v, false)
+        | None => false
+        },
+      }
+      Some(port)
+    }
+  }
+
+let parseMetrics = (json: JSON.t): SecurityInspector.securityMetrics =>
+  switch jsonDict(json) {
+  | None => {security: 0, performance: 0, reliability: 0, compliance: 0}
+  | Some(d) => {
+      security: switch field(d, "security") {
+      | Some(v) => jsonInt(v, 0)
+      | None => 0
+      },
+      performance: switch field(d, "performance") {
+      | Some(v) => jsonInt(v, 0)
+      | None => 0
+      },
+      reliability: switch field(d, "reliability") {
+      | Some(v) => jsonInt(v, 0)
+      | None => 0
+      },
+      compliance: switch field(d, "compliance") {
+      | Some(v) => jsonInt(v, 0)
+      | None => 0
+      },
+    }
+  }
+
+// Filter-map helper: map then keep only Some values
+let filterMap = (arr: array<'a>, f: 'a => option<'b>): array<'b> =>
+  Array.reduce(arr, [], (acc, item) =>
+    switch f(item) {
+    | Some(v) => Array.concat(acc, [v])
+    | None => acc
+    }
+  )
+
+let parseSecurityScanJson = (json: JSON.t): SecurityInspector.state =>
+  switch jsonDict(json) {
+  | None => SecurityInspector.init
+  | Some(d) => {
+      let metrics = switch field(d, "metrics") {
+      | Some(v) => parseMetrics(v)
+      | None => {security: 0, performance: 0, reliability: 0, compliance: 0}
+      }
+      let grade = switch field(d, "grade") {
+      | Some(v) => parseGrade(jsonString(v, "F"))
+      | None => F
+      }
+      let vulnerabilities = switch field(d, "vulnerabilities") {
+      | Some(v) => filterMap(jsonArray(v), parseVulnerability)
+      | None => []
+      }
+      let checks = switch field(d, "checks") {
+      | Some(v) => filterMap(jsonArray(v), parseSecurityCheck)
+      | None => []
+      }
+      let exposedPorts = switch field(d, "exposedPorts") {
+      | Some(v) => filterMap(jsonArray(v), parseExposedPort)
+      | None => []
+      }
+      let state: SecurityInspector.state = {
+        metrics,
+        grade,
+        vulnerabilities,
+        checks,
+        exposedPorts,
+        selectedVulnerability: None,
+        showDetails: true,
+        filterSeverity: None,
+      }
+      state
+    }
+  }
+
+// ---------------------------------------------------------------------------
+// GapAnalysis JSON parsing
+// ---------------------------------------------------------------------------
+
+let parseGapCategory = (s: string): GapAnalysis.gapCategory =>
+  switch String.toLowerCase(s) {
+  | "security" => Security
+  | "compliance" => Compliance
+  | "performance" => Performance
+  | "reliability" => Reliability
+  | "best_practice" | "bestpractice" => BestPractice
+  | _ => BestPractice
+  }
+
+let parseGapSeverity = (s: string): GapAnalysis.gapSeverity =>
+  switch String.toLowerCase(s) {
+  | "critical" => Critical
+  | "high" => High
+  | "medium" => Medium
+  | _ => Low
+  }
+
+let parseFixConfidence = (s: string): GapAnalysis.fixConfidence =>
+  switch String.toLowerCase(s) {
+  | "verified" => Verified
+  | "high" => High
+  | "medium" => Medium
+  | "low" => Low
+  | _ => Manual
+  }
+
+let parseIssueSource = (s: string): GapAnalysis.issueSource =>
+  switch String.toLowerCase(s) {
+  | "manual_review" | "manualreview" => ManualReview
+  | "automated_scan" | "automatedscan" => AutomatedScan
+  | "ci_workflow" | "ciworkflow" => CIWorkflow
+  | "minikanren_reasoning" | "minikanrenreasoning" => MiniKanrenReasoning
+  | "verisimdb_query" | "verisimdbquery" => VeriSimDBQuery
+  | "hypatia_agent" | "hypatiaagent" => HypatiaAgent
+  | other => ThirdPartyTool(other)
+  }
+
+let parseImpactScope = (
+  s: string,
+  components: array<string>,
+): GapAnalysis.impactScope =>
+  switch String.toLowerCase(s) {
+  | "entire_stack" | "entirestack" => EntireStack
+  | "external_dependencies" | "externaldependencies" => ExternalDependencies
+  | "multiple_components" | "multiplecomponents" => MultipleComponents(components)
+  | "single_component" | "singlecomponent" =>
+    switch components[0] {
+    | Some(c) => SingleComponent(c)
+    | None => SingleComponent("unknown")
+    }
+  | _ => EntireStack
+  }
+
+let parseGap = (json: JSON.t): option<GapAnalysis.gap> =>
+  switch jsonDict(json) {
+  | None => None
+  | Some(d) => {
+      let id = switch field(d, "id") {
+      | Some(v) => jsonString(v, "")
+      | None => ""
+      }
+      if id === "" {
+        None
+      } else {
+        let affectedComponents = switch field(d, "affectedComponents") {
+        | Some(v) => jsonStringArray(v)
+        | None => []
+        }
+        let gap: GapAnalysis.gap = {
+          id,
+          title: switch field(d, "title") {
+          | Some(v) => jsonString(v, "Unknown")
+          | None => "Unknown"
+          },
+          category: switch field(d, "category") {
+          | Some(v) => parseGapCategory(jsonString(v, "best_practice"))
+          | None => BestPractice
+          },
+          severity: switch field(d, "severity") {
+          | Some(v) => parseGapSeverity(jsonString(v, "low"))
+          | None => Low
+          },
+          description: switch field(d, "description") {
+          | Some(v) => jsonString(v, "")
+          | None => ""
+          },
+          impact: switch field(d, "impact") {
+          | Some(v) => jsonString(v, "")
+          | None => ""
+          },
+          source: switch field(d, "source") {
+          | Some(v) => parseIssueSource(jsonString(v, "automated_scan"))
+          | None => AutomatedScan
+          },
+          scope: switch field(d, "scope") {
+          | Some(v) => parseImpactScope(jsonString(v, "entire_stack"), affectedComponents)
+          | None => EntireStack
+          },
+          affectedComponents,
+          fixAvailable: switch field(d, "fixAvailable") {
+          | Some(v) => jsonBool(v, false)
+          | None => false
+          },
+          fixConfidence: switch field(d, "fixConfidence") {
+          | Some(v) => parseFixConfidence(jsonString(v, "manual"))
+          | None => Manual
+          },
+          fixDescription: switch field(d, "fixDescription") {
+          | Some(v) => jsonOptString(v)
+          | None => None
+          },
+          fixCommands: switch field(d, "fixCommands") {
+          | Some(v) => jsonOptStringArray(v)
+          | None => None
+          },
+          estimatedEffort: switch field(d, "estimatedEffort") {
+          | Some(v) => jsonString(v, "unknown")
+          | None => "unknown"
+          },
+          tags: switch field(d, "tags") {
+          | Some(v) => jsonStringArray(v)
+          | None => []
+          },
+        }
+        Some(gap)
+      }
+    }
+  }
+
+let parseGapAnalysisJson = (json: JSON.t): GapAnalysis.state =>
+  switch jsonDict(json) {
+  | None => GapAnalysis.init
+  | Some(d) => {
+      let gaps = switch field(d, "gaps") {
+      | Some(v) => filterMap(jsonArray(v), parseGap)
+      | None => []
+      }
+      let state: GapAnalysis.state = {
+        gaps,
+        appliedFixes: Belt.Map.String.empty,
+        selectedGap: None,
+        filterCategory: None,
+        filterSeverity: None,
+        showOnlyFixable: false,
+        sortBy: BySeverity,
+      }
+      state
+    }
+  }
+
+// ---------------------------------------------------------------------------
+// Main update function
+// ---------------------------------------------------------------------------
+
 // No effects - pure state updates only
 let update = (model: model, msg: msg): model => {
   switch msg {
@@ -268,12 +701,10 @@ let update = (model: model, msg: msg): model => {
     }
 
   | SecurityScanResult(result) => switch result {
-    | Ok(_json) => {
+    | Ok(json) => {
         Console.log("Security scan complete")
-        // For now, use the default SecurityInspector state since the
-        // backend JSON schema is not yet finalised. When the backend
-        // returns real data, parse it here.
-        {...model, securityState: Some(SecurityInspector.init), securityLoading: false}
+        let parsed = parseSecurityScanJson(json)
+        {...model, securityState: Some(parsed), securityLoading: false}
       }
     | Error(err) => {
         Console.error2("Security scan failed:", err)
@@ -291,11 +722,10 @@ let update = (model: model, msg: msg): model => {
     }
 
   | GapAnalysisResult(result) => switch result {
-    | Ok(_json) => {
+    | Ok(json) => {
         Console.log("Gap analysis complete")
-        // For now, use the default GapAnalysis state since the
-        // backend JSON schema is not yet finalised.
-        {...model, gapState: Some(GapAnalysis.init), gapLoading: false}
+        let parsed = parseGapAnalysisJson(json)
+        {...model, gapState: Some(parsed), gapLoading: false}
       }
     | Error(err) => {
         Console.error2("Gap analysis failed:", err)

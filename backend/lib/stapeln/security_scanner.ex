@@ -11,6 +11,7 @@ defmodule Stapeln.SecurityScanner do
   """
 
   alias Stapeln.ValidationEngine
+  alias Stapeln.Kanren.Engine, as: KanrenEngine
 
   @known_db_kinds ~w(db database postgres postgresql mysql mariadb mongo mongodb redis memcached cassandra elasticsearch)
   @sensitive_ports [3306, 5432, 27017, 6379, 9200, 11211, 9042]
@@ -34,15 +35,22 @@ defmodule Stapeln.SecurityScanner do
     vulnerabilities = detect_vulnerabilities(services)
     checks = run_security_checks(services)
     exposed_ports = detect_exposed_ports(services)
-    metrics = calculate_metrics(vulnerabilities, checks, validation)
+
+    # miniKanren reasoning engine — additional port-level findings
+    kanren_result = KanrenEngine.reason(stack)
+    kanren_vulns = convert_kanren_findings(kanren_result.port_findings)
+    merged_vulnerabilities = merge_vulnerabilities(vulnerabilities, kanren_vulns)
+
+    metrics = calculate_metrics(merged_vulnerabilities, checks, validation)
     grade = calculate_grade(metrics)
 
     %{
       metrics: metrics,
       grade: grade,
-      vulnerabilities: vulnerabilities,
+      vulnerabilities: merged_vulnerabilities,
       checks: checks,
-      exposedPorts: exposed_ports
+      exposedPorts: exposed_ports,
+      kanrenAnalysis: kanren_result.severity_distribution
     }
   end
 
@@ -457,6 +465,59 @@ defmodule Stapeln.SecurityScanner do
       avg >= 63 -> "D"
       avg >= 60 -> "D-"
       true -> "F"
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # miniKanren Integration
+  # ---------------------------------------------------------------------------
+
+  defp convert_kanren_findings(port_findings) do
+    Enum.map(port_findings, fn finding ->
+      %{
+        title: finding.message,
+        severity: Atom.to_string(finding.severity),
+        description: "miniKanren reasoning engine flagged port #{finding.port}: #{finding.message}",
+        affectedComponent: "port:#{finding.port}",
+        cveId: nil,
+        fixAvailable: false,
+        fixDescription: nil,
+        source: :kanren
+      }
+    end)
+  end
+
+  defp merge_vulnerabilities(existing, kanren_vulns) do
+    new_kanren =
+      Enum.reject(kanren_vulns, fn kv ->
+        Enum.any?(existing, fn ev ->
+          kanren_port = kv.affectedComponent
+          existing_port = ev.affectedComponent
+
+          # Deduplicate when same port and same or higher severity already reported
+          kanren_port == existing_port and
+            severity_rank(ev.severity) >= severity_rank(kv.severity)
+        end)
+      end)
+
+    merged = existing ++ new_kanren
+
+    # Re-index all vulnerability IDs
+    merged
+    |> Enum.with_index(1)
+    |> Enum.map(fn {vuln, idx} ->
+      Map.put(vuln, :id, "VULN-#{String.pad_leading(Integer.to_string(idx), 4, "0")}")
+    end)
+  end
+
+  defp severity_rank(severity) do
+    case severity do
+      "critical" -> 5
+      "high" -> 4
+      "medium" -> 3
+      "low" -> 2
+      "info" -> 1
+      _ -> 0
     end
   end
 

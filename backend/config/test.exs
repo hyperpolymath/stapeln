@@ -1,5 +1,15 @@
 import Config
 
+# Configure the Repo for test — use a separate database and sandbox pool
+config :stapeln, Stapeln.Repo,
+  database: "stapeln_test#{System.get_env("MIX_TEST_PARTITION")}",
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  port: 5432,
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :stapeln, StapelnWeb.Endpoint,
