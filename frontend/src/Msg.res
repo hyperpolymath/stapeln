@@ -31,6 +31,8 @@ type msg =
   | ExportToSelurCompose
   | ExportToDockerCompose
   | ExportToPodmanCompose
+  | ExportToKubernetesYaml
+  | ExportToHelmChart
   // Import
   | TriggerImportDesign
   | ImportDesignSuccess(model)

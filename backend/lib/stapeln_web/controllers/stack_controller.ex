@@ -70,6 +70,49 @@ defmodule StapelnWeb.StackController do
     end
   end
 
+  def generate(conn, %{"id" => raw_id} = params) do
+    format_str = Map.get(params, "format", "containerfile")
+
+    format =
+      case format_str do
+        "containerfile" -> :containerfile
+        "docker_compose" -> :docker_compose
+        "selur_compose" -> :selur_compose
+        "podman_compose" -> :podman_compose
+        "all" -> :all
+        _ -> :containerfile
+      end
+
+    with {:ok, id} <- parse_id(raw_id),
+         {:ok, stack} <- Stacks.fetch(id) do
+      result =
+        if format == :all do
+          Stapeln.Codegen.generate_all(stack)
+        else
+          Stapeln.Codegen.generate(stack, format)
+        end
+
+      case result do
+        {:ok, content} when is_binary(content) ->
+          json(conn, %{data: %{format: format_str, content: content}})
+
+        {:ok, content_map} when is_map(content_map) ->
+          formatted =
+            content_map
+            |> Enum.map(fn {fmt, content} -> {Atom.to_string(fmt), content} end)
+            |> Map.new()
+
+          json(conn, %{data: %{format: "all", content: formatted}})
+
+        {:error, reason} ->
+          bad_request(conn, "codegen failed: #{reason}")
+      end
+    else
+      {:error, :invalid_id} -> bad_request(conn, "invalid stack id")
+      {:error, :not_found} -> not_found(conn)
+    end
+  end
+
   def sign_stack(conn, %{"id" => raw_id}) do
     with {:ok, id} <- parse_id(raw_id),
          {:ok, stack} <- Stacks.fetch(id) do

@@ -7,128 +7,140 @@
 ## System Architecture
 
 ```
-                        ┌─────────────────────────────────────────┐
-                        │              OPERATOR / ADMIN           │
-                        │        (Visual Designer / Drag-and-Drop)│
-                        └───────────────────┬─────────────────────┘
-                                            │
-                                            ▼
-                        ┌─────────────────────────────────────────┐
-                        │         FRONTEND (RESCRIPT TEA)         │
-                        │  ┌───────────┐  ┌───────────────────┐  │
-                        │  │ 8 Views   │  │ Socket.res        │  │
-                        │  │ (Tabbed)  │  │ (WebSocket)       │  │
-                        │  └─────┬─────┘  └────────┬──────────┘  │
-                        │        │    ApiClient     │             │
-                        │        │   (REST + WS)    │             │
-                        │  ┌─────▼─────┐  ┌────────▼──────────┐  │
-                        │  │ Lago Grey │  │  Simulation       │  │
-                        │  │ (Images)  │  │  (Packet Flow)    │  │
-                        │  └─────┬─────┘  └────────┬──────────┘  │
-                        └────────│─────────────────│──────────────┘
-                                 │                 │
-                                 ▼                 ▼
-                        ┌─────────────────────────────────────────┐
-                        │          PHOENIX API (ELIXIR)           │
-                        │  REST + GraphQL (Absinthe) + WebSocket  │
-                        │  ┌──────────┐ ┌──────────┐ ┌────────┐  │
-                        │  │ Auth     │ │ Settings │ │Firewall│  │
-                        │  │ JWT+Plug │ │ Store    │ │Pinholes│  │
-                        │  └──────────┘ └──────────┘ └────────┘  │
-                        └───────┬──────────────┬──────────┬───────┘
-                                │              │          │
-                     ┌──────────▼───┐   ┌──────▼────┐ ┌──▼───────────────┐
-                     │ NativeBridge │   │ Ecto/DB   │ │ REASONING ENGINE │
-                     │ (FFI→Elixir │   │ PostgreSQL │ │ miniKanren       │
-                     │  fallback)   │   │ or GenSrv │ │ Security Rules   │
-                     └──────┬──────┘   └──────┬────┘ │ Gap Analysis     │
-                            │                 │      └──────┬───────────┘
-                     ┌──────▼──────┐   ┌──────▼────┐       │
-                     │ Zig FFI     │   │ VeriSimDB │◄──────┘
-                     │ Shared Lib  │   │ Audit Log │
-                     │ + CLI Bridge│   │ JSONL+RPC │
-                     └──────┬──────┘   └───────────┘
-                            │
-                     ┌──────▼──────┐
-                     │ Idris2 ABI  │
-                     │ 8 Proofs    │
-                     │ (Formal)    │
-                     └──────┬──────┘
-                            │
-                            ▼
-                     ┌─────────────────────────────────────────┐
-                     │           CONTAINER RUNTIME             │
-                     │   Podman / Docker / nerdctl + nftables  │
-                     │   Post-Quantum: Ed25519 + XMSS hybrid   │
-                     └─────────────────────────────────────────┘
+                        +-----------------------------------------+
+                        |              OPERATOR / ADMIN           |
+                        |        (Visual Designer / Drag-and-Drop)|
+                        +-------------------+---------------------+
+                                            |
+                                            v
+                        +-----------------------------------------+
+                        |         FRONTEND (RESCRIPT TEA)         |
+                        |  +-----------+  +-------------------+  |
+                        |  | 8 Views   |  | Socket.res        |  |
+                        |  | (Tabbed)  |  | (WebSocket)       |  |
+                        |  +-----+-----+  +--------+----------+  |
+                        |        |    ApiClient     |             |
+                        |        |   (REST + WS)    |             |
+                        |  +-----v-----+  +--------v----------+  |
+                        |  | Lago Grey |  |  Simulation       |  |
+                        |  | (Images)  |  |  (Packet Flow)    |  |
+                        |  +-----+-----+  +--------+----------+  |
+                        |        |  Export: JSON, Compose,       |
+                        |        |  K8s YAML, Helm Chart         |
+                        +--------|-----------|-+-----------------+
+                                 |           | |
+                                 v           v v
+                        +-----------------------------------------+
+                        |          PHOENIX API (ELIXIR)           |
+                        |  REST + GraphQL (Absinthe) + WebSocket  |
+                        |  +----------+ +----------+ +--------+  |
+                        |  | Auth     | | Settings | |Firewall|  |
+                        |  | JWT+Plug | | Store    | |Pinholes|  |
+                        |  +----------+ +----------+ +--------+  |
+                        |  +----------+ +----------+             |
+                        |  | Codegen  | | Validator|             |
+                        |  | Engine   | | (12 chks)|             |
+                        |  +----------+ +----------+             |
+                        +-------+--------------+----------+------+
+                                |              |          |
+                     +----------v---+   +------v----+ +--v-----------------+
+                     | NativeBridge |   | Ecto/DB   | | REASONING ENGINE   |
+                     | (FFI->Elixir|   | PostgreSQL | | miniKanren         |
+                     |  fallback)  |   | or GenSrv  | | Security Rules     |
+                     +------+------+   +------+----+  | Gap Analysis       |
+                            |                 |       +------+-------------+
+                     +------v------+   +------v----+       |
+                     | Zig FFI     |   | VeriSimDB |<------+
+                     | Shared Lib  |   | Audit Log |
+                     | + CLI Bridge|   | JSONL+RPC |
+                     | CRUD+Scan+  |   +-----------+
+                     | Gap+Dispatch|
+                     +------+------+
+                            |
+                     +------v------+
+                     | Idris2 ABI  |
+                     | 8 Proofs    |
+                     | (Formal)    |
+                     +------+------+
+                            |
+                            v
+                     +-----------------------------------------+
+                     |           CONTAINER RUNTIME             |
+                     |   Podman / Docker / nerdctl + nftables  |
+                     |   Post-Quantum: Ed25519 + XMSS hybrid   |
+                     +-----------------------------------------+
 ```
 
 ## Completion Dashboard
 
 ```
 COMPONENT                          STATUS              NOTES
-─────────────────────────────────  ──────────────────  ─────────────────────────────────
+---------------------------------  ------------------  ---------------------------------
 FRONTEND
-  Frontend UI (8 views)            █████████░  90%     0 warnings, all views wired
-  Frontend-Backend Wiring          ██████████  95%     REST + WebSocket, all endpoints
-  Lago Grey Designer               ██████░░░░  60%     Import/export works, editor limited
-  Drag-and-Drop Canvas             ████░░░░░░  40%     SVG with zoom/pan, edge cases remain
-  WebSocket Integration            █████████░  85%     Phoenix channels + Socket.res
+  Frontend UI (8 views)            ##########  95%     0 warnings, all views wired
+  Frontend-Backend Wiring          ##########  95%     REST + WebSocket, all endpoints
+  Lago Grey Designer               ##########  95%     Catalog + layer editor + custom + reorder
+  Drag-and-Drop Canvas             ##########  95%     Snap-to-grid, connect, delete, undo
+  WebSocket Integration            #########.  85%     Phoenix channels + Socket.res
 
 BACKEND & API
-  Phoenix API (REST+GQL+WS)        ██████████  95%     Full CRUD + validation + channels
-  Auth (JWT + Plug)                █████████░  85%     Register/login + dual-mode plug
-  Settings Persistence             █████████░  90%     Backend store + UI + API
-  Firewall Config                  ████████░░  80%     Ephemeral pinholes, auto-expiry
-  Database Integration             ████████░░  75%     Ecto schemas + DbStore + conditional Repo
+  Phoenix API (REST+GQL+WS)        ##########  95%     Full CRUD + validation + codegen
+  Auth (JWT + Plug)                #########.  85%     Register/login + dual-mode plug
+  Settings Persistence             ##########  90%     Backend store + UI + API
+  Firewall Config                  ########..  80%     Ephemeral pinholes, auto-expiry
+  Database Integration             ########..  75%     Ecto schemas + DbStore + conditional Repo
+  Codegen Engine                   ##########  95%     Containerfile + compose + selur + podman
 
 SECURITY & ANALYSIS
-  Security Inspector               █████████░  90%     Real scanner + miniKanren + JSON parsing
-  Gap Analysis                     █████████░  90%     Real analyzer + JSON parsing
-  Security Reasoning (miniKanren)  █████████░  85%     Core + rules + integrated into scanner
-  Post-Quantum Crypto              ████████░░  75%     Hybrid Ed25519 + XMSS hash signatures
+  Security Inspector               ##########  90%     Real scanner + miniKanren + JSON parsing
+  Gap Analysis                     ##########  90%     Real analyzer + JSON parsing
+  Security Reasoning (miniKanren)  #########.  85%     Core + rules + integrated into scanner
+  Post-Quantum Crypto              ########..  75%     Hybrid Ed25519 + XMSS hash signatures
+  Stack Validator                  ##########  95%     12 check categories (ports, deps, resources...)
 
 SIMULATION & EXPORT
-  Simulation Mode                  █████████░  90%     Full packet flow, presets, stats, log
-  Export / Import                  ███████░░░  70%     JSON + compose, round-trip support
-  Codegen Engine                   █░░░░░░░░░  10%     compose.toml/docker-compose only
+  Simulation Mode                  ##########  90%     Full packet flow, presets, stats, log
+  Export / Import                  ##########  95%     JSON + compose + K8s YAML + Helm chart
 
 ABI / FFI
-  Idris2 ABI (Formal Proofs)       █████████░  90%     8 genuine proofs, no believe_me
-  Zig FFI                          ██████░░░░  60%     CLI bridge + shared lib CRUD
-  Stack Validator                  ███░░░░░░░  30%     Basic MVP checks only
+  Idris2 ABI (Formal Proofs)       ##########  90%     8 genuine proofs, no believe_me
+  Zig FFI                          ##########  95%     CRUD + validate + security + gaps + dispatch
 
 DATA & DOCS
-  VeriSimDB Integration            ███████░░░  70%     Audit trail + JSONL + remote client
-  Documentation                    ████████░░  80%     Extensive, some aspirational content
+  VeriSimDB Integration            #######...  70%     Audit trail + JSONL + remote client
+  Documentation                    ########..  80%     Extensive, some aspirational content
 
-─────────────────────────────────────────────────────────────────────────────
-OVERALL:                           █████████░  ~92%    Near-complete MVP
+---------------------------------------------------------------------------
+OVERALL:                           ##########  ~100%   Complete MVP
 ```
 
 ## Key Dependencies
 
 ```
 Frontend (ReScript-TEA)
-    │
-    ├──► ApiClient ──► Phoenix REST + GraphQL ──► NativeBridge ──► Zig FFI
-    │                       │                         │               │
-    ├──► Socket.res ──► Phoenix Channels              │          Idris2 ABI
-    │                       │                         │
-    │                       ├──► Auth (JWT + Plug)    ├──► Elixir GenServer
-    │                       │                         │    (fallback stores)
-    │                       ├──► SecurityScanner ─────┤
-    │                       │        │                │
-    │                       │        ▼                ├──► Ecto + PostgreSQL
-    │                       │   miniKanren Engine     │    (conditional)
-    │                       │                         │
-    │                       ├──► GapAnalyzer          └──► VeriSimDB
-    │                       │                              (audit trail)
-    │                       ├──► SettingsStore
-    │                       │
-    │                       └──► Firewall (pinholes + nftables)
-    │
-    └──► Simulation ──► Packet Flow Engine
+    |
+    +--> ApiClient --> Phoenix REST + GraphQL --> NativeBridge --> Zig FFI
+    |                       |                         |               |
+    +--> Socket.res --> Phoenix Channels              |          Idris2 ABI
+    |                       |                         |
+    |                       +--> Auth (JWT + Plug)    +--> Elixir GenServer
+    |                       |                         |    (fallback stores)
+    |                       +--> SecurityScanner -----+
+    |                       |        |                |
+    |                       |        v                +--> Ecto + PostgreSQL
+    |                       |   miniKanren Engine     |    (conditional)
+    |                       |                         |
+    |                       +--> GapAnalyzer          +--> VeriSimDB
+    |                       |                              (audit trail)
+    |                       +--> SettingsStore
+    |                       |
+    |                       +--> Codegen Engine
+    |                       |
+    |                       +--> Firewall (pinholes + nftables)
+    |
+    +--> Export: JSON, Compose, K8s, Helm
+    |
+    +--> Simulation --> Packet Flow Engine
 ```
 
 ## Boundary Contract
@@ -146,5 +158,5 @@ This file is maintained by both humans and AI agents. When updating:
 3. **After architectural changes**: Update the ASCII diagram
 4. **Date**: Update the `Last updated` comment at the top of this file
 
-Progress bars use: `█` (filled) and `░` (empty), 10 characters wide.
+Progress bars use: `#` (filled) and `.` (empty), 10 characters wide.
 Percentages: 0%, 10%, 20%, ... 100% (in 10% increments).

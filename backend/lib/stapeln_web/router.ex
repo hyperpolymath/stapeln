@@ -27,6 +27,7 @@ defmodule StapelnWeb.Router do
     post "/stacks/:id/validate", StackController, :validate
     post "/stacks/:id/security-scan", StackController, :security_scan
     post "/stacks/:id/gap-analysis", StackController, :gap_analysis
+    post "/stacks/:id/generate", StackController, :generate
     post "/stacks/:id/sign", StackController, :sign_stack
     get "/stacks/:id/verify", StackController, :verify_stack
     get "/audit", AuditController, :index
