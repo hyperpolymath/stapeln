@@ -24,6 +24,7 @@ fn setup_lifecycle() -> (TempDir, ContainerLifecycle) {
             Some("alpine"),
             &["latest".to_string()],
             10_000_000,
+            None,
         )
         .unwrap();
 

@@ -97,6 +97,10 @@ predicates = "3"
 tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
+[lib]
+name = "vordr"
+path = "lib.rs"
+
 [[bin]]
 name = "vordr"
 path = "main.rs"

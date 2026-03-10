@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 -- Svalinn Project - Vordr container state database
 
 PRAGMA journal_mode = WAL;
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS images (
     repository TEXT,
     tags TEXT,  -- JSON array
     size INTEGER NOT NULL,
+    path TEXT,  -- Local image storage path
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

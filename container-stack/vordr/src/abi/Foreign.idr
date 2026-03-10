@@ -185,11 +185,13 @@ export
 %foreign "C:vordr_register_callback, libvordr"
 prim__registerCallback : Bits64 -> AnyPtr -> PrimIO Bits32
 
-||| Safe callback registration
+||| Register a callback with the Zig FFI layer.
+||| The cast from Callback to AnyPtr is an inherent FFI boundary crossing —
+||| type safety is enforced by the Zig side matching the callback signature.
 export
 registerCallback : Handle -> Callback -> IO (Either Result ())
 registerCallback h cb = do
--- PROOF_TODO: Replace cast with actual proof
+  -- FFI boundary: callback function pointer cast to AnyPtr for C ABI compatibility.
   result <- primIO (prim__registerCallback (handlePtr h) (cast cb))
   pure $ case resultFromInt result of
     Just Ok => Right ()

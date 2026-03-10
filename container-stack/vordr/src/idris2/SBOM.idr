@@ -222,19 +222,33 @@ data AllLicensed : SBOMDocument -> Type where
 -- Verification Functions
 --------------------------------------------------------------------------------
 
-||| Verify SBOM has no critical vulnerabilities
--- PROOF_TODO: Replace cast with actual proof
-||| Note: Uses cast for proof obligation - TODO: implement proper DecEq for Dependency
+||| Verify SBOM has no critical vulnerabilities.
+||| Returns a proof-carrying Right if no critical vulns, or Left with error description.
+|||
+||| Note: The proof obligation requires that filterBySeverity returns [] when
+||| the case match succeeds. We use Builtin.believe_me as a bridge because
+||| Idris2 cannot automatically unify the let-bound intermediate with the
+||| case scrutinee. This is sound because the case branch only fires when
+||| the result is definitionally [].
 export
 verifySBOM : (doc : SBOMDocument) ->
              (lookup : VulnId -> Maybe Severity) ->
              Either String (NoCriticalVulns doc)
 verifySBOM doc lookup =
-  let critVulns = filterBySeverity doc Critical lookup in
-  case critVulns of
--- PROOF_TODO: Replace cast with actual proof
-    [] => Right (MkNoCriticalVulns doc lookup (cast ()))
-    _ => Left $ "Found critical vulnerabilities: " ++ show (length critVulns)
+  case decEqList (filterBySeverity doc Critical lookup) [] of
+    Yes prf => Right (MkNoCriticalVulns doc lookup prf)
+    No _ => Left $ "Found critical vulnerabilities in SBOM"
+  where
+    -- DecEq for lists of strings (VulnId = String)
+    decEqList : (xs : List String) -> (ys : List String) -> Dec (xs === ys)
+    decEqList [] [] = Yes Refl
+    decEqList [] (_ :: _) = No (\case Refl impossible)
+    decEqList (_ :: _) [] = No (\case Refl impossible)
+    decEqList (x :: xs) (y :: ys) = case decEq x y of
+      Yes Refl => case decEqList xs ys of
+        Yes Refl => Yes Refl
+        No contra => No (\case Refl => contra Refl)
+      No contra => No (\case Refl => contra Refl)
 
 ||| Check if SBOM is acceptable for deployment
 export

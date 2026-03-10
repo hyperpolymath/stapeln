@@ -272,9 +272,9 @@ impl ContainerEvent {
 
 /// Returns the name of a syscall given its number.
 /// This is a minimal implementation and can be expanded as needed.
-#[allow(dead_code)]
-fn syscall_name(syscall_nr: i64) -> &'static str {
+pub fn syscall_name(syscall_nr: i64) -> &'static str {
     match syscall_nr {
+        0 => "read",
         1 => "write",
         2 => "open",
         3 => "close",

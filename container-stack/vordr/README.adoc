@@ -57,52 +57,62 @@ Vörðr is polyglot by design, using the right tool for each verification domain
 | Zero-cost abstractions, container runtime integration
 |===
 
-== Project Status
+== Current Status
 
-**MVP: 100% Complete** ✓
+**Overall: ~45% — Early alpha with partial implementations.**
+
+What works today:
+
+* Elixir GenStateMachine orchestrator with reversibility journal (~85%)
+* Idris2 dependent-type proofs for container lifecycle (~90%, but not wired into runtime)
+* ReScript MCP adapter protocol layer (~80%, untested against live gateway)
+* Temporal isolation engine in Elixir (~70%)
+* Repository structure, CI/CD skeleton, documentation skeleton
+
+What does not work yet:
+
+* **No real container runtime** — the Rust CLI compiles but cannot create, run, or stop containers (no namespace/cgroup/rootfs calls)
+* **eBPF kernel programs** — only userspace type definitions exist; zero BPF bytecode
+* **Ada/SPARK code** — source files present but never compiled with GNAT; C stubs used at runtime
+* **Zig FFI** — exported function signatures exist with no implementation behind them
+* **Integration testing** — no cross-language end-to-end tests
 
 [cols="1,1,3",options="header"]
 |===
 |Component |Status |Description
 
-|*LSP Protocol*
-|Complete (100%)
-|Container-aware Language Server Protocol with Types, Server handlers, diagnostics, hover, completion
-
-|*LSP Transports*
-|Complete (100%)
-|Stdio transport (VS Code/Neovim/Emacs) + HTTP transport (web clients/Svalinn) on port 8081
-
-|*VS Code Extension*
-|Complete (100%)
-|Extension for `.ctp` bundles and `.gatekeeper.yaml` files with full LSP integration
-
-|*MCP Server*
-|Complete (100%)
-|JSON-RPC 2.0 server on port 8080 with standard methods: `containers/*`, `images/*`
-
-|*Svalinn Integration*
-|Complete (100%)
-|End-to-end tested with Svalinn gateway, 2-17ms response time
-
-|*Idris2 ABI*
-|Complete (100%)
-|Dependent type definitions, memory layout proofs, non-null pointer guarantees
-
-|*Zig FFI*
-|Complete (100%)
-|C-compatible container operations, NO C headers, direct Idris2→Zig interface
+|*Idris2 Proofs*
+|Real (~90%)
+|Dependent type proofs for container lifecycle, SBOM, attestation. Not integrated into Rust runtime.
 
 |*Elixir Orchestrator*
-|Functional (90%)
-|GenStateMachine-based state machine with reversibility; needs Zig FFI NIF integration
+|Mostly functional (~85%)
+|GenStateMachine container lifecycle, reversibility journal, Borg integration. Needs FFI NIF bridge.
+
+|*MCP Server*
+|Protocol layer (~80%)
+|ReScript JSON-RPC 2.0 server with method definitions. Not tested end-to-end with Svalinn.
+
+|*Temporal Isolation*
+|Surprisingly complete (~70%)
+|BEAM port interceptor concept, time-dilation logic. Not integrated with eBPF clock manipulation.
 
 |*Rust CLI*
-|Functional (80%)
-|Container lifecycle commands; needs Zig FFI integration via C ABI
-|===
+|Scaffolding (~30%)
+|CLI subcommands defined, Cargo project builds. No actual runtime calls (clone, unshare, pivot_root).
 
-**Key Achievement:** Complete LSP/MCP/ABI/FFI stack following ABI/FFI Universal Standard (Idris2 ABI + Zig FFI, no C headers)
+|*Rust eBPF*
+|Userspace only (~10%)
+|Aya probe definitions and event types. No kernel-side BPF programs.
+
+|*Ada/SPARK Trust*
+|Specs only (~5%)
+|Ada source files exist but have never been compiled. Using C stubs.
+
+|*Zig FFI*
+|Placeholder (~5%)
+|C-compatible function signatures exported. No real container operations.
+|===
 
 == Quick Start
 
@@ -344,10 +354,10 @@ Vörðr is the **reference implementation** for native `.ctp` bundle execution. 
 
 **Unique to Vörðr:**
 
-* Verification is **always enforced** - no opt-out
-* Formally verified state transitions (Idris2 proofs)
-* Bennett-reversible container lifecycle
-* SPARK-proven cryptographic operations
+* Verification is **always enforced** - no opt-out (design goal)
+* Formally verified state transitions (Idris2 proofs — not yet runtime-integrated)
+* Bennett-reversible container lifecycle (Elixir layer)
+* SPARK cryptographic operations (planned — Ada code not yet compiled)
 
 === Svalinn Integration
 
@@ -443,8 +453,10 @@ vordr/
 │   └── vscode/                 # VS Code extension
 │       ├── src/extension.ts
 │       └── package.json
-├── STATE.scm                   # Project state
-├── META.scm                    # Architecture decisions
-├── ECOSYSTEM.scm               # Ecosystem position
+├── .machine_readable/
+│   ├── STATE.scm               # Project state
+│   ├── META.scm                # Architecture decisions
+│   └── ECOSYSTEM.scm           # Ecosystem position
+├── Containerfile               # Multi-stage Rust build
 └── README.adoc
 ----

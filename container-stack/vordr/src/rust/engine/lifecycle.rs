@@ -9,7 +9,7 @@ use tracing::{debug, info, warn};
 use crate::engine::{ContainerInfo, ContainerState, StateManager};
 use crate::engine::config::MountSpec;
 use crate::ffi::ValidatedConfig;
-use crate::runtime::ShimClient;
+use crate::runtime::{DirectRuntime, ShimClient};
 use serde_json::json;
 
 #[derive(Error, Debug)]
@@ -169,6 +169,10 @@ impl ContainerLifecycle {
     }
 
     /// Start a container
+    ///
+    /// Tries the direct OCI runtime path (crun/youki subprocess) first.
+    /// If the configured runtime cannot be found, falls back to the legacy
+    /// ShimClient path.
     pub async fn start(&self, id: &str) -> Result<u32, LifecycleError> {
         let container = self.get(id)?;
 
@@ -182,12 +186,34 @@ impl ContainerLifecycle {
 
         info!("Starting container {} ({})", container.name, container.id);
 
-        // Start via runtime shim
-        let shim = ShimClient::new(&self.runtime_path, &container.bundle_path);
-        let pid = shim
-            .create_and_start(id)
-            .await
-            .map_err(|e| LifecycleError::Runtime(e.to_string()))?;
+        // Try DirectRuntime first (preferred: async subprocess, like podman)
+        let pid = match DirectRuntime::with_runtime(&self.runtime_path) {
+            Ok(rt) => {
+                info!(
+                    "Using DirectRuntime ({}) for container {}",
+                    rt.name(),
+                    id
+                );
+                rt.create_and_start(id, &container.bundle_path)
+                    .await
+                    .map_err(|e| LifecycleError::Runtime(e.to_string()))?
+            }
+            Err(direct_err) => {
+                // DirectRuntime couldn't resolve the runtime binary.
+                // Fall back to the legacy ShimClient which does its own
+                // PATH lookup.
+                warn!(
+                    "DirectRuntime unavailable ({}), falling back to ShimClient",
+                    direct_err
+                );
+                let shim = ShimClient::new(&self.runtime_path, &container.bundle_path);
+                shim.create_and_start(id)
+                    .await
+                    .map_err(|e| LifecycleError::Runtime(e.to_string()))?
+            }
+        };
+
+        info!("Container {} started with PID {}", id, pid);
 
         // Update state
         {
@@ -328,7 +354,10 @@ impl ContainerLifecycle {
         // Use cgroups to freeze the container
         if let Some(pid) = container.pid {
             debug!("Pausing container {} (pid: {})", id, pid);
-            // TODO: Implement cgroup freezer
+            freeze_cgroup(id, pid).map_err(|e| {
+                tracing::error!("Failed to freeze container {}: {}", id, e);
+                LifecycleError::Runtime(format!("cgroup freeze failed: {}", e))
+            })?;
         }
 
         {
@@ -354,7 +383,10 @@ impl ContainerLifecycle {
         // Use cgroups to thaw the container
         if let Some(pid) = container.pid {
             debug!("Resuming container {} (pid: {})", id, pid);
-            // TODO: Implement cgroup freezer
+            thaw_cgroup(id, pid).map_err(|e| {
+                tracing::error!("Failed to thaw container {}: {}", id, e);
+                LifecycleError::Runtime(format!("cgroup thaw failed: {}", e))
+            })?;
         }
 
         {
@@ -393,6 +425,76 @@ fn process_exists(pid: i32) -> bool {
     }
 }
 
+/// Freeze a container via cgroup v2 freezer.
+///
+/// Writes "1" to `/sys/fs/cgroup/vordr/<id>/cgroup.freeze`.
+/// Falls back to sending SIGSTOP if cgroup freezer is unavailable.
+fn freeze_cgroup(id: &str, pid: i32) -> Result<(), String> {
+    let freeze_path = format!("/sys/fs/cgroup/vordr/{}/cgroup.freeze", id);
+
+    if Path::new(&freeze_path).exists() {
+        std::fs::write(&freeze_path, "1")
+            .map_err(|e| format!("Failed to write cgroup.freeze: {}", e))?;
+        debug!("Container {} frozen via cgroup v2 freezer", id);
+    } else {
+        // Fallback: SIGSTOP the container process tree
+        debug!("cgroup.freeze not available for {}, falling back to SIGSTOP", id);
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+            let status = Command::new("kill")
+                .args(["-STOP", &pid.to_string()])
+                .status()
+                .map_err(|e| format!("Failed to send SIGSTOP to {}: {}", pid, e))?;
+            if !status.success() {
+                return Err(format!("SIGSTOP failed for pid {}", pid));
+            }
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = pid;
+            return Err("cgroup freezer not available on this platform".to_string());
+        }
+    }
+
+    Ok(())
+}
+
+/// Thaw (resume) a container via cgroup v2 freezer.
+///
+/// Writes "0" to `/sys/fs/cgroup/vordr/<id>/cgroup.freeze`.
+/// Falls back to sending SIGCONT if cgroup freezer is unavailable.
+fn thaw_cgroup(id: &str, pid: i32) -> Result<(), String> {
+    let freeze_path = format!("/sys/fs/cgroup/vordr/{}/cgroup.freeze", id);
+
+    if Path::new(&freeze_path).exists() {
+        std::fs::write(&freeze_path, "0")
+            .map_err(|e| format!("Failed to write cgroup.freeze: {}", e))?;
+        debug!("Container {} thawed via cgroup v2 freezer", id);
+    } else {
+        // Fallback: SIGCONT the container process tree
+        debug!("cgroup.freeze not available for {}, falling back to SIGCONT", id);
+        #[cfg(target_os = "linux")]
+        {
+            use std::process::Command;
+            let status = Command::new("kill")
+                .args(["-CONT", &pid.to_string()])
+                .status()
+                .map_err(|e| format!("Failed to send SIGCONT to {}: {}", pid, e))?;
+            if !status.success() {
+                return Err(format!("SIGCONT failed for pid {}", pid));
+            }
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = pid;
+            return Err("cgroup freezer not available on this platform".to_string());
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -411,23 +513,22 @@ mod tests {
         let root_dir = temp_dir.path().join("root");
         std::fs::create_dir_all(&root_dir).unwrap();
 
-        // Use in-memory database for testing
-        let state = StateManager::open_in_memory().unwrap();
+        // Use temp file database for testing
+        let db_path = temp_dir.path().join(format!("test-{}.db", test_id));
+        let lifecycle = ContainerLifecycle::new(&db_path, &root_dir, "youki").unwrap();
 
         // Create a test image first (required by foreign key constraint)
-        state.create_image(
-            "image-abc",
-            "sha256:abc123def456",
-            Some("alpine"),
-            &["latest".to_string()],
-            10_485_760, // 10 MB
-        ).unwrap();
-
-        let lifecycle = ContainerLifecycle {
-            state,
-            root_dir: root_dir.clone(),
-            runtime_path: "youki".to_string(),
-        };
+        {
+            let state = StateManager::open(&db_path).unwrap();
+            state.create_image(
+                "image-abc",
+                "sha256:abc123def456",
+                Some("alpine"),
+                &["latest".to_string()],
+                10_485_760, // 10 MB
+                None,
+            ).unwrap();
+        }
 
         // Create a test config
         let config = crate::ffi::ValidatedConfig {

@@ -10,12 +10,12 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 /// Anomaly severity level
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AnomalyLevel {
-    Critical,
-    High,
-    Medium,
     Low,
+    Medium,
+    High,
+    Critical,
 }
 
 /// Represents a detected anomaly

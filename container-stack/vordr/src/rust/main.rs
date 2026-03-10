@@ -9,19 +9,9 @@ use clap::Parser;
 use tracing::info;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use ebpf::{Monitor, MonitorConfig};
-
-mod cli;
-mod ebpf;
-mod engine;
-mod ffi;
-mod mcp;
-mod network;
-mod registry;
-mod runtime;
-mod temporal;
-
-use cli::Cli;
+use vordr::cli::{self, Cli};
+use vordr::ebpf::{Monitor, MonitorConfig};
+use vordr::ffi;
 
 fn main() -> Result<()> {
     // Initialize logging

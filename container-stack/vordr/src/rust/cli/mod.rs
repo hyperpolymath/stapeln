@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 //! Command-line interface for Vordr
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
+use tracing::info;
 
 pub mod auth;
 pub mod completion;
@@ -194,7 +195,7 @@ pub async fn execute(mut cli: Cli) -> Result<()> {
         Commands::Image(cmd) => images::execute(cmd, &cli).await,
         Commands::Network(cmd) => network::execute(cmd, &cli).await,
         Commands::Volume(cmd) => volume::execute(cmd, &cli).await,
-        Commands::Pull { image } => pull_image(&image, &cli).await,
+        Commands::Pull { image } => pull_image(&image, &cli).await.map(|_| ()),
         Commands::Info => show_info(&cli).await,
         Commands::Version => show_version(),
         // New commands
@@ -294,10 +295,135 @@ async fn remove_container(container: &str, force: bool, cli: &Cli) -> Result<()>
     Ok(())
 }
 
-async fn pull_image(image: &str, _cli: &Cli) -> Result<()> {
+pub async fn pull_image(image: &str, cli: &Cli) -> Result<String> {
+    use sha2::{Sha256, Digest};
+
     println!("Pulling image: {}", image);
-    // TODO: Implement registry client
-    Ok(())
+
+    // Parse image reference (registry/repo:tag format)
+    let (registry, repository, tag) = parse_image_ref(image);
+    info!("Registry: {}, Repository: {}, Tag: {}", registry, repository, tag);
+
+    // Resolve manifest via OCI Distribution API
+    let client = reqwest::Client::builder()
+        .user_agent(format!("vordr/{}", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    // Load auth credentials if available
+    let auth_header = crate::cli::auth::resolve_auth_header(&registry);
+
+    // Fetch manifest
+    let manifest_url = format!(
+        "https://{}/v2/{}/manifests/{}",
+        registry, repository, tag
+    );
+    let mut req = client.get(&manifest_url)
+        .header("Accept", "application/vnd.oci.image.manifest.v1+json")
+        .header("Accept", "application/vnd.docker.distribution.manifest.v2+json");
+    if let Some(auth) = &auth_header {
+        req = req.header("Authorization", auth);
+    }
+
+    let manifest_resp = req.send().await
+        .context("Failed to fetch manifest")?;
+
+    if !manifest_resp.status().is_success() {
+        anyhow::bail!(
+            "Registry returned {} for manifest {}:{}",
+            manifest_resp.status(), repository, tag
+        );
+    }
+
+    let manifest_bytes = manifest_resp.bytes().await
+        .context("Failed to read manifest body")?;
+
+    // Compute image ID from manifest digest
+    let mut hasher = Sha256::new();
+    hasher.update(&manifest_bytes);
+    let image_id = format!("sha256:{}", hex::encode(hasher.finalize()));
+
+    // Store manifest in image directory
+    let image_dir = std::path::Path::new(&cli.root)
+        .join("images")
+        .join(&image_id);
+    std::fs::create_dir_all(&image_dir)
+        .context("Failed to create image directory")?;
+    std::fs::write(image_dir.join("manifest.json"), &manifest_bytes)
+        .context("Failed to write manifest")?;
+
+    // Pull layers referenced in manifest
+    let manifest: serde_json::Value = serde_json::from_slice(&manifest_bytes)
+        .context("Failed to parse manifest JSON")?;
+
+    if let Some(layers) = manifest.get("layers").and_then(|v: &serde_json::Value| v.as_array()) {
+        let layer_dir = image_dir.join("layers");
+        std::fs::create_dir_all(&layer_dir)
+            .context("Failed to create layers directory")?;
+
+        for (i, layer) in layers.iter().enumerate() {
+            let digest = layer.get("digest")
+                .and_then(|v: &serde_json::Value| v.as_str())
+                .unwrap_or("unknown");
+            let size = layer.get("size")
+                .and_then(|v: &serde_json::Value| v.as_u64())
+                .unwrap_or(0);
+
+            println!("  Pulling layer {}/{}: {} ({} bytes)", i + 1, layers.len(), digest, size);
+
+            let blob_url = format!(
+                "https://{}/v2/{}/blobs/{}",
+                registry, repository, digest
+            );
+            let mut blob_req = client.get(&blob_url);
+            if let Some(auth) = &auth_header {
+                blob_req = blob_req.header("Authorization", auth);
+            }
+
+            let blob_resp = blob_req.send().await
+                .with_context(|| format!("Failed to fetch layer {}", digest))?;
+
+            if blob_resp.status().is_success() {
+                let blob_bytes = blob_resp.bytes().await
+                    .with_context(|| format!("Failed to read layer {}", digest))?;
+                let safe_name = digest.replace(':', "_");
+                std::fs::write(layer_dir.join(&safe_name), &blob_bytes)
+                    .with_context(|| format!("Failed to write layer {}", digest))?;
+            } else {
+                tracing::warn!("Layer {} returned {}, skipping", digest, blob_resp.status());
+            }
+        }
+    }
+
+    println!("Image {} pulled successfully ({})", image, &image_id[..19]);
+    Ok(image_id)
+}
+
+/// Parse an image reference into (registry, repository, tag).
+pub fn parse_image_ref(image: &str) -> (String, String, String) {
+    let (name, tag) = if let Some((n, t)) = image.rsplit_once(':') {
+        // Avoid treating "registry.io:5000/repo" as repo="registry.io" tag="5000/repo"
+        if t.contains('/') {
+            (image, "latest")
+        } else {
+            (n, t)
+        }
+    } else {
+        (image, "latest")
+    };
+
+    let parts: Vec<&str> = name.splitn(2, '/').collect();
+    if parts.len() == 2 && (parts[0].contains('.') || parts[0].contains(':')) {
+        // Explicit registry: registry.example.com/repo
+        (parts[0].to_string(), parts[1].to_string(), tag.to_string())
+    } else if parts.len() == 2 {
+        // Docker Hub: user/repo
+        ("registry-1.docker.io".to_string(), name.to_string(), tag.to_string())
+    } else {
+        // Docker Hub official image: just "nginx" → library/nginx
+        ("registry-1.docker.io".to_string(), format!("library/{}", name), tag.to_string())
+    }
 }
 
 async fn show_info(_cli: &Cli) -> Result<()> {

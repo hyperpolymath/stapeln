@@ -235,6 +235,43 @@ impl StateManager {
         })
     }
 
+    /// Find an image by tag (e.g. "nginx:latest", "alpine:3.19").
+    ///
+    /// Searches the tags JSON array in each image record for a match.
+    pub fn find_image_by_tag(&self, tag: &str) -> Result<ImageInfo, StateError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, digest, repository, tags, size, path, created_at
+             FROM images WHERE tags LIKE ?1 OR repository = ?2
+             ORDER BY created_at DESC LIMIT 1",
+        )?;
+
+        let search_pattern = format!("%\"{}\"%" , tag);
+        // Also try matching the repository field directly (for "library/nginx" style)
+        let repo_match = tag.split(':').next().unwrap_or(tag);
+
+        stmt.query_row(rusqlite::params![search_pattern, repo_match], |row| {
+            let tags_json: String = row.get(3)?;
+            let tags: Vec<String> =
+                serde_json::from_str(&tags_json).unwrap_or_default();
+
+            Ok(ImageInfo {
+                id: row.get(0)?,
+                digest: row.get(1)?,
+                repository: row.get(2)?,
+                tags,
+                size: row.get(4)?,
+                path: row.get(5)?,
+                created_at: row.get(6)?,
+            })
+        })
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => {
+                StateError::ImageNotFound(tag.to_string())
+            }
+            _ => StateError::Database(e),
+        })
+    }
+
     /// List all images.
     pub fn list_images(&self) -> Result<Vec<ImageInfo>, StateError> {
         let mut stmt = self.conn.prepare(
@@ -788,6 +825,7 @@ mod tests {
                 Some("alpine"),
                 &["latest".to_string()],
                 1024,
+                None,
             )
             .unwrap();
 

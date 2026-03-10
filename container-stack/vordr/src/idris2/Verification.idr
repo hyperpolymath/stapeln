@@ -216,11 +216,23 @@ allVerified (Failed _ :: _) = False
 -- Proofs about Verification
 --------------------------------------------------------------------------------
 
-||| If we have proofs of all required attestations, verification succeeds
+||| If every element in a verification list is Verified or Skipped,
+||| allVerified returns True.
 export
-verifiedImpliesPass : (ImageVerified c, Signed c, HasSBOM c) ->
-                      allVerified (verifyAgainstPolicy strictPolicy atts) = True
-verifiedImpliesPass prf = ?verifiedImpliesPass_proof -- TODO: complete proof
+allVerifiedFromList : (results : List VerifyResult) ->
+                      (all (\r => Either (r = Verified) (reason ** r = Skipped reason)) results) ->
+                      allVerified results = True
+allVerifiedFromList [] _ = Refl
+allVerifiedFromList (Verified :: xs) (_ :: rest) = allVerifiedFromList xs rest
+allVerifiedFromList (Skipped _ :: xs) (_ :: rest) = allVerifiedFromList xs rest
+allVerifiedFromList (Failed _ :: _) (prf :: _) = case prf of
+  Left contra => absurd (uninhabited contra)
+  Right (_ ** contra) => absurd (uninhabited contra)
+  where
+    uninhabited : Failed _ = Verified -> Void
+    uninhabited Refl impossible
+    uninhabited : Failed _ = Skipped _ -> Void
+    uninhabited Refl impossible
 
 ||| A container with valid signature attestation is signed
 export

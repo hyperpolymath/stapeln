@@ -674,15 +674,37 @@ async fn handle_verify(_state: &AppState, args: Value) -> Result<Value, String> 
         .and_then(|v| v.as_str())
         .ok_or("Missing image")?;
 
-    // TODO: Implement actual image verification via Idris2 core
-    // For now, return a placeholder
     info!("Verifying image: {}", image);
+
+    // Verify image through the gatekeeper (Idris2 ABI boundary).
+    // The gatekeeper validates image provenance, attestations, and policy compliance.
+    let gatekeeper_result = crate::ffi::validate_image(image);
+
+    let (verified, attestations, warnings) = match gatekeeper_result {
+        Ok(report) => (
+            report.passed,
+            report.attestations,
+            report.warnings,
+        ),
+        Err(e) => {
+            // Gatekeeper unavailable — fail open with warning for non-production,
+            // fail closed in production.
+            tracing::warn!("Gatekeeper verification failed: {}", e);
+            let is_prod = std::env::var("VORDR_ENV")
+                .map(|v| v == "production")
+                .unwrap_or(false);
+            if is_prod {
+                return Err(format!("Image verification failed: {}", e));
+            }
+            (false, vec![], vec![format!("Gatekeeper unavailable: {}", e)])
+        }
+    };
 
     Ok(json!({
         "image": image,
-        "verified": true,
-        "attestations": [],
-        "warnings": []
+        "verified": verified,
+        "attestations": attestations,
+        "warnings": warnings,
     }))
 }
 

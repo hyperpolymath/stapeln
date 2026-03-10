@@ -6,10 +6,10 @@ use clap::Args;
 use std::path::Path;
 use tracing::info;
 
-use crate::cli::Cli;
+use crate::cli::{Cli, pull_image};
 use crate::engine::{ContainerState, OciConfigBuilder, StateManager};
 use crate::ffi::{ConfigValidator, NetworkMode};
-use crate::runtime::ShimClient;
+use crate::runtime::DirectRuntime;
 
 /// Arguments for the `run` command
 #[derive(Args, Debug)]
@@ -149,21 +149,32 @@ pub async fn execute(args: RunArgs, cli: &Cli) -> Result<()> {
     std::fs::create_dir_all(&bundle_path)
         .context("Failed to create bundle directory")?;
 
-    // TODO: Pull image if not present
-    // For now, use a placeholder image ID
-    let image_id = format!("sha256:{}", &container_id[..12]);
-
-    // Check if image exists, create placeholder if not
-    if state.get_image(&image_id).is_err() {
-        state.create_image(
-            &image_id,
-            &format!("sha256:{}", hex::encode(&container_id.as_bytes()[..16])),
-            Some(&args.image),
-            &[args.image.clone()],
-            0,
-            None, // image_path - not yet pulled
-        )?;
-    }
+    // Resolve image: check local state first, pull via registry if absent.
+    let image_id = match state.find_image_by_tag(&args.image) {
+        Ok(existing) => {
+            info!("Image {} found locally ({})", args.image, existing.id);
+            existing.id
+        }
+        Err(_) => {
+            info!("Image {} not found locally, pulling...", args.image);
+            let pulled_id = pull_image(&args.image, cli).await
+                .context("Failed to pull image")?;
+            let digest = format!("sha256:{}", hex::encode(pulled_id.as_bytes()));
+            let image_path = root_path.join("images").join(&pulled_id);
+            std::fs::create_dir_all(&image_path)
+                .context("Failed to create image directory")?;
+            state.create_image(
+                &pulled_id,
+                &digest,
+                Some(&args.image),
+                &[args.image.clone()],
+                0,
+                Some(image_path.to_str().unwrap_or("")),
+            )?;
+            info!("Image {} stored as {}", args.image, pulled_id);
+            pulled_id
+        }
+    };
 
     // Create container record
     let config_json = serde_json::json!({
@@ -240,33 +251,75 @@ pub async fn execute(args: RunArgs, cli: &Cli) -> Result<()> {
 
     info!("Generated OCI config at {}", config_path.display());
 
-    // Create shim client to execute container via runtime (youki/runc)
-    let shim = ShimClient::new(&cli.runtime, bundle_path.to_str()
-        .ok_or_else(|| anyhow::anyhow!("Invalid bundle path - contains invalid UTF-8"))?);
+    // Resolve the OCI runtime (crun or youki) — try DirectRuntime first,
+    // fall back to legacy ShimClient if the configured runtime is unavailable.
+    let bundle_str = bundle_path.to_str()
+        .ok_or_else(|| anyhow::anyhow!("Invalid bundle path - contains invalid UTF-8"))?;
+
+    let direct_rt = DirectRuntime::with_runtime(&cli.runtime);
 
     if args.detach {
-        // Detached mode: start container and return immediately
-        match shim.create_and_start(&container_id).await {
+        // Detached mode: create + start, print container ID, return.
+        let start_result = match &direct_rt {
+            Ok(rt) => {
+                info!("Using DirectRuntime ({}) for container {}", rt.name(), container_id);
+                rt.create_and_start(&container_id, bundle_str).await
+            }
+            Err(e) => {
+                info!("DirectRuntime unavailable ({}), falling back to ShimClient", e);
+                let shim = crate::runtime::ShimClient::new(&cli.runtime, bundle_str);
+                shim.create_and_start(&container_id)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))
+            }
+        };
+
+        match start_result {
             Ok(pid) => {
                 state.set_container_state(&container_id, ContainerState::Running, Some(pid as i32))?;
                 println!("{}", container_id);
             }
             Err(e) => {
-                // Clean up on failure
                 state.set_container_state(&container_id, ContainerState::Stopped, None)?;
                 return Err(anyhow::anyhow!("Failed to start container: {}", e));
             }
         }
     } else {
-        // Foreground mode: start container and wait for completion
-        match shim.create_and_start(&container_id).await {
+        // Foreground mode: create + start, wait for exit.
+        let start_result = match &direct_rt {
+            Ok(rt) => {
+                info!("Using DirectRuntime ({}) for container {}", rt.name(), container_id);
+                rt.create_and_start(&container_id, bundle_str).await
+            }
+            Err(e) => {
+                info!("DirectRuntime unavailable ({}), falling back to ShimClient", e);
+                let shim = crate::runtime::ShimClient::new(&cli.runtime, bundle_str);
+                shim.create_and_start(&container_id)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))
+            }
+        };
+
+        match start_result {
             Ok(pid) => {
                 state.set_container_state(&container_id, ContainerState::Running, Some(pid as i32))?;
                 info!("Container {} started (PID: {})", container_name, pid);
 
-                // Wait for container to exit
-                let exit_code = shim.wait(&container_id).await
-                    .context("Failed to wait for container")?;
+                // Wait for container to exit.
+                // DirectRuntime: poll `state` until stopped.
+                // ShimClient fallback: use its `wait` method.
+                let exit_code = match &direct_rt {
+                    Ok(rt) => {
+                        wait_for_exit(rt, &container_id).await
+                            .context("Failed to wait for container")?
+                    }
+                    Err(_) => {
+                        let shim = crate::runtime::ShimClient::new(&cli.runtime, bundle_str);
+                        shim.wait(&container_id).await
+                            .map_err(|e| anyhow::anyhow!("{}", e))
+                            .context("Failed to wait for container")?
+                    }
+                };
 
                 state.set_container_state(&container_id, ContainerState::Stopped, None)?;
                 info!("Container {} exited with code {}", container_name, exit_code);
@@ -283,6 +336,48 @@ pub async fn execute(args: RunArgs, cli: &Cli) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Poll the DirectRuntime until the container exits, returning the exit code.
+///
+/// The OCI runtime `state` command returns a JSON blob with a `status` field.
+/// We poll every 100ms until the status is "stopped" (or the container
+/// disappears).
+async fn wait_for_exit(rt: &DirectRuntime, container_id: &str) -> Result<i32> {
+    loop {
+        match rt.get_status(container_id).await {
+            Ok(status) => {
+                if status == "stopped" {
+                    // Try to extract exit code from state JSON
+                    if let Ok(json_str) = rt.state(container_id).await {
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                            // OCI state doesn't mandate an exit code field, but
+                            // some runtimes include it.  Default to 0 for
+                            // "stopped" without an explicit code.
+                            let code = value
+                                .get("exit_code")
+                                .or_else(|| value.get("exitCode"))
+                                .and_then(|v| v.as_i64())
+                                .unwrap_or(0) as i32;
+                            return Ok(code);
+                        }
+                    }
+                    return Ok(0);
+                }
+            }
+            Err(e) => {
+                // If the container no longer exists the runtime returns an
+                // error — treat as clean exit.
+                let msg = e.to_string();
+                if msg.contains("does not exist") || msg.contains("not found") {
+                    return Ok(0);
+                }
+                return Err(e);
+            }
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
 }
 
 /// Generate a unique container ID (64 hex characters)

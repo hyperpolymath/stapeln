@@ -307,6 +307,41 @@ fn save_auth_config(path: &PathBuf, config: &AuthConfig) -> Result<()> {
     Ok(())
 }
 
+/// Resolve an Authorization header for a given registry.
+///
+/// Checks the stored credentials and returns a Basic auth header if found.
+/// Returns `None` if no credentials are stored for this registry.
+pub fn resolve_auth_header(registry: &str) -> Option<String> {
+    let auth_path = get_auth_file_path().ok()?;
+    let config = load_auth_config(&auth_path).ok()?;
+
+    // Try exact match first, then normalized match
+    let normalized = normalize_registry(registry);
+    let auth = config.auths.get(registry)
+        .or_else(|| config.auths.get(&normalized))
+        .or_else(|| {
+            // Try matching without scheme
+            let bare = registry.trim_start_matches("https://").trim_start_matches("http://");
+            config.auths.iter()
+                .find(|(k, _)| {
+                    let k_bare = k.trim_start_matches("https://").trim_start_matches("http://");
+                    k_bare.starts_with(bare)
+                })
+                .map(|(_, v)| v)
+        })?;
+
+    // Return the auth header
+    if let Some(ref token) = auth.identity_token {
+        Some(format!("Bearer {}", token))
+    } else if let Some(ref token) = auth.registry_token {
+        Some(format!("Bearer {}", token))
+    } else if let Some(ref basic) = auth.auth {
+        Some(format!("Basic {}", basic))
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
