@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# EditorConfig — Rokur secrets management gate
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{js,mjs}]
+indent_style = space
+indent_size = 2
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Containerfile]
+indent_style = space
+indent_size = 4
+
+[justfile]
+indent_style = space
+indent_size = 4
+
+[*.scm]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab

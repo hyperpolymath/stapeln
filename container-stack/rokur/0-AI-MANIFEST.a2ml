@@ -1,0 +1,133 @@
+# STOP - CRITICAL READING REQUIRED
+
+**THIS FILE MUST BE READ FIRST BY ALL AI AGENTS**
+
+## WHAT IS THIS?
+
+This is the AI manifest for **rokur**, the secrets management gate in the
+Stapeln container stack. It declares canonical file locations, critical
+invariants, and repository structure.
+
+## CANONICAL LOCATIONS (UNIVERSAL RULE)
+
+### Machine-Readable Metadata: `.machine_readable/` ONLY
+
+These SCM files MUST exist in `.machine_readable/` directory ONLY:
+1. **STATE.scm** - Project state, progress, blockers
+2. **META.scm** - Architecture decisions, governance
+3. **ECOSYSTEM.scm** - Position in ecosystem, relationships
+
+**CRITICAL:** If ANY of these files exist in the root directory, this is an ERROR.
+
+### Source Code
+
+```
+rokur/
+├── main.js              # HTTP server entry point
+├── audit.js             # Structured audit logging
+├── rate_limit.js        # Per-IP rate limiter
+├── policy/              # Policy engine
+│   └── engine.js        # Pluggable evaluator (built-in + external)
+├── test/                # Test suite (50 tests)
+│   ├── engine_test.js
+│   ├── rate_limit_test.js
+│   ├── audit_test.js
+│   └── integration_test.js
+├── deno.json            # Deno configuration and tasks
+└── deno.lock            # Dependency lock file
+```
+
+### Infrastructure
+
+```
+rokur/
+├── Containerfile        # Multi-stage Podman/OCI build
+├── justfile             # Task runner recipes
+├── LICENSE              # PMPL-1.0-or-later
+├── SECURITY.md          # Vulnerability reporting
+├── CONTRIBUTING.md      # Contribution guide
+├── .editorconfig        # Editor formatting rules
+└── 0-AI-MANIFEST.a2ml   # THIS FILE
+```
+
+## CRITICAL INVARIANTS
+
+These rules must NEVER be violated:
+
+1. **Fail-closed** — Any ambiguity, error, or missing data results in DENIAL.
+   Never add a code path that defaults to allowing container starts.
+
+2. **No secrets in responses** — Rokur NEVER returns actual secret values in
+   any API response. Only presence/absence counts and policy decisions.
+
+3. **No SCM duplication** — Root must NOT contain STATE.scm, META.scm, or
+   ECOSYSTEM.scm. Only `.machine_readable/` is authoritative.
+
+4. **License consistency** — All code is PMPL-1.0-or-later. Every source
+   file must have the SPDX header comment.
+
+5. **Author attribution** — Always "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>".
+
+6. **Environment-only configuration** — All config via ROKUR_* environment
+   variables. No config files.
+
+7. **Podman, not Docker** — Container files are named "Containerfile", runtime
+   is Podman. Never reference Docker.
+
+8. **Deno, not Node** — Runtime is Deno. No npm, no node_modules, no
+   package.json.
+
+## ENVIRONMENT VARIABLES
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `ROKUR_HOST` | No | `127.0.0.1` | Listen address |
+| `ROKUR_PORT` | No | `9090` | Listen port |
+| `ROKUR_ENV` | No | `development` | Environment (production/development) |
+| `ROKUR_API_TOKEN` | Prod: yes | (empty) | Bearer token for authentication |
+| `ROKUR_REQUIRED_SECRETS` | Prod: yes | (empty) | Comma-separated secret names |
+| `ROKUR_SECRET_*` | Varies | (empty) | Actual secret values to verify |
+| `ROKUR_AUDIT_LOG` | No | `true` | Enable audit file logging |
+| `ROKUR_REQUEST_LOG` | No | `true` | Enable request logging to stdout |
+| `ROKUR_TRUST_PROXY` | No | `false` | Trust X-Forwarded-For header |
+
+## API ENDPOINTS
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| `GET` | `/health` | No | Health check and config summary |
+| `GET` | `/metrics` | No | Operational metrics |
+| `GET` | `/v1/secrets/status` | Yes | Secret presence verification |
+| `POST` | `/v1/authorize-start` | Yes | Container start authorization |
+| `POST` | `/v1/secrets/reload` | Yes | Hot-reload secret requirements |
+
+## SESSION STARTUP CHECKLIST
+
+1. Read THIS file (0-AI-MANIFEST.a2ml) first
+2. Understand canonical locations (.machine_readable/)
+3. Know the invariants (fail-closed, no secrets in responses)
+4. Read `.machine_readable/STATE.scm` for current status
+5. Note: Rokur is part of the Stapeln monorepo, not a standalone repo
+
+## LIFECYCLE HOOKS
+
+### on-enter (Session Start)
+
+1. Read and acknowledge this manifest
+2. Read `.machine_readable/STATE.scm`
+3. Check for blockers
+4. State understanding of fail-closed invariant
+
+### on-exit (Session End)
+
+1. Update `.machine_readable/STATE.scm` if changes made
+2. Document new blockers
+3. Summarize outcomes
+
+## META
+
+- **Format Version:** 1.0.0
+- **Created:** 2026-03-10
+- **Maintained By:** Jonathan D.A. Jewell (hyperpolymath)
+- **License:** PMPL-1.0-or-later
+- **Protocol:** https://github.com/hyperpolymath/0-ai-gatekeeper-protocol

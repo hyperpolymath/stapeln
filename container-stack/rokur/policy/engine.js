@@ -15,7 +15,9 @@ function parseIntegerEnv(name, defaultValue, min, max) {
     throw new Error(`Invalid ${name}: "${raw}". Expected integer.`);
   }
   if (parsed < min || parsed > max) {
-    throw new Error(`Invalid ${name}: "${raw}". Expected integer between ${min} and ${max}.`);
+    throw new Error(
+      `Invalid ${name}: "${raw}". Expected integer between ${min} and ${max}.`,
+    );
   }
 
   return parsed;
@@ -33,16 +35,25 @@ function parseCommandArgs(rawValue) {
       parsed = JSON.parse(trimmed);
     } catch (error) {
       throw new Error(
-        `Invalid ROKUR_POLICY_COMMAND_ARGS JSON: ${error instanceof Error ? error.message : String(error)}`,
+        `Invalid ROKUR_POLICY_COMMAND_ARGS JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
-    if (!Array.isArray(parsed) || !parsed.every((value) => typeof value === "string")) {
-      throw new Error("Invalid ROKUR_POLICY_COMMAND_ARGS JSON: expected array of strings.");
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every((value) => typeof value === "string")
+    ) {
+      throw new Error(
+        "Invalid ROKUR_POLICY_COMMAND_ARGS JSON: expected array of strings.",
+      );
     }
     return parsed;
   }
 
-  return trimmed.split(",").map((value) => value.trim()).filter((value) => value.length > 0);
+  return trimmed.split(",").map((value) => value.trim()).filter((value) =>
+    value.length > 0
+  );
 }
 
 function resolveBackend(requestedBackend, externalCommand) {
@@ -119,10 +130,11 @@ function normalizeExternalDecision(rawDecision, requiredSecretCount) {
     ? rawDecision.missingSecretCount
     : (allowed ? 0 : requiredSecretCount);
 
-  const resolvedRequiredSecretCount = Number.isInteger(rawDecision.requiredSecretCount) &&
+  const resolvedRequiredSecretCount =
+    Number.isInteger(rawDecision.requiredSecretCount) &&
       rawDecision.requiredSecretCount >= 0
-    ? rawDecision.requiredSecretCount
-    : requiredSecretCount;
+      ? rawDecision.requiredSecretCount
+      : requiredSecretCount;
 
   return {
     allowed,
@@ -135,14 +147,6 @@ function normalizeExternalDecision(rawDecision, requiredSecretCount) {
 }
 
 async function evaluateExternal(config, input, requiredSecrets) {
-  const command = new Deno.Command(config.externalCommand, {
-    args: config.externalCommandArgs,
-    stdin: "piped",
-    stdout: "piped",
-    stderr: "piped",
-  });
-
-  const child = command.spawn();
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -156,8 +160,18 @@ async function evaluateExternal(config, input, requiredSecrets) {
     },
   };
 
+  let child;
   let timeoutId;
   try {
+    const command = new Deno.Command(config.externalCommand, {
+      args: config.externalCommandArgs,
+      stdin: "piped",
+      stdout: "piped",
+      stderr: "piped",
+    });
+
+    child = command.spawn();
+
     const writer = child.stdin.getWriter();
     await writer.write(encoder.encode(JSON.stringify(requestPayload)));
     await writer.close();
@@ -169,7 +183,11 @@ async function evaluateExternal(config, input, requiredSecrets) {
         } catch {
           // Ignore: process may have exited.
         }
-        reject(new Error(`External policy command timed out after ${config.externalTimeoutMs}ms.`));
+        reject(
+          new Error(
+            `External policy command timed out after ${config.externalTimeoutMs}ms.`,
+          ),
+        );
       }, config.externalTimeoutMs);
     });
 
@@ -218,9 +236,12 @@ async function evaluateExternal(config, input, requiredSecrets) {
 }
 
 export function createPolicyEvaluator({ requiredSecrets, secretEnvName }) {
-  const requestedBackend = (Deno.env.get("ROKUR_POLICY_BACKEND") ?? "builtin").trim().toLowerCase();
+  const requestedBackend = (Deno.env.get("ROKUR_POLICY_BACKEND") ?? "builtin")
+    .trim().toLowerCase();
   const externalCommand = (Deno.env.get("ROKUR_POLICY_COMMAND") ?? "").trim();
-  const externalCommandArgs = parseCommandArgs(Deno.env.get("ROKUR_POLICY_COMMAND_ARGS") ?? "");
+  const externalCommandArgs = parseCommandArgs(
+    Deno.env.get("ROKUR_POLICY_COMMAND_ARGS") ?? "",
+  );
   const externalTimeoutMs = parseIntegerEnv(
     "ROKUR_POLICY_TIMEOUT_MS",
     DEFAULT_EXTERNAL_TIMEOUT_MS,
@@ -230,7 +251,9 @@ export function createPolicyEvaluator({ requiredSecrets, secretEnvName }) {
 
   const resolvedBackend = resolveBackend(requestedBackend, externalCommand);
   if (resolvedBackend === "external" && externalCommand.length === 0) {
-    throw new Error("ROKUR_POLICY_BACKEND=external requires ROKUR_POLICY_COMMAND.");
+    throw new Error(
+      "ROKUR_POLICY_BACKEND=external requires ROKUR_POLICY_COMMAND.",
+    );
   }
 
   return {
@@ -240,16 +263,20 @@ export function createPolicyEvaluator({ requiredSecrets, secretEnvName }) {
       externalCommandConfigured: externalCommand.length > 0,
       externalTimeoutMs,
     },
-    evaluate: async (input) => {
+    evaluate: (input) => {
       if (resolvedBackend === "external") {
-        return evaluateExternal({
-          externalCommand,
-          externalCommandArgs,
-          externalTimeoutMs,
-        }, input, requiredSecrets);
+        return evaluateExternal(
+          {
+            externalCommand,
+            externalCommandArgs,
+            externalTimeoutMs,
+          },
+          input,
+          requiredSecrets,
+        );
       }
 
-      return evaluateBuiltin(requiredSecrets, secretEnvName);
+      return Promise.resolve(evaluateBuiltin(requiredSecrets, secretEnvName));
     },
   };
 }

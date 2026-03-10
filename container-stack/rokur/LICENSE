@@ -1,0 +1,28 @@
+SPDX-License-Identifier: PMPL-1.0-or-later
+SPDX-FileCopyrightText: 2024-2026 Palimpsest Stewardship Council
+
+Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+This software is licensed under the Palimpsest License, Version 1.0 or later
+(PMPL-1.0-or-later).
+
+The full license text is available at:
+  - Parent repository: ../../../LICENSE
+  - Canonical source: https://github.com/hyperpolymath/palimpsest-license
+
+PALIMPSEST-MPL LICENSE VERSION 1.0
+
+  File-level copyleft with ethical use and quantum-safe provenance.
+  Based on Mozilla Public License 2.0.
+
+Key terms (summary — the full text in the parent LICENSE is authoritative):
+
+  1. BASE LICENSE: Incorporates Mozilla Public License 2.0 by reference.
+  2. ETHICAL USE: Emotional lineage preservation, non-interpretive system notice.
+  3. PROVENANCE: Metadata preservation, optional quantum-safe signatures.
+  4. GOVERNANCE: Maintained by the Palimpsest Stewardship Council.
+  5. COMPATIBILITY: MPL-2.0 compatible, secondary license provisions apply.
+
+For the complete license including Exhibit A (Ethical Use Guidelines) and
+Exhibit B (Quantum-Safe Provenance Specification), see the parent repository
+LICENSE file or the canonical source above.

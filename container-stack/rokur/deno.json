@@ -1,7 +1,17 @@
 {
+  "imports": {
+    "@std/assert": "https://deno.land/std@0.224.0/assert/mod.ts",
+    "@std/testing/bdd": "https://deno.land/std@0.224.0/testing/bdd.ts"
+  },
   "tasks": {
-    "dev": "deno run --allow-net --allow-env main.js",
-    "dev:external": "deno run --allow-net --allow-env --allow-run main.js",
-    "check": "deno check main.js"
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write main.js",
+    "dev:external": "deno run --allow-net --allow-env --allow-run --allow-read --allow-write main.js",
+    "check": "deno check main.js config.js audit.js rate_limit.js policy/engine.js",
+    "test": "deno test --allow-net --allow-env --allow-run --allow-read --allow-write test/",
+    "test:unit": "deno test --allow-net --allow-env --allow-run --allow-read --allow-write test/engine_test.js test/rate_limit_test.js test/audit_test.js",
+    "test:integration": "deno test --allow-net --allow-env --allow-run --allow-read --allow-write test/integration_test.js",
+    "lint": "deno lint",
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check"
   }
 }

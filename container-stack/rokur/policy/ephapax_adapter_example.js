@@ -18,7 +18,9 @@ async function readStdinJson() {
 }
 
 function evaluate(payload) {
-  const requiredSecrets = Array.isArray(payload.requiredSecrets) ? payload.requiredSecrets : [];
+  const requiredSecrets = Array.isArray(payload.requiredSecrets)
+    ? payload.requiredSecrets
+    : [];
   const missingSecretCount = 0;
   const allowed = missingSecretCount === 0;
 
