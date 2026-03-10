@@ -49,15 +49,30 @@ pub async fn ps(
                 Cell::new("CREATED"),
             ]));
 
-            // Rows
+            // Rows - fetch details for each container to get created timestamp
             for container in &project_containers {
                 let service_name = extract_service_name(&container.container_id, project_name);
 
+                // Attempt to get created timestamp via inspect
+                let created = match vordr_client
+                    .inspect_container(&container.container_id)
+                    .await
+                {
+                    Ok(details) => details.created.unwrap_or_else(|| "N/A".to_string()),
+                    Err(_) => "N/A".to_string(),
+                };
+
+                let short_id = if container.container_id.len() >= 12 {
+                    &container.container_id[..12]
+                } else {
+                    &container.container_id
+                };
+
                 table.add_row(Row::new(vec![
                     Cell::new(&service_name),
-                    Cell::new(&container.container_id[..12]), // Short ID
+                    Cell::new(short_id),
                     Cell::new(&container.state),
-                    Cell::new("N/A"), // TODO: Add created timestamp
+                    Cell::new(&created),
                 ]));
             }
 

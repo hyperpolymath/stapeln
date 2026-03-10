@@ -181,12 +181,21 @@ pub async fn scale(
                 for container_id in to_remove_containers {
                     tracing::info!("  Removing container: {}", container_id);
 
-                    // Stop via Svalinn
+                    // Stop via Svalinn then delete via Vordr
                     match svalinn_client.stop(container_id).await {
                         Ok(_) => {
-                            // Remove via Vörðr
-                            // TODO: Implement delete_container when Vörðr API is ready
-                            println!("  ✓ Replica stopped: {}", container_id);
+                            // Remove the stopped container via Vordr
+                            if let Err(e) = vordr_client.delete_container(container_id).await {
+                                tracing::warn!(
+                                    "  Failed to delete container {}: {}",
+                                    container_id, e
+                                );
+                                eprintln!(
+                                    "  Warning: stopped but could not remove {}: {}",
+                                    container_id, e
+                                );
+                            }
+                            println!("  ✓ Replica removed: {}", container_id);
                         }
                         Err(e) => {
                             eprintln!("  ✗ Failed to stop {}: {}", container_id, e);

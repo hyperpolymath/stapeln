@@ -75,9 +75,41 @@ pub async fn up(
 
         // Step 1: Build if requested
         if build {
-            tracing::info!("  Building {}", service.image);
-            // TODO: Implement build - pack source into .ctp
-            // ct_client.pack(&source_dir, &bundle_path).await?;
+            if let Some(build_config) = &service.build {
+                tracing::info!("  Building {} from {}", service.image, build_config.context);
+                let output_path = format!("{}.ctp", service_name);
+
+                let mut args = vec!["pack".to_string()];
+
+                if let Some(dockerfile) = &build_config.dockerfile {
+                    args.push("--dockerfile".to_string());
+                    args.push(dockerfile.clone());
+                }
+
+                for (key, value) in &build_config.args {
+                    args.push("--build-arg".to_string());
+                    args.push(format!("{}={}", key, value));
+                }
+
+                if let Some(target) = &build_config.target {
+                    args.push("--target".to_string());
+                    args.push(target.clone());
+                }
+
+                args.push("--context".to_string());
+                args.push(build_config.context.clone());
+                args.push("--output".to_string());
+                args.push(output_path);
+
+                ct_client
+                    .run_command(&args)
+                    .await
+                    .with_context(|| format!("Build failed for {}", service_name))?;
+
+                println!("  Built {}", service_name);
+            } else {
+                tracing::debug!("  No build config for {}, skipping build", service_name);
+            }
         }
 
         // Step 2: Verify .ctp bundle signature
@@ -228,11 +260,56 @@ pub async fn up(
 
     if !detach {
         println!();
-        println!("Press Ctrl+C to stop all services");
-        // TODO: Stream logs in non-detached mode
+        println!("Attaching to logs (Ctrl+C to stop)...");
+        println!();
+
+        // Stream logs from all deployed containers until interrupted
+        let vordr_url = std::env::var("VORDR_URL")
+            .unwrap_or_else(|_| "http://localhost:9090".to_string());
+        let vordr_client = crate::vordr::VordrClient::new(vordr_url);
+
+        let container_ids: HashMap<String, String> = deployed.clone();
+
+        // Spawn log streaming task
+        let log_handle = tokio::spawn(async move {
+            loop {
+                for (service_name, container_id) in &container_ids {
+                    match vordr_client.get_logs(container_id, Some(10)).await {
+                        Ok(logs) => {
+                            for line in logs.lines() {
+                                if !line.is_empty() {
+                                    println!("{} | {}", service_name, line);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::debug!("Log fetch error for {}: {}", service_name, e);
+                        }
+                    }
+                }
+                sleep(Duration::from_secs(1)).await;
+            }
+        });
+
+        // Wait for Ctrl+C
         tokio::signal::ctrl_c().await?;
-        println!("\nStopping services...");
-        // TODO: Call down command
+        log_handle.abort();
+
+        println!();
+        println!("Stopping services...");
+
+        // Stop all deployed containers
+        let svalinn_url_down = std::env::var("SVALINN_URL")
+            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+        let svalinn_down = SvalinnClient::new(svalinn_url_down);
+
+        for (service_name, container_id) in &deployed {
+            tracing::info!("  Stopping {}...", service_name);
+            if let Err(e) = svalinn_down.stop(container_id).await {
+                tracing::warn!("Failed to stop {}: {}", service_name, e);
+            }
+        }
+        println!("All services stopped");
     }
 
     Ok(())

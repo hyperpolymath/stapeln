@@ -5,7 +5,7 @@
 //! - Cerro Torre (ct) for .ctp bundle packing/verification
 //! - Svalinn for gateway and policy enforcement
 //! - selur for zero-copy IPC
-//! - Vörðr for container orchestration
+//! - Vordr for container orchestration
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -177,11 +177,11 @@ enum Commands {
     /// Check policy compliance
     Policy {
         /// Policy file
-        #[arg(short = 'f', long)]
-        file: Option<PathBuf>,
+        #[arg(long)]
+        policy_file: Option<PathBuf>,
     },
 
-    /// Show SBOM for service
+    /// Show SBOM for service (via Cerro Torre)
     Sbom {
         /// Service name
         service: String,
@@ -191,7 +191,7 @@ enum Commands {
         format: String,
     },
 
-    /// Show build provenance
+    /// Show build provenance chain (via Cerro Torre)
     Provenance {
         /// Service name
         service: String,
@@ -221,6 +221,120 @@ enum Commands {
         /// Output format (json, pretty)
         #[arg(long, default_value = "pretty")]
         format: String,
+    },
+
+    /// Manage networks
+    Network {
+        #[command(subcommand)]
+        action: NetworkAction,
+    },
+
+    /// Manage volumes
+    Volume {
+        #[command(subcommand)]
+        action: VolumeAction,
+    },
+
+    /// Watch build contexts and rebuild on changes (dev mode)
+    Watch {
+        /// Services to watch (default: all with build config)
+        services: Vec<String>,
+
+        /// Poll interval in seconds
+        #[arg(long, default_value = "2")]
+        interval: u64,
+    },
+
+    /// Copy files to/from containers (SERVICE:/path syntax)
+    Cp {
+        /// Source path (host path or SERVICE:/path)
+        src: String,
+
+        /// Destination path (host path or SERVICE:/path)
+        dest: String,
+    },
+
+    /// Pause running containers
+    Pause {
+        /// Services to pause (default: all)
+        services: Vec<String>,
+    },
+
+    /// Unpause paused containers
+    Unpause {
+        /// Services to unpause (default: all)
+        services: Vec<String>,
+    },
+
+    /// Create containers without starting them
+    Create {
+        /// Services to create (default: all)
+        services: Vec<String>,
+    },
+
+    /// List images used by compose services
+    Images,
+
+    /// Wait for containers to stop, return exit codes
+    Wait {
+        /// Services to wait for (default: all)
+        services: Vec<String>,
+    },
+
+    /// Show health check status for services
+    Health {
+        /// Services to check (default: all)
+        services: Vec<String>,
+    },
+}
+
+/// Subcommands for `selur-compose network`
+#[derive(Subcommand)]
+enum NetworkAction {
+    /// List all networks
+    Ls,
+
+    /// Create a network
+    Create {
+        /// Network name
+        name: String,
+
+        /// Network driver (selur, bridge)
+        #[arg(long, default_value = "selur")]
+        driver: String,
+
+        /// Subnet CIDR (e.g. 172.28.0.0/16)
+        #[arg(long)]
+        subnet: Option<String>,
+    },
+
+    /// Remove a network
+    Rm {
+        /// Network name
+        name: String,
+    },
+}
+
+/// Subcommands for `selur-compose volume`
+#[derive(Subcommand)]
+enum VolumeAction {
+    /// List all volumes
+    Ls,
+
+    /// Create a volume
+    Create {
+        /// Volume name
+        name: String,
+
+        /// Volume driver
+        #[arg(long, default_value = "local")]
+        driver: String,
+    },
+
+    /// Remove a volume
+    Rm {
+        /// Volume name
+        name: String,
     },
 }
 
@@ -271,7 +385,11 @@ async fn main() -> Result<()> {
             commands::verify(&compose, services).await?;
         }
 
-        Commands::Logs { follow, tail, services } => {
+        Commands::Logs {
+            follow,
+            tail,
+            services,
+        } => {
             commands::logs(&compose, &project_name, follow, tail, services).await?;
         }
 
@@ -299,7 +417,11 @@ async fn main() -> Result<()> {
             commands::restart(&compose, &project_name, services, timeout).await?;
         }
 
-        Commands::Run { service, command, rm } => {
+        Commands::Run {
+            service,
+            command,
+            rm,
+        } => {
             commands::run(&compose, &project_name, service, command, rm).await?;
         }
 
@@ -324,16 +446,82 @@ async fn main() -> Result<()> {
         }
 
         Commands::Config { format } => {
-            tracing::info!("Validating compose file...");
-            match format.as_str() {
-                "json" => println!("{}", serde_json::to_string_pretty(&compose)?),
-                "toml" => println!("{}", toml::to_string_pretty(&compose)?),
-                _ => anyhow::bail!("Unknown format: {}", format),
-            }
+            commands::config(&compose, &format).await?;
         }
 
-        _ => {
-            println!("Command not yet implemented");
+        Commands::Sbom { service, format } => {
+            commands::sbom(&compose, &service, &format).await?;
+        }
+
+        Commands::Provenance { service } => {
+            commands::provenance(&compose, &service).await?;
+        }
+
+        Commands::Policy { policy_file } => {
+            commands::policy(&compose, &project_name, policy_file).await?;
+        }
+
+        Commands::Network { action } => match action {
+            NetworkAction::Ls => {
+                commands::network_ls().await?;
+            }
+            NetworkAction::Create {
+                name,
+                driver,
+                subnet,
+            } => {
+                commands::network_create(&name, &driver, subnet).await?;
+            }
+            NetworkAction::Rm { name } => {
+                commands::network_rm(&name).await?;
+            }
+        },
+
+        Commands::Volume { action } => match action {
+            VolumeAction::Ls => {
+                commands::volume_ls().await?;
+            }
+            VolumeAction::Create { name, driver } => {
+                commands::volume_create(&name, &driver).await?;
+            }
+            VolumeAction::Rm { name } => {
+                commands::volume_rm(&name).await?;
+            }
+        },
+
+        Commands::Watch {
+            services,
+            interval,
+        } => {
+            commands::watch(&compose, &project_name, services, interval).await?;
+        }
+
+        Commands::Cp { src, dest } => {
+            commands::cp(&compose, &project_name, &src, &dest).await?;
+        }
+
+        Commands::Pause { services } => {
+            commands::pause(&compose, &project_name, services).await?;
+        }
+
+        Commands::Unpause { services } => {
+            commands::unpause(&compose, &project_name, services).await?;
+        }
+
+        Commands::Create { services } => {
+            commands::create(&compose, &project_name, services).await?;
+        }
+
+        Commands::Images => {
+            commands::images(&compose).await?;
+        }
+
+        Commands::Wait { services } => {
+            commands::wait_cmd(&compose, &project_name, services).await?;
+        }
+
+        Commands::Health { services } => {
+            commands::health(&compose, &project_name, services).await?;
         }
     }
 

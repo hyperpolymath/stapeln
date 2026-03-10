@@ -55,8 +55,11 @@ pub async fn down(
 
         tracing::info!("  Removing {}...", service_name);
 
-        // TODO: Call vordr_client.delete_container when implemented
-        // vordr_client.delete_container(&container.container_id).await?;
+        if let Err(e) = vordr_client.delete_container(&container.container_id).await {
+            tracing::warn!("  Failed to delete container {}: {}", container.container_id, e);
+            eprintln!("  Warning: failed to remove {}: {}", service_name, e);
+            continue;
+        }
 
         println!("✓ {} removed", service_name);
     }

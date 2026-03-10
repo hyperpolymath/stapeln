@@ -61,9 +61,11 @@ mod tests {
                 ports: vec![],
                 volumes: vec![],
                 networks: vec![],
+                secrets: vec![],
                 restart: "no".to_string(),
                 healthcheck: None,
                 deploy: None,
+                build: None,
             },
         );
 
@@ -77,9 +79,11 @@ mod tests {
                 ports: vec![],
                 volumes: vec![],
                 networks: vec![],
+                secrets: vec![],
                 restart: "no".to_string(),
                 healthcheck: None,
                 deploy: None,
+                build: None,
             },
         );
 

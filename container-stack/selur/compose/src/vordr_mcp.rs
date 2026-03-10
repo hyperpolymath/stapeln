@@ -101,4 +101,101 @@ impl VordrMcpClient {
         self.call_tool("vordr_volume_rm", args).await?;
         Ok(())
     }
+
+    /// List all networks
+    pub async fn list_networks(&self) -> Result<Vec<NetworkEntry>> {
+        let result = self
+            .call_tool("vordr_network_ls", json!({}))
+            .await
+            .context("Failed to list networks")?;
+
+        let networks: Vec<NetworkEntry> = serde_json::from_value(result)
+            .context("Failed to parse network list response")?;
+
+        Ok(networks)
+    }
+
+    /// List all volumes
+    pub async fn list_volumes(&self) -> Result<Vec<VolumeEntry>> {
+        let result = self
+            .call_tool("vordr_volume_ls", json!({}))
+            .await
+            .context("Failed to list volumes")?;
+
+        let volumes: Vec<VolumeEntry> = serde_json::from_value(result)
+            .context("Failed to parse volume list response")?;
+
+        Ok(volumes)
+    }
+
+    /// Inspect a network by name
+    pub async fn inspect_network(&self, name: &str) -> Result<NetworkDetails> {
+        let result = self
+            .call_tool("vordr_network_inspect", json!({ "name": name }))
+            .await
+            .context("Failed to inspect network")?;
+
+        let details: NetworkDetails = serde_json::from_value(result)
+            .context("Failed to parse network inspect response")?;
+
+        Ok(details)
+    }
+
+    /// Inspect a volume by name
+    pub async fn inspect_volume(&self, name: &str) -> Result<VolumeDetails> {
+        let result = self
+            .call_tool("vordr_volume_inspect", json!({ "name": name }))
+            .await
+            .context("Failed to inspect volume")?;
+
+        let details: VolumeDetails = serde_json::from_value(result)
+            .context("Failed to parse volume inspect response")?;
+
+        Ok(details)
+    }
+}
+
+/// Network list entry
+#[derive(Debug, Deserialize)]
+pub struct NetworkEntry {
+    pub name: String,
+    pub driver: String,
+    pub scope: String,
+}
+
+/// Detailed network information
+#[derive(Debug, Deserialize)]
+pub struct NetworkDetails {
+    pub name: String,
+    pub driver: String,
+    pub scope: String,
+    pub subnet: Option<String>,
+    pub gateway: Option<String>,
+    pub containers: Vec<NetworkContainer>,
+}
+
+/// Container attached to a network
+#[derive(Debug, Deserialize)]
+pub struct NetworkContainer {
+    pub container_id: String,
+    pub name: String,
+    pub ip_address: String,
+}
+
+/// Volume list entry
+#[derive(Debug, Deserialize)]
+pub struct VolumeEntry {
+    pub name: String,
+    pub driver: String,
+    pub mountpoint: String,
+}
+
+/// Detailed volume information
+#[derive(Debug, Deserialize)]
+pub struct VolumeDetails {
+    pub name: String,
+    pub driver: String,
+    pub mountpoint: String,
+    pub labels: std::collections::HashMap<String, String>,
+    pub created_at: Option<String>,
 }

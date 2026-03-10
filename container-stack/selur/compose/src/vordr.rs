@@ -196,6 +196,199 @@ impl VordrClient {
 
         Ok(response)
     }
+
+    /// Delete container
+    pub async fn delete_container(&self, id: &str) -> Result<()> {
+        tracing::info!("Deleting container {} via Vörðr", id);
+
+        let response = self
+            .client
+            .delete(format!(
+                "{}/api/v1/containers/{}",
+                self.base_url, id
+            ))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Failed to delete container {}", id);
+        }
+
+        Ok(())
+    }
+
+    /// Pause container
+    pub async fn pause_container(&self, id: &str) -> Result<()> {
+        tracing::info!("Pausing container {} via Vörðr", id);
+
+        let response = self
+            .client
+            .post(format!(
+                "{}/api/v1/containers/{}/pause",
+                self.base_url, id
+            ))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Failed to pause container {}", id);
+        }
+
+        Ok(())
+    }
+
+    /// Unpause container
+    pub async fn unpause_container(&self, id: &str) -> Result<()> {
+        tracing::info!("Unpausing container {} via Vörðr", id);
+
+        let response = self
+            .client
+            .post(format!(
+                "{}/api/v1/containers/{}/unpause",
+                self.base_url, id
+            ))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Failed to unpause container {}", id);
+        }
+
+        Ok(())
+    }
+
+    /// Wait for container to stop, returns exit code
+    pub async fn wait_container(&self, id: &str) -> Result<WaitResult> {
+        tracing::info!("Waiting for container {} to stop via Vörðr", id);
+
+        let response = self
+            .client
+            .post(format!(
+                "{}/api/v1/containers/{}/wait",
+                self.base_url, id
+            ))
+            .send()
+            .await?
+            .json::<WaitResult>()
+            .await?;
+
+        Ok(response)
+    }
+
+    /// Get container health check status
+    pub async fn get_health(&self, id: &str) -> Result<HealthStatus> {
+        tracing::debug!("Getting health status for container {}", id);
+
+        let response = self
+            .client
+            .get(format!(
+                "{}/api/v1/containers/{}/health",
+                self.base_url, id
+            ))
+            .send()
+            .await?
+            .json::<HealthStatus>()
+            .await?;
+
+        Ok(response)
+    }
+
+    /// Copy files to container via tar archive
+    pub async fn copy_to_container(
+        &self,
+        id: &str,
+        src_path: &str,
+        dest_path: &str,
+    ) -> Result<()> {
+        tracing::info!(
+            "Copying {} to container {}:{} via Vörðr",
+            src_path, id, dest_path
+        );
+
+        let tar_data = std::fs::read(src_path)?;
+
+        let response = self
+            .client
+            .post(format!(
+                "{}/api/v1/containers/{}/copy",
+                self.base_url, id
+            ))
+            .query(&[("dest", dest_path)])
+            .header("Content-Type", "application/x-tar")
+            .body(tar_data)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!(
+                "Failed to copy {} to container {}:{}",
+                src_path, id, dest_path
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Copy files from container, returns tar archive bytes
+    pub async fn copy_from_container(&self, id: &str, src_path: &str) -> Result<Vec<u8>> {
+        tracing::info!(
+            "Copying from container {}:{} via Vörðr",
+            id, src_path
+        );
+
+        let response = self
+            .client
+            .get(format!(
+                "{}/api/v1/containers/{}/copy",
+                self.base_url, id
+            ))
+            .query(&[("path", src_path)])
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            anyhow::bail!(
+                "Failed to copy from container {}:{}",
+                id, src_path
+            );
+        }
+
+        let bytes = response.bytes().await?.to_vec();
+        Ok(bytes)
+    }
+
+    /// List images
+    pub async fn list_images(&self) -> Result<Vec<ImageInfo>> {
+        tracing::debug!("Listing images via Vörðr");
+
+        let response = self
+            .client
+            .get(format!("{}/api/v1/images", self.base_url))
+            .send()
+            .await?
+            .json::<Vec<ImageInfo>>()
+            .await?;
+
+        Ok(response)
+    }
+
+    /// Get container port mappings
+    pub async fn get_container_ports(&self, id: &str) -> Result<Vec<PortMapping>> {
+        tracing::debug!("Getting port mappings for container {}", id);
+
+        let response = self
+            .client
+            .get(format!(
+                "{}/api/v1/containers/{}/ports",
+                self.base_url, id
+            ))
+            .send()
+            .await?
+            .json::<Vec<PortMapping>>()
+            .await?;
+
+        Ok(response)
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -276,4 +469,47 @@ pub struct MountInfo {
     pub source: String,
     pub destination: String,
     pub mode: String,
+}
+
+/// Result from waiting for a container to stop
+#[derive(Debug, Deserialize)]
+pub struct WaitResult {
+    pub exit_code: i32,
+    pub error: Option<String>,
+}
+
+/// Container health check status
+#[derive(Debug, Deserialize)]
+pub struct HealthStatus {
+    pub status: String,
+    pub failing_streak: Option<u32>,
+    pub log: Vec<HealthLogEntry>,
+}
+
+/// Individual health check log entry
+#[derive(Debug, Deserialize)]
+pub struct HealthLogEntry {
+    pub start: String,
+    pub end: String,
+    pub exit_code: i32,
+    pub output: String,
+}
+
+/// Image information
+#[derive(Debug, Deserialize)]
+pub struct ImageInfo {
+    pub id: String,
+    pub repository: String,
+    pub tag: String,
+    pub size: u64,
+    pub created: String,
+}
+
+/// Port mapping with protocol information
+#[derive(Debug, Deserialize)]
+pub struct PortMapping {
+    pub host_ip: String,
+    pub host_port: u16,
+    pub container_port: u16,
+    pub protocol: String,
 }

@@ -116,4 +116,55 @@ impl CtClient {
         let digest = hasher.finalize();
         Ok(format!("sha256:{:x}", digest))
     }
+
+    /// Generate CycloneDX SBOM for a bundle
+    pub async fn sbom(&self, bundle_path: &str) -> Result<String> {
+        tracing::info!("Generating SBOM for {}", bundle_path);
+
+        let output = Command::new(&self.ct_path)
+            .args(["sbom", bundle_path])
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("ct sbom failed for {}: {}", bundle_path, stderr);
+        }
+
+        let sbom_json = String::from_utf8(output.stdout)?;
+        Ok(sbom_json)
+    }
+
+    /// Generate SLSA provenance for a bundle
+    pub async fn provenance(&self, bundle_path: &str) -> Result<String> {
+        tracing::info!("Generating provenance for {}", bundle_path);
+
+        let output = Command::new(&self.ct_path)
+            .args(["provenance", bundle_path])
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("ct provenance failed for {}: {}", bundle_path, stderr);
+        }
+
+        let provenance_json = String::from_utf8(output.stdout)?;
+        Ok(provenance_json)
+    }
+
+    /// List all attestations for an image reference
+    pub async fn list_attestations(&self, image_ref: &str) -> Result<String> {
+        tracing::info!("Listing attestations for {}", image_ref);
+
+        let output = Command::new(&self.ct_path)
+            .args(["attestations", image_ref])
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("ct attestations failed for {}: {}", image_ref, stderr);
+        }
+
+        let attestations_json = String::from_utf8(output.stdout)?;
+        Ok(attestations_json)
+    }
 }

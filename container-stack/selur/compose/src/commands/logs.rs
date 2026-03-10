@@ -107,8 +107,7 @@ async fn fetch_logs(
 ) -> Result<String> {
     tracing::debug!("Fetching logs for container {}", container_id);
 
-    // TODO: Implement actual log streaming via Vörðr API
-    // For now, simulate with placeholder
+    // Fetch logs via Vordr REST API
     let logs = client.get_logs(container_id, tail).await?;
 
     // Format logs with service name prefix

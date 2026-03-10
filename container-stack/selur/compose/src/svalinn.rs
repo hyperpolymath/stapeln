@@ -155,4 +155,66 @@ impl SvalinnClient {
 
         Ok(())
     }
+
+    /// Get health status for a specific service
+    pub async fn get_service_health(&self, service_name: &str) -> Result<ServiceHealth> {
+        tracing::debug!("Getting health for service {} via Svalinn", service_name);
+
+        let response = self
+            .client
+            .get(format!(
+                "{}/api/v1/services/{}/health",
+                self.base_url, service_name
+            ))
+            .send()
+            .await?
+            .json::<ServiceHealth>()
+            .await?;
+
+        Ok(response)
+    }
+
+    /// Get aggregated health for all services
+    pub async fn get_all_health(&self) -> Result<AggregatedHealth> {
+        tracing::debug!("Getting aggregated health via Svalinn");
+
+        let response = self
+            .client
+            .get(format!("{}/api/v1/health", self.base_url))
+            .send()
+            .await?
+            .json::<AggregatedHealth>()
+            .await?;
+
+        Ok(response)
+    }
+}
+
+/// Health status for a single service
+#[derive(Debug, Deserialize)]
+pub struct ServiceHealth {
+    pub service_name: String,
+    pub status: String,
+    pub healthy_containers: u32,
+    pub total_containers: u32,
+    pub checks: Vec<HealthCheckResult>,
+}
+
+/// Individual health check result
+#[derive(Debug, Deserialize)]
+pub struct HealthCheckResult {
+    pub container_id: String,
+    pub status: String,
+    pub output: Option<String>,
+    pub timestamp: String,
+}
+
+/// Aggregated health across all services
+#[derive(Debug, Deserialize)]
+pub struct AggregatedHealth {
+    pub overall_status: String,
+    pub services: Vec<ServiceHealth>,
+    pub healthy_count: u32,
+    pub unhealthy_count: u32,
+    pub total_count: u32,
 }
