@@ -665,34 +665,64 @@ package body CT_Registry is
             return Result;
          end if;
 
-         --  Step 2: Upload file in one shot (monolithic)
-         --  TODO: Calculate digest first
+         --  Step 2: Calculate SHA256 digest of the file, then upload
          declare
             Upload_Location : constant String := Get_Header (Response, Location_Header);
-            --  Placeholder digest (all zeros)
-            Blob_Digest     : constant String :=
-               "sha256:0000000000000000000000000000000000000000000000000000000000000000";
-            Upload_URL      : constant String := Upload_Location & "?digest=" & Blob_Digest;
          begin
             if Upload_Location'Length = 0 then
                Result.Error := Push_Failed;
                return Result;
             end if;
 
-            Response := Upload_From_File (
-               URL          => Upload_URL,
-               Input_Path   => File_Path,
-               Content_Type => Media_Type,
-               Auth         => Auth);
+            --  Read file and compute SHA256 digest
+            declare
+               use Ada.Text_IO;
+               File       : File_Type;
+               Content    : Unbounded_String := Null_Unbounded_String;
+               Line_Buf   : String (1 .. 4096);
+               Last       : Natural;
+               First_Line : Boolean := True;
+            begin
+               Open (File, In_File, File_Path);
+               while not End_Of_File (File) loop
+                  Get_Line (File, Line_Buf, Last);
+                  if First_Line then
+                     First_Line := False;
+                  else
+                     Append (Content, Character'Val (10));
+                  end if;
+                  Append (Content, Line_Buf (1 .. Last));
+               end loop;
+               Close (File);
 
-            if not Response.Success or else Response.Status_Code /= 201 then
-               Result.Error := Push_Failed;
-               return Result;
-            end if;
+               --  Compute real SHA256 digest of the file content
+               declare
+                  Blob_Digest : constant String :=
+                     Manifest_Digest (To_String (Content));
+                  Upload_URL  : constant String :=
+                     Upload_Location & "?digest=" & Blob_Digest;
+               begin
+                  Response := Upload_From_File (
+                     URL          => Upload_URL,
+                     Input_Path   => File_Path,
+                     Content_Type => Media_Type,
+                     Auth         => Auth);
 
-            Result.Digest := To_Unbounded_String (Blob_Digest);
-            Result.Error := Success;
-            return Result;
+                  if not Response.Success or else Response.Status_Code /= 201 then
+                     Result.Error := Push_Failed;
+                     return Result;
+                  end if;
+
+                  Result.Digest := To_Unbounded_String (Blob_Digest);
+                  Result.Error := Success;
+                  return Result;
+               end;
+
+            exception
+               when others =>
+                  Result.Error := Push_Failed;
+                  return Result;
+            end;
          end;
       end;
    end Push_Blob_From_File;

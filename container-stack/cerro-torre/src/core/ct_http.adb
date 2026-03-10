@@ -620,9 +620,78 @@ package body CT_HTTP is
 
    function Parse_WWW_Authenticate (Header_Value : String) return WWW_Auth_Challenge is
       Result : WWW_Auth_Challenge;
+
+      --  Extract a quoted value for a given key from the header string.
+      --  Searches for key="value" and returns the value between quotes.
+      function Extract_Param (Source : String; Key : String) return String is
+         Search_Key : constant String := Key & "=""";
+         Key_Pos    : Natural;
+         Val_Start  : Natural;
+         Quote_End  : Natural;
+      begin
+         Key_Pos := Index (Ada.Characters.Handling.To_Lower (Source),
+                           Ada.Characters.Handling.To_Lower (Search_Key));
+         if Key_Pos = 0 then
+            return "";
+         end if;
+
+         Val_Start := Key_Pos + Search_Key'Length;
+         if Val_Start > Source'Last then
+            return "";
+         end if;
+
+         --  Find closing quote
+         Quote_End := Index (Source (Val_Start .. Source'Last), """");
+         if Quote_End = 0 then
+            --  No closing quote; take rest of string
+            return Source (Val_Start .. Source'Last);
+         end if;
+
+         return Source (Val_Start .. Quote_End - 1);
+      end Extract_Param;
+
    begin
-      --  TODO: Implement proper parsing of Bearer realm="..." service="..." scope="..."
-      --  For now, return empty challenge
+      --  Parse WWW-Authenticate header per RFC 6750 / Docker Registry v2 auth
+      --  Expected format: Bearer realm="https://auth.example.com/token",
+      --                   service="registry.example.com",scope="repository:user/repo:pull"
+      --
+      --  Also handles: Basic realm="..." (returns realm only)
+
+      if Header_Value'Length = 0 then
+         return Result;
+      end if;
+
+      --  Check for "Bearer " prefix (case-insensitive)
+      declare
+         Lower_Header : constant String :=
+            Ada.Characters.Handling.To_Lower (Header_Value);
+      begin
+         if Lower_Header'Length >= 7 and then
+            Lower_Header (Lower_Header'First .. Lower_Header'First + 6) = "bearer "
+         then
+            --  Parse Bearer challenge parameters
+            declare
+               Params : constant String :=
+                  Header_Value (Header_Value'First + 7 .. Header_Value'Last);
+            begin
+               Result.Realm   := To_Unbounded_String (Extract_Param (Params, "realm"));
+               Result.Service := To_Unbounded_String (Extract_Param (Params, "service"));
+               Result.Scope   := To_Unbounded_String (Extract_Param (Params, "scope"));
+            end;
+
+         elsif Lower_Header'Length >= 6 and then
+               Lower_Header (Lower_Header'First .. Lower_Header'First + 5) = "basic "
+         then
+            --  Parse Basic challenge (only realm)
+            declare
+               Params : constant String :=
+                  Header_Value (Header_Value'First + 6 .. Header_Value'Last);
+            begin
+               Result.Realm := To_Unbounded_String (Extract_Param (Params, "realm"));
+            end;
+         end if;
+      end;
+
       return Result;
    end Parse_WWW_Authenticate;
 

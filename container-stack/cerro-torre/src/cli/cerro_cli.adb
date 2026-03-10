@@ -944,92 +944,194 @@ package body Cerro_CLI is
             return;
          end if;
 
-         --  Read hex-encoded private key
+         --  Try external Rust signing utility (ct-sign) first, then fall
+         --  back to direct OpenSSL Ed25519 signing if ct-sign is not
+         --  available on PATH.
          declare
-            Priv_File : Ada.Text_IO.File_Type;
-            Priv_Hex  : String (1 .. 128);
-            Last      : Natural;
-            Priv_Key  : Ed25519_Private_Key;
-            Sig       : Ed25519_Signature;
-            OK        : Boolean;
+            use GNAT.OS_Lib;
+            CT_Sign_Path : String_Access :=
+               Locate_Exec_On_Path ("ct-sign");
          begin
-            Ada.Text_IO.Open (Priv_File, Ada.Text_IO.In_File, Priv_Path);
-            Ada.Text_IO.Get_Line (Priv_File, Priv_Hex, Last);
-            Ada.Text_IO.Close (Priv_File);
-
-            if Last /= 128 then
-               Put_Line ("Error: Invalid private key format " &
-                  "(expected 128 hex chars).");
-               Set_Exit_Status (CT_Errors.Exit_General_Failure);
-               return;
-            end if;
-
-            Hex_To_Private_Key (Priv_Hex, Priv_Key, OK);
-            if not OK then
-               Put_Line ("Error: Invalid private key hex encoding.");
-               Set_Exit_Status (CT_Errors.Exit_General_Failure);
-               return;
-            end if;
-
-            --  Read file content to sign
-            declare
-               In_File    : Ada.Text_IO.File_Type;
-               Content    : Unbounded_String := Null_Unbounded_String;
-               Line_Buf   : String (1 .. 4096);
-               Line_Last  : Natural;
-               First_Line : Boolean := True;
-            begin
-               Ada.Text_IO.Open (In_File, Ada.Text_IO.In_File,
-                                 To_String (Input_Path));
-               while not Ada.Text_IO.End_Of_File (In_File) loop
-                  Ada.Text_IO.Get_Line (In_File, Line_Buf, Line_Last);
-                  if First_Line then
-                     First_Line := False;
-                  else
-                     Append (Content, ASCII.LF);
-                  end if;
-                  Append (Content, Line_Buf (1 .. Line_Last));
-               end loop;
-               Ada.Text_IO.Close (In_File);
-
-               --  Sign the content
+            if CT_Sign_Path /= null then
+               --  ct-sign binary is available; delegate signing to it
                if Verbose then
-                  Put_Line ("Signing" &
-                     Natural'Image (Length (Content)) & " bytes...");
+                  Put_Line ("Using ct-sign (Rust) for signing");
                end if;
 
-               Sign_Ed25519 (To_String (Content), Priv_Key, Sig, OK);
-
-               if not OK then
-                  Put_Line ("Error: Signing failed (OpenSSL error).");
-                  Set_Exit_Status (CT_Errors.Exit_General_Failure);
-                  return;
-               end if;
-
-               --  Write signature as hex to output file
                declare
-                  Sig_Hex  : constant String := Signature_To_Hex (Sig);
-                  Out_File : Ada.Text_IO.File_Type;
+                  Temp_Sig : constant String :=
+                     "/tmp/ct-sign-" &
+                     To_String (Key_Id_Str) & ".sig";
+                  Args : Argument_List :=
+                     (new String'("sign"),
+                      new String'("--key"),
+                      new String'(Priv_Path),
+                      new String'("--input"),
+                      new String'(To_String (Input_Path)),
+                      new String'("--output"),
+                      new String'(Temp_Sig));
+                  Exit_Status : Integer;
                begin
-                  Ada.Text_IO.Create (Out_File, Ada.Text_IO.Out_File,
-                                      To_String (Output_Path));
-                  Ada.Text_IO.Put_Line (Out_File, Sig_Hex);
-                  Ada.Text_IO.Close (Out_File);
+                  --  Execute ct-sign binary as subprocess
+                  Exit_Status := Spawn (CT_Sign_Path.all, Args);
+                  Free (CT_Sign_Path);
+
+                  --  Free argument strings
+                  for I in Args'Range loop
+                     Free (Args (I));
+                  end loop;
+
+                  if Exit_Status /= 0 then
+                     Put_Line ("Error: ct-sign exited with code" &
+                               Integer'Image (Exit_Status));
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+                     return;
+                  end if;
+
+                  --  Read the signature output from ct-sign
+                  if not Ada.Directories.Exists (Temp_Sig) then
+                     Put_Line ("Error: ct-sign did not produce output");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+                     return;
+                  end if;
+
+                  --  Read signature hex from temp file
+                  declare
+                     Sig_File : Ada.Text_IO.File_Type;
+                     Sig_Hex  : String (1 .. 128);
+                     Sig_Last : Natural;
+                  begin
+                     Ada.Text_IO.Open (Sig_File, Ada.Text_IO.In_File, Temp_Sig);
+                     Ada.Text_IO.Get_Line (Sig_File, Sig_Hex, Sig_Last);
+                     Ada.Text_IO.Close (Sig_File);
+
+                     --  Clean up temp file
+                     begin
+                        Ada.Directories.Delete_File (Temp_Sig);
+                     exception
+                        when others => null;
+                     end;
+
+                     --  Write signature to output file
+                     declare
+                        Out_File : Ada.Text_IO.File_Type;
+                     begin
+                        Ada.Text_IO.Create (
+                           Out_File, Ada.Text_IO.Out_File,
+                           To_String (Output_Path));
+                        Ada.Text_IO.Put_Line (
+                           Out_File, Sig_Hex (1 .. Sig_Last));
+                        Ada.Text_IO.Close (Out_File);
+                     end;
+
+                     Put_Line ("Signature created: " &
+                        To_String (Output_Path));
+                     if Verbose then
+                        Put_Line ("  Backend:   ct-sign (Rust)");
+                        if Sig_Last >= 32 then
+                           Put_Line ("  Signature: " &
+                              Sig_Hex (1 .. 32) & "...");
+                        end if;
+                     end if;
+                     Set_Exit_Status (0);
+                  end;
                end;
 
-               Put_Line ("Signature created: " &
-                  To_String (Output_Path));
+            else
+               --  ct-sign not found; fall back to direct OpenSSL signing
                if Verbose then
-                  Put_Line ("  Signature: " &
-                     Signature_To_Hex (Sig) (1 .. 32) & "...");
+                  Put_Line ("ct-sign not on PATH; using OpenSSL fallback");
                end if;
-               Set_Exit_Status (0);
-            end;
-         exception
-            when E : others =>
-               Put_Line ("Error reading key: " &
-                  Ada.Exceptions.Exception_Message (E));
-               Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+               --  Read hex-encoded private key
+               declare
+                  Priv_File : Ada.Text_IO.File_Type;
+                  Priv_Hex  : String (1 .. 128);
+                  Last      : Natural;
+                  Priv_Key  : Ed25519_Private_Key;
+                  Sig       : Ed25519_Signature;
+                  OK        : Boolean;
+               begin
+                  Ada.Text_IO.Open (Priv_File, Ada.Text_IO.In_File, Priv_Path);
+                  Ada.Text_IO.Get_Line (Priv_File, Priv_Hex, Last);
+                  Ada.Text_IO.Close (Priv_File);
+
+                  if Last /= 128 then
+                     Put_Line ("Error: Invalid private key format " &
+                        "(expected 128 hex chars).");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+                     return;
+                  end if;
+
+                  Hex_To_Private_Key (Priv_Hex, Priv_Key, OK);
+                  if not OK then
+                     Put_Line ("Error: Invalid private key hex encoding.");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+                     return;
+                  end if;
+
+                  --  Read file content to sign
+                  declare
+                     In_File    : Ada.Text_IO.File_Type;
+                     Content    : Unbounded_String := Null_Unbounded_String;
+                     Line_Buf   : String (1 .. 4096);
+                     Line_Last  : Natural;
+                     First_Line : Boolean := True;
+                  begin
+                     Ada.Text_IO.Open (In_File, Ada.Text_IO.In_File,
+                                       To_String (Input_Path));
+                     while not Ada.Text_IO.End_Of_File (In_File) loop
+                        Ada.Text_IO.Get_Line (In_File, Line_Buf, Line_Last);
+                        if First_Line then
+                           First_Line := False;
+                        else
+                           Append (Content, ASCII.LF);
+                        end if;
+                        Append (Content, Line_Buf (1 .. Line_Last));
+                     end loop;
+                     Ada.Text_IO.Close (In_File);
+
+                     --  Sign the content
+                     if Verbose then
+                        Put_Line ("Signing" &
+                           Natural'Image (Length (Content)) & " bytes...");
+                     end if;
+
+                     Sign_Ed25519 (To_String (Content), Priv_Key, Sig, OK);
+
+                     if not OK then
+                        Put_Line ("Error: Signing failed (OpenSSL error).");
+                        Set_Exit_Status (CT_Errors.Exit_General_Failure);
+                        return;
+                     end if;
+
+                     --  Write signature as hex to output file
+                     declare
+                        Sig_Hex  : constant String := Signature_To_Hex (Sig);
+                        Out_File : Ada.Text_IO.File_Type;
+                     begin
+                        Ada.Text_IO.Create (Out_File, Ada.Text_IO.Out_File,
+                                            To_String (Output_Path));
+                        Ada.Text_IO.Put_Line (Out_File, Sig_Hex);
+                        Ada.Text_IO.Close (Out_File);
+                     end;
+
+                     Put_Line ("Signature created: " &
+                        To_String (Output_Path));
+                     if Verbose then
+                        Put_Line ("  Backend:   OpenSSL (fallback)");
+                        Put_Line ("  Signature: " &
+                           Signature_To_Hex (Sig) (1 .. 32) & "...");
+                     end if;
+                     Set_Exit_Status (0);
+                  end;
+               exception
+                  when E : others =>
+                     Put_Line ("Error reading key: " &
+                        Ada.Exceptions.Exception_Message (E));
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+               end;
+            end if;
          end;
       end;
    end Run_Sign;
@@ -2003,14 +2105,15 @@ package body Cerro_CLI is
                   Manifest_File : constant String :=
                      To_String (Output_Dir) & "/" & Pkg_Name & ".ctp";
                begin
-                  --  Serialize and write manifest
+                  --  Serialize manifest and write to file
                   declare
-                     Out_File : Ada.Text_IO.File_Type;
+                     Out_File   : Ada.Text_IO.File_Type;
+                     Serialized : constant String :=
+                        Cerro_Manifest.To_String (Result.Manifest);
                   begin
                      Ada.Text_IO.Create (Out_File, Ada.Text_IO.Out_File,
                                          Manifest_File);
-                     Cerro_Manifest.Write_Manifest (Out_File,
-                                                     Result.Manifest);
+                     Ada.Text_IO.Put (Out_File, Serialized);
                      Ada.Text_IO.Close (Out_File);
                   exception
                      when E : others =>
@@ -2471,20 +2574,20 @@ package body Cerro_CLI is
 
       --  Parse the manifest file
       declare
-         Parse_Result : constant Cerro_Manifest.Parse_Result :=
+         Parsed : constant Cerro_Manifest.Parse_Result :=
             Cerro_Manifest.Parse_File (To_String (Manifest_Path));
       begin
-         if not Parse_Result.Success then
+         if not Parsed.Success then
             Put_Line ("Error: Failed to parse manifest: " &
-                      To_String (Parse_Result.Error_Message));
+                      To_String (Parsed.Error_Msg));
             Set_Exit_Status (CT_Errors.Exit_General_Failure);
             return;
          end if;
 
          if Verbose then
             Put_Line ("Parsed manifest: " &
-                      To_String (Parse_Result.M.Metadata.Name) & " " &
-                      To_String (Parse_Result.M.Metadata.Version.Upstream));
+                      To_String (Parsed.Value.Metadata.Name) & " " &
+                      To_String (Parsed.Value.Metadata.Version.Upstream));
             Put_Line ("");
          end if;
 
@@ -2505,7 +2608,7 @@ package body Cerro_CLI is
             --  Export to tarball
             declare
                Result : constant Export_Result :=
-                  Export_To_Tarball (Parse_Result.M, To_String (Output_Dir), Config);
+                  Export_To_Tarball (Parsed.Value, To_String (Output_Dir), Config);
             begin
                case Result.Status is
                   when Cerro_Export_OCI.Success =>

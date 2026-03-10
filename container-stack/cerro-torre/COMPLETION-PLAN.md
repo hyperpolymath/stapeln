@@ -1,64 +1,83 @@
 # Cerro Torre - Path to 100% Completion
 
-**Current Status:** 90%
+**Current Status:** ~68% (honest assessment as of 2026-03-10)
 **Target:** 100%
-**Gap:** 10% across 13 files with TODOs/stubs
+**Gap:** ~32% — stubs in importers, exporters, transparency verification, builder, PQ crypto
 **Created:** 2026-01-22
+**Last Updated:** 2026-03-10
 
 ---
 
 ## Phase 1: Complete Core Functionality (Priority: HIGH)
 
-### 1.1 Debian Importer (HIGH - Blocks lcb-website)
+### 1.1 Debian Importer (MOSTLY COMPLETE)
 **File:** `src/importers/debian/cerro_import_debian.adb`
-**Current:** 60% complete
-**Gap:** 40%
+**Current:** 90% complete (712 lines of real implementation)
 
-**TODO Items:**
-- [ ] Line 245: Convert `Dsc_Info` → `Cerro_Manifest.Manifest`
-  - Map Source, Version, Maintainer fields
-  - Add tarball hashes to manifest
-  - Set build dependencies
-- [ ] Line 275: Implement `Import_Package`
-  - Use HTTP client to query apt-cache
-  - Download .dsc file
-  - Call Import_From_Dsc
-- [ ] Line 290: Implement `Import_From_Apt_Source`
-  - Query APT Sources.gz via HTTP
-  - Download .dsc from mirror
-  - Validate checksums
+**DONE:**
+- [x] Parse_Dsc: Full field extraction (Source, Version, Maintainer, Build-Depends, checksums, tarballs)
+- [x] Import_From_Dsc: Reads .dsc file, validates fields, converts Dsc_Info to Manifest (metadata, provenance, dependencies, build, outputs, attestations)
+- [x] Import_Package: Downloads .dsc from Debian mirror pool via HTTP, falls back to APT source method
+- [x] Import_From_Apt_Source: Downloads Sources.gz, decompresses via gunzip, parses to find .dsc URL, downloads and imports
+- [x] Parse_Debian_Version: Handles epoch:upstream-revision format
+- [x] Parse_Debian_Dependencies: Splits Build-Depends, extracts package names
 
-**Dependencies:** HTTP client ✅ (completed this session)
-**Estimated Effort:** 4-6 hours
-**Blocking:** WordPress manifest creation
+**Remaining TODO Items:**
+- [ ] Test against live Debian mirrors (code complete but untested against real infra)
+- [ ] Handle edge cases: missing checksums, unusual .dsc formats
+- [ ] Add unit tests
 
-### 1.2 Registry Operations (MEDIUM)
-**File:** `src/core/ct_registry.adb`
-**Current:** Unknown
-**Gap:** Registry push/pull functions
+**Dependencies:** HTTP client ✅, GNAT.OS_Lib ✅
+**Estimated Effort:** 2-4 hours (testing and edge cases only)
 
-**TODO Items:**
-- [ ] Implement registry authentication (Bearer tokens)
-- [ ] Implement Push_To_Registry using HTTP client
-- [ ] Implement Pull_From_Registry
-- [ ] Support Docker Hub, GHCR, custom registries
+### 1.2 Registry Operations (MOSTLY COMPLETE)
+**File:** `src/core/ct_registry.adb` (1107 lines)
+**Current:** 85% complete
 
-**Dependencies:** HTTP client ✅
-**Estimated Effort:** 6-8 hours
+**DONE:**
+- [x] Authenticate: Anonymous detection, WWW-Authenticate parsing, Bearer token exchange
+- [x] Pull_Manifest: GET with Accept headers, auth, digest extraction
+- [x] Push_Manifest: PUT with Content-Type, auth, debug logging
+- [x] Pull_Blob: GET with streaming to file
+- [x] Push_Blob: Monolithic upload (POST initiate, PUT with digest)
+- [x] Push_Blob_From_File: File upload via CT_HTTP
+- [x] Manifest_Exists, Blob_Exists: HEAD requests
+- [x] Delete_Manifest: DELETE with auth
+- [x] Mount_Blob: Cross-repository mount
+- [x] List_Tags: GET with JSON array parsing
+- [x] Parse_Reference: Registry/repo/tag/digest extraction (handles localhost:port, ghcr.io, etc.)
+- [x] Manifest_To_Json: Full OCI manifest serialization
+- [x] Manifest_Digest: SHA256 via Cerro_Crypto
+- [x] Verify_Digest: Content hash comparison
 
-### 1.3 OCI Exporter Enhancements (MEDIUM)
-**File:** `src/exporters/oci/cerro_export_oci.adb`
-**Current:** 75% complete
-**Gap:** 25%
+**Remaining TODO Items:**
+- [ ] Push_Blob_From_File uses placeholder all-zeros digest (needs SHA256 computation)
+- [ ] Parse_Manifest: Can parse basic fields but not nested config/layers objects
+- [ ] Chunked upload for large blobs (currently monolithic only)
+- [ ] Timing-safe digest comparison (currently simple string comparison)
+- [ ] Test with cloud registries (ghcr.io, docker.io)
 
-**TODO Items:**
-- [ ] Line 18: Implement `Export_Package` (full OCI image)
-- [ ] Line 41: Implement `Push_To_Registry` (delegate to ct_registry)
-- [ ] Line 186: Implement `Attach_Provenance` (SLSA attestation)
-- [ ] Line 195: Implement `Attach_SBOM` (CycloneDX/SPDX)
+**Dependencies:** HTTP client ✅, Cerro_Crypto ✅, CT_JSON ✅
+**Estimated Effort:** 4-6 hours (digest fix, cloud testing)
 
-**Dependencies:** ct_registry, provenance module
-**Estimated Effort:** 4-6 hours
+### 1.3 OCI Exporter Enhancements (MOSTLY COMPLETE)
+**File:** `src/exporters/oci/cerro_export_oci.adb` (751 lines)
+**Current:** 80% complete
+
+**DONE:**
+- [x] Export_Package: Validates manifest, creates tarball via Export_To_Tarball, sets image ref
+- [x] Export_To_Tarball: Full pipeline — Create_Rootfs, tar layer, SHA256 digest, config.json, manifest.json (Docker load format), final tarball
+- [x] Push_To_Registry: Extracts tarball, pushes layer blob, reads config, pushes config blob, assembles OCI manifest, pushes manifest with tag
+- [x] Create_Rootfs: Creates FHS directory structure with marker file
+- [x] Create_Config_Json: Generates OCI config with entrypoint, cmd, env, labels, rootfs/diff_ids
+
+**Remaining TODO Items:**
+- [ ] Attach_Provenance: SLSA provenance attachment (pragma Unreferenced — stub)
+- [ ] Attach_SBOM: CycloneDX/SPDX generation (pragma Unreferenced — stub)
+- [ ] Create_Rootfs needs to copy actual package files (currently creates empty FHS)
+
+**Dependencies:** ct_registry ✅, Cerro_Crypto ✅, Cerro_Provenance (partial)
+**Estimated Effort:** 4-6 hours (Attach_Provenance, Attach_SBOM, rootfs population)
 
 ---
 
@@ -218,22 +237,24 @@
 
 ---
 
-## Completion Metrics
+## Completion Metrics (Updated 2026-03-10)
 
-| Component | Current | Target | Effort | Priority |
-|-----------|---------|--------|--------|----------|
-| Debian importer | 60% | 100% | 4-6h | **HIGH** |
-| Registry ops | 20% | 100% | 6-8h | **MEDIUM** |
-| OCI exporter | 75% | 100% | 4-6h | **MEDIUM** |
-| Runtime engine | 10% | 100% | 4-6h | **MEDIUM** |
-| Builder | 10% | 100% | 6-8h | **MEDIUM** |
-| Provenance | 25% | 100% | 4-6h | **MEDIUM** |
-| Test suite | 0% | 80% | 12-16h | **HIGH** |
+| Component | Current | Target | Effort Remaining | Priority |
+|-----------|---------|--------|------------------|----------|
+| Debian importer | 90% | 100% | 2-4h | **HIGH** |
+| Registry ops | 85% | 100% | 4-6h | **HIGH** |
+| OCI exporter | 80% | 100% | 4-6h | **MEDIUM** |
+| Runtime engine | 75% | 100% | 2-4h | **MEDIUM** |
+| Transparency | 55% | 100% | 8-12h | **MEDIUM** |
+| CLI wiring | 65% | 100% | 4-6h | **MEDIUM** |
+| Provenance | 60% | 100% | 4-6h | **MEDIUM** |
+| Builder | 15% | 100% | 6-8h | **MEDIUM** |
+| Test suite | 40% | 80% | 8-12h | **HIGH** |
 | Alpine importer | 5% | 100% | 6-8h | **LOW** |
 | Fedora importer | 5% | 100% | 6-8h | **LOW** |
 | OSTree exporter | 5% | 100% | 12+h | **LOW** |
-| PQ crypto | 0% | 100% | 16+h | **DEFERRED** |
-| Transparency | 0% | 100% | 8-12h | **DEFERRED** |
+| PQ crypto | 5% | 100% | 16+h | **DEFERRED** |
+| SPARK proofs | 0% | 50% | 12+h | **DEFERRED** |
 
 **Total Effort Estimate:**
 - **Critical Path (HIGH priority):** 20-28 hours

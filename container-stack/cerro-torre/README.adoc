@@ -1,16 +1,13 @@
 = Cerro Torre
 
-image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[MPL-2.0-or-later,link="https://opensource.org/licenses/MPL-2.0"]
-image:https://img.shields.io/badge/Philosophy-Palimpsest-indigo.svg[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/License-PMPL--1.0--or--later-indigo.svg[PMPL-1.0-or-later,link="https://github.com/hyperpolymath/palimpsest-license"]
 
-== License & Philosophy
+== License
 
-This project must declare **MPL-2.0-or-later** for platform/tooling compatibility.
+Licensed under *PMPL-1.0-or-later* (Palimpsest-MPL License). The full text is in `LICENSE` and `license/PMPL-1.0.txt`.
 
-Philosophy: **Palimpsest**. The Palimpsest-MPL (PMPL) text is provided in `license/PMPL-1.0.txt`, and the canonical source is the palimpsest-license repository.
-
-// SPDX-License-Identifier: MPL-2.0-or-later
-// SPDX-FileCopyrightText: 2025 Jonathan D.A. Jewell
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell
 
 :toc: preamble
 :toclevels: 3
@@ -42,24 +39,39 @@ Cerro Torre offers a third path:
 
 == Current Status
 
-*Phase 3 - In Progress:* Ed25519 signing module ready, CLI integration next. *82% complete*
+*Phase 2 - In Progress.* Core Debian-to-OCI-to-Registry path functional. *~68% complete toward v1.0.*
 
-**What Works (2026-01-25):**
+**What works end-to-end (tested):**
 
-* ✅ *HTTP Client (CT_HTTP)*: Curl-based client with TLS, auth, modern protocol support, configurable debug logging
-* ✅ *Registry Client (CT_Registry)*: OCI Distribution v2, pull/push manifests, authentication
-* ✅ *CLI Framework*: `ct fetch` and `ct push` working live, `ct pack`/`ct verify` complete
-* ✅ *Transparency Logs*: Rekor API client, log entry structures, upload/get operations
-* ✅ *Cryptography*: SHA-256/512, Ed25519 verification, all tests passing
-* ✅ *Ed25519 Signing*: OpenSSL-based signing module (keygen, sign operations ready)
-* ✅ *Test Suite*: 48/48 tests passing (100%), live registry testing validated
+* *HTTP Client*: Curl-based, TLS 1.3, auth (Basic/Bearer/anonymous), GET/POST/PUT/HEAD/DELETE, file upload/download
+* *Registry Client*: OCI Distribution v2 pull/push for manifests and blobs, tag listing, blob mount, digest verification
+* *CLI*: `ct fetch`, `ct push`, `ct pack`, `ct verify`, `ct key`, `ct help`, `ct explain`, `ct version` all wired
+* *Manifest Parser*: Full TOML-like parser, 48/48 tests passing
+* *Cryptography*: SHA-256/512 (FIPS 180-4), Ed25519 verification. SPARK annotations present.
+* *Debian Importer*: Parse .dsc files, import by package name (HTTP download from mirrors), import via APT Sources.gz
+* *OCI Exporter*: Creates OCI image tarballs (rootfs, layer, config.json, manifest.json with SHA256 digests), pushes to registries
+* *Runtime Detection*: Finds svalinn/podman/nerdctl/docker, runs containers, loads image tarballs
+
+**What is partially implemented:**
+
+* *Transparency Logs*: Upload signatures and lookup entries via Rekor HTTP API. But Merkle inclusion proofs, SET verification, and consistency proofs are *stubs that return False*.
+* *Provenance Chain*: Structures defined, hash verification works. SLSA provenance generation and in-toto attestation format *not yet implemented*.
+* *OCI Exporter*: Tarball export and registry push work. `Attach_Provenance` and `Attach_SBOM` are *stubs*.
+* *SELinux Policy*: Generation structures present but not fully connected.
+* *CLI Signing*: Ed25519 OpenSSL module exists. `ct sign` and `ct keygen` *not yet wired to CLI*.
+
+**What is stubbed (not yet implemented):**
+
+* Alpine importer, Fedora importer, OSTree exporter (pure stubs, <5% each)
+* Post-quantum cryptography (liboqs bindings scaffolded, operations not implemented)
+* Builder orchestration (Build_From_Manifest not implemented)
+* SPARK proof discharge via GNATprove (annotations present, proofs not run)
 
 **Try It Now:**
 
 [source,bash]
 ----
 # Build the project
-cd /var/home/hyper/Documents/hyperpolymath-repos/cerro-torre
 alr build
 
 # Fetch a manifest from a registry
@@ -68,38 +80,14 @@ alr build
 # Push a bundle to a registry
 ./bin/ct push hello.ctp localhost:5000/test/hello:v2
 
-# Verify what works
+# Other working commands
 ./bin/ct --help
 ./bin/ct version
 ----
 
-**Live Testing Results:**
+**Test Results:** 48/48 tests passing (41 E2E + 7 crypto). Live registry testing validated with localhost:5000. Cloud registries (ghcr.io, docker.io) untested.
 
-* ✅ *ct fetch*: Successfully downloads OCI manifests from Docker registries
-* ✅ *ct push*: Successfully uploads bundles to Docker registries
-* ✅ *Localhost registries*: HTTP auto-detection, port parsing fixed, round-trip verified
-* 📋 *Cloud registries*: ghcr.io and docker.io ready for testing (authentication required)
-
-**Security Status:**
-
-* TLS 1.3 with certificate verification (enabled by default)
-* DANE/TLSA for DNS-based cert auth (opportunistic)
-* HTTP/2 and HTTP/3 support via Alt-Svc
-* DNS-over-HTTPS (DoH) ready
-* ECH disabled for MVP compatibility (requires modern curl)
-
-**Immediate Next Steps:**
-
-* [x] ~~Debug ct push manifest upload~~ (DONE - working with localhost:5000)
-* [x] ~~Make HTTP debug logging configurable~~ (DONE - disabled by default)
-* [x] ~~Implement Ed25519 signing module~~ (DONE - OpenSSL wrapper ready)
-* [ ] Wire signing to CLI: `ct sign` and `ct keygen` commands
-* [ ] Test signing end-to-end (generate key → sign bundle → verify)
-* [ ] Test with GitHub Container Registry (ghcr.io) - requires authentication token
-* [ ] Test with Docker Hub (docker.io) - requires credentials
-* [ ] Submit test attestation to Rekor
-
-See link:docs/ROADMAP.md[ROADMAP.md], link:IMPLEMENTATION-STATUS.md[IMPLEMENTATION-STATUS.md], and link:SESSION-LIVE-TESTING-2026-01-25.md[latest session notes] for detailed status.
+See link:docs/ROADMAP.md[ROADMAP.md], link:IMPLEMENTATION-STATUS.md[IMPLEMENTATION-STATUS.md], and link:SESSION-LIVE-TESTING-2026-01-25.md[session notes] for detailed status.
 
 == Architecture
 
@@ -154,16 +142,18 @@ See [spec/manifest-format.md](spec/manifest-format.md) for the full specificatio
 
 Cerro Torre provides cryptographic supply chain guarantees through formal verification and post-quantum cryptography:
 
-==== Implemented (Production Ready)
+==== Implemented (Working)
 
-- *Formal Verification*: Core crypto operations verified with Ada/SPARK proofs
-- *Ed25519 Signatures*: RFC 8032 compliant digital signatures (CT-SIG-01)
-- *Strong Hashing*: SHA-256/512 (FIPS 180-4), BLAKE3 for fast manifest hashing
-- *TLS 1.3*: Modern encrypted transport for registry operations
-- *SELinux Enforcing*: First-class SELinux support with auto-generated per-container policies
-- *Threshold Signing*: k-of-n keyholders required for releases (FROST-Ed25519)
-- *Federated Transparency*: Multiple independent log operators (Rekor integration)
-- *Reproducible Builds*: Any party can rebuild and verify packages
+- *Ed25519 Signatures*: RFC 8032 compliant digital signature verification (CT-SIG-01)
+- *Strong Hashing*: SHA-256/512 (FIPS 180-4) with SPARK annotations (proofs not yet discharged)
+- *TLS 1.3*: Modern encrypted transport for registry operations via curl
+- *Rekor Integration*: Upload signatures and lookup entries in Sigstore transparency logs
+
+==== Partially Implemented
+
+- *SELinux Policy*: Generation structures present, not fully connected
+- *Transparency Verification*: API calls work, but Merkle/SET proof verification stubbed
+- *Provenance Chain*: Hash verification works, SLSA/in-toto generation pending
 
 ==== In Development (Security Roadmap)
 
@@ -181,10 +171,7 @@ Cerro Torre provides cryptographic supply chain guarantees through formal verifi
 
 == Licensing
 
-Cerro Torre tooling is dual-licensed under your choice of:
-
-- *Palimpsest-MPL-1.0 License* — Maximum permissiveness
-- *PMPL-1.0-or-later* — Copyleft with network provisions
+Cerro Torre tooling is licensed under *PMPL-1.0-or-later* (Palimpsest-MPL License).
 
 The *Palimpsest Covenant* travels alongside as a values commitment (not a legal requirement). Community members are encouraged to adopt it.
 
@@ -261,8 +248,20 @@ cerro-torre/
 |Allow/deny rules for deployment
 
 |*Registry Operations*
-|Planned
-|`ct fetch`, `ct push` for remote registries
+|Working
+|`ct fetch`, `ct push` for remote registries (OCI Distribution v2)
+
+|*Debian Importer*
+|Working
+|Parse .dsc files, import from mirrors, APT source integration
+
+|*OCI Exporter*
+|Working
+|OCI image tarballs, push to registries (Attach_Provenance/SBOM pending)
+
+|*Runtime Detection*
+|Working
+|Detect and run via svalinn/podman/nerdctl/docker
 |===
 
 == Building from Source
@@ -415,9 +414,6 @@ Read the link:governance/covenant.md[Palimpsest Covenant] first. If those values
 
 == License
 
-Dual-licensed under:
+Licensed under PMPL-1.0-or-later (Palimpsest-MPL License).
 
-* Palimpsest-MPL-1.0 License
-* PMPL-1.0-or-later
-
-See link:LICENSE.txt[LICENSE.txt] for details.
+See link:LICENSE[LICENSE] for details.

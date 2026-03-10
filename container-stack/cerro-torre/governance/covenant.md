@@ -88,7 +88,7 @@ However, to become a **member** of the Cerro Torre cooperative (with voting righ
 If you choose to adopt the covenant, you may indicate this in your contributions with:
 
 ```
-SPDX-License-Identifier: MPL-2.0-or-later
+SPDX-License-Identifier: PMPL-1.0-or-later
 Palimpsest-Covenant: 1.0
 ```
 
