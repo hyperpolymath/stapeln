@@ -1,5 +1,5 @@
-# Cerro-Torre - Development Tasks
 # SPDX-License-Identifier: PMPL-1.0-or-later
+# justfile -- Cerro Torre build recipes
 set shell := ["bash", "-uc"]
 set dotenv-load := true
 
@@ -13,21 +13,21 @@ tb := if `command -v toolbox >/dev/null 2>&1 && echo yes || echo no` == "yes" { 
 default:
     @just --list --unsorted
 
-# Build the project (Ada + Rust signing CLI)
+# Build the Ada/SPARK project
 build:
     alr build
-    cargo build --release
-    cp target/release/cerro-sign bin/
 
-# Run tests
+# Run test binaries (crypto + e2e)
 test:
-    alr build
-    @echo "Unit tests not yet implemented - see docs/MVP-PLAN.md"
+    ./bin/ct-test-crypto && ./bin/ct-test-e2e
 
-# Clean build artifacts
+# Clean build artefacts
 clean:
     alr clean
     rm -rf obj/ lib/
+
+# Build then test
+check: build test
 
 # Format Ada code (uses gnatpp if available)
 fmt:
@@ -37,7 +37,11 @@ fmt:
         echo "gnatpp not found - install GNAT tools for formatting"; \
     fi
 
-# Lint/check Ada code
+# Build the Rust signing utility
+sign-build:
+    cd src-rust && cargo build --release
+
+# Lint/check Ada code with extra warnings
 lint:
     alr build -- -gnatwa -gnatwe
 
@@ -62,12 +66,12 @@ shadow-build:
     fi
 
 # ============================================================
-# Container Image Variants (3×3 Matrix)
+# Container Image Variants (3x3 Matrix)
 # ============================================================
 
 VERSION := "2.0.0"
 
-# Build all 9 image variants (3 verification levels × 3 feature sets)
+# Build all 9 image variants (3 verification levels x 3 feature sets)
 build-all-images: build-standard build-research build-extreme
 
 # Build all standard variants (SPARK only)
@@ -85,21 +89,21 @@ build-extreme: build-X-ct-i build-X-ct-a build-X-ct
 
 # Build ct-i (standard infrastructure: registry ops + basic packing)
 build-ct-i:
-    @echo "📦 Building ct-i (standard infrastructure)..."
+    @echo "Building ct-i (standard infrastructure)..."
     podman build -f containerfiles/ct-i.containerfile \
       -t ct-i:{{VERSION}} \
       -t ct-i:latest .
 
 # Build ct-a (standard attestation: signing + rekor + sbom)
 build-ct-a:
-    @echo "🔐 Building ct-a (standard attestation)..."
+    @echo "Building ct-a (standard attestation)..."
     podman build -f containerfiles/ct-a.containerfile \
       -t ct-a:{{VERSION}} \
       -t ct-a:latest .
 
 # Build ct (standard complete: all features)
 build-ct:
-    @echo "🏔️  Building ct (standard complete)..."
+    @echo "Building ct (standard complete)..."
     podman build -f containerfiles/ct.containerfile \
       -t ct:{{VERSION}} \
       -t ct:latest .
@@ -110,21 +114,21 @@ build-ct:
 
 # Build R-ct-i (research infrastructure)
 build-R-ct-i:
-    @echo "🔬 Building R-ct-i (research infrastructure)..."
+    @echo "Building R-ct-i (research infrastructure)..."
     podman build -f containerfiles-research/R-ct-i.containerfile \
       -t R-ct-i:{{VERSION}} \
       -t R-ct-i:latest .
 
 # Build R-ct-a (research attestation)
 build-R-ct-a:
-    @echo "🔬🔐 Building R-ct-a (research attestation)..."
+    @echo "Building R-ct-a (research attestation)..."
     podman build -f containerfiles-research/R-ct-a.containerfile \
       -t R-ct-a:{{VERSION}} \
       -t R-ct-a:latest .
 
 # Build R-ct (research complete)
 build-R-ct:
-    @echo "🔬🏔️  Building R-ct (research complete)..."
+    @echo "Building R-ct (research complete)..."
     podman build -f containerfiles-research/R-ct.containerfile \
       -t R-ct:{{VERSION}} \
       -t R-ct:latest .
@@ -135,21 +139,21 @@ build-R-ct:
 
 # Build X-ct-i (extreme infrastructure)
 build-X-ct-i:
-    @echo "⚡ Building X-ct-i (extreme infrastructure)..."
+    @echo "Building X-ct-i (extreme infrastructure)..."
     podman build -f containerfiles-extreme/X-ct-i.containerfile \
       -t X-ct-i:{{VERSION}} \
       -t X-ct-i:latest .
 
 # Build X-ct-a (extreme attestation)
 build-X-ct-a:
-    @echo "⚡🔐 Building X-ct-a (extreme attestation)..."
+    @echo "Building X-ct-a (extreme attestation)..."
     podman build -f containerfiles-extreme/X-ct-a.containerfile \
       -t X-ct-a:{{VERSION}} \
       -t X-ct-a:latest .
 
 # Build X-ct (extreme complete)
 build-X-ct:
-    @echo "⚡🏔️  Building X-ct (extreme complete)..."
+    @echo "Building X-ct (extreme complete)..."
     podman build -f containerfiles-extreme/X-ct.containerfile \
       -t X-ct:{{VERSION}} \
       -t X-ct:latest .
@@ -172,49 +176,49 @@ test-extreme: test-X-ct-i test-X-ct-a test-X-ct
 
 # Standard tests
 test-ct-i:
-    @echo "🧪 Testing ct-i (standard)..."
+    @echo "Testing ct-i (standard)..."
     podman run --rm ct-i:latest pack --help
     podman run --rm ct-i:latest fetch --help
 
 test-ct-a:
-    @echo "🧪 Testing ct-a (standard)..."
+    @echo "Testing ct-a (standard)..."
     podman run --rm ct-a:latest sign --help
     podman run --rm ct-a:latest keygen --help
 
 test-ct:
-    @echo "🧪 Testing ct (standard)..."
+    @echo "Testing ct (standard)..."
     podman run --rm ct:latest --version
     podman run --rm ct:latest pack --help
 
 # Research tests
 test-R-ct-i:
-    @echo "🧪 Testing R-ct-i (research)..."
+    @echo "Testing R-ct-i (research)..."
     podman run --rm R-ct-i:latest pack --help
     podman run --rm R-ct-i:latest --verification-status
 
 test-R-ct-a:
-    @echo "🧪 Testing R-ct-a (research)..."
+    @echo "Testing R-ct-a (research)..."
     podman run --rm R-ct-a:latest sign --help
     podman run --rm R-ct-a:latest --verification-status
 
 test-R-ct:
-    @echo "🧪 Testing R-ct (research)..."
+    @echo "Testing R-ct (research)..."
     podman run --rm R-ct:latest --version
     podman run --rm R-ct:latest --verification-status
 
 # Extreme tests
 test-X-ct-i:
-    @echo "🧪 Testing X-ct-i (extreme)..."
+    @echo "Testing X-ct-i (extreme)..."
     podman run --rm X-ct-i:latest pack --help
     podman exec X-ct-i ct-shadow --verify
 
 test-X-ct-a:
-    @echo "🧪 Testing X-ct-a (extreme)..."
+    @echo "Testing X-ct-a (extreme)..."
     podman run --rm X-ct-a:latest sign --help
     podman exec X-ct-a ct-shadow --verify
 
 test-X-ct:
-    @echo "🧪 Testing X-ct (extreme)..."
+    @echo "Testing X-ct (extreme)..."
     podman run --rm X-ct:latest --version
     podman exec X-ct ct-shadow --verify
 
@@ -236,49 +240,49 @@ publish-extreme: publish-X-ct-i publish-X-ct-a publish-X-ct
 
 # Standard publishing
 publish-ct-i:
-    @echo "📤 Publishing ct-i..."
+    @echo "Publishing ct-i..."
     podman push ct-i:{{VERSION}} ghcr.io/hyperpolymath/ct-i:{{VERSION}}
     podman push ct-i:latest ghcr.io/hyperpolymath/ct-i:latest
 
 publish-ct-a:
-    @echo "📤 Publishing ct-a..."
+    @echo "Publishing ct-a..."
     podman push ct-a:{{VERSION}} ghcr.io/hyperpolymath/ct-a:{{VERSION}}
     podman push ct-a:latest ghcr.io/hyperpolymath/ct-a:latest
 
 publish-ct:
-    @echo "📤 Publishing ct..."
+    @echo "Publishing ct..."
     podman push ct:{{VERSION}} ghcr.io/hyperpolymath/ct:{{VERSION}}
     podman push ct:latest ghcr.io/hyperpolymath/ct:latest
 
 # Research publishing
 publish-R-ct-i:
-    @echo "📤 Publishing R-ct-i..."
+    @echo "Publishing R-ct-i..."
     podman push R-ct-i:{{VERSION}} ghcr.io/hyperpolymath/R-ct-i:{{VERSION}}
     podman push R-ct-i:latest ghcr.io/hyperpolymath/R-ct-i:latest
 
 publish-R-ct-a:
-    @echo "📤 Publishing R-ct-a..."
+    @echo "Publishing R-ct-a..."
     podman push R-ct-a:{{VERSION}} ghcr.io/hyperpolymath/R-ct-a:{{VERSION}}
     podman push R-ct-a:latest ghcr.io/hyperpolymath/R-ct-a:latest
 
 publish-R-ct:
-    @echo "📤 Publishing R-ct..."
+    @echo "Publishing R-ct..."
     podman push R-ct:{{VERSION}} ghcr.io/hyperpolymath/R-ct:{{VERSION}}
     podman push R-ct:latest ghcr.io/hyperpolymath/R-ct:latest
 
 # Extreme publishing
 publish-X-ct-i:
-    @echo "📤 Publishing X-ct-i..."
+    @echo "Publishing X-ct-i..."
     podman push X-ct-i:{{VERSION}} ghcr.io/hyperpolymath/X-ct-i:{{VERSION}}
     podman push X-ct-i:latest ghcr.io/hyperpolymath/X-ct-i:latest
 
 publish-X-ct-a:
-    @echo "📤 Publishing X-ct-a..."
+    @echo "Publishing X-ct-a..."
     podman push X-ct-a:{{VERSION}} ghcr.io/hyperpolymath/X-ct-a:{{VERSION}}
     podman push X-ct-a:latest ghcr.io/hyperpolymath/X-ct-a:latest
 
 publish-X-ct:
-    @echo "📤 Publishing X-ct..."
+    @echo "Publishing X-ct..."
     podman push X-ct:{{VERSION}} ghcr.io/hyperpolymath/X-ct:{{VERSION}}
     podman push X-ct:latest ghcr.io/hyperpolymath/X-ct:latest
 
@@ -306,4 +310,3 @@ clean-extreme:
     podman rmi X-ct-i:{{VERSION}} X-ct-i:latest || true
     podman rmi X-ct-a:{{VERSION}} X-ct-a:latest || true
     podman rmi X-ct:{{VERSION}} X-ct:latest || true
-

@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# EditorConfig -- Cerro Torre
+# https://editorconfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Ada source files -- 3-space indent per GNAT coding standard
+[*.{adb,ads}]
+indent_style = space
+indent_size = 3
+
+# Idris2 ABI definitions
+[*.idr]
+indent_style = space
+indent_size = 2
+
+# Zig FFI implementation
+[*.zig]
+indent_style = space
+indent_size = 4
+
+# Rust signing utility
+[*.rs]
+indent_style = space
+indent_size = 4
+
+# Elixir
+[*.{ex,exs}]
+indent_style = space
+indent_size = 2
+
+# JSON / YAML / Guile Scheme
+[*.{json,yml,yaml,scm}]
+indent_style = space
+indent_size = 2
+
+# TOML configuration
+[*.toml]
+indent_style = space
+indent_size = 4
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 4
+
+# Containerfiles
+[Containerfile]
+indent_style = space
+indent_size = 4
+
+# Justfile
+[justfile]
+indent_style = space
+indent_size = 4
+
+# Markdown / AsciiDoc
+[*.{md,adoc}]
+trim_trailing_whitespace = false

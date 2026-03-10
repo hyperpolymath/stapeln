@@ -148,6 +148,64 @@ package body CT_JSON is
       end;
    end Get_Boolean_Field;
 
+   --  Find the end of a nested JSON object or array starting at Pos.
+   --  Pos must point to the opening '{' or '['.
+   --  Returns the position of the matching closing '}' or ']'.
+   function Find_Matching_Close
+     (JSON : String;
+      Pos  : Positive) return Natural
+   is
+      Depth   : Natural := 0;
+      I       : Positive := Pos;
+      Opener  : constant Character := JSON (Pos);
+      Closer  : constant Character := (if Opener = '{' then '}' else ']');
+      In_Str  : Boolean := False;
+      Escaped : Boolean := False;
+   begin
+      while I <= JSON'Last loop
+         if Escaped then
+            Escaped := False;
+         elsif In_Str then
+            if JSON (I) = '\' then
+               Escaped := True;
+            elsif JSON (I) = '"' then
+               In_Str := False;
+            end if;
+         else
+            if JSON (I) = '"' then
+               In_Str := True;
+            elsif JSON (I) = Opener then
+               Depth := Depth + 1;
+            elsif JSON (I) = Closer then
+               Depth := Depth - 1;
+               if Depth = 0 then
+                  return I;
+               end if;
+            end if;
+         end if;
+         I := I + 1;
+      end loop;
+      return 0;  --  No matching close found
+   end Find_Matching_Close;
+
+   --  Find the end of a number value starting at Pos.
+   --  Returns the position one past the last digit/sign/dot/e character.
+   function Find_Number_End
+     (JSON : String;
+      Pos  : Positive) return Positive
+   is
+      I : Positive := Pos;
+   begin
+      while I <= JSON'Last and then
+            (JSON (I) in '0' .. '9' or else JSON (I) = '-' or else
+             JSON (I) = '+' or else JSON (I) = '.' or else
+             JSON (I) = 'e' or else JSON (I) = 'E')
+      loop
+         I := I + 1;
+      end loop;
+      return I;
+   end Find_Number_End;
+
    function Get_Array_Field
      (JSON  : String;
       Field : String) return String_Array
@@ -171,7 +229,7 @@ package body CT_JSON is
 
          I := Array_Start + 1;
 
-         --  Parse array elements
+         --  Parse array elements (strings, numbers, booleans, objects, arrays)
          loop
             I := Skip_Whitespace (JSON, I);
 
@@ -183,11 +241,92 @@ package body CT_JSON is
                   Str : constant String := Extract_String_Value (JSON, I + 1);
                begin
                   Result.Append (To_Unbounded_String (Str));
-                  I := I + Str'Length + 2;  --  Skip past string and quotes
+                  --  Advance past opening quote, content, and closing quote.
+                  --  The raw length in JSON may differ from Str'Length when
+                  --  escape sequences are present (e.g. \" becomes ").  Walk
+                  --  forward from the opening quote to find the actual closing
+                  --  quote in the source text.
+                  declare
+                     J      : Positive := I + 1;  --  past opening "
+                     Esc    : Boolean := False;
+                  begin
+                     while J <= JSON'Last loop
+                        if Esc then
+                           Esc := False;
+                        elsif JSON (J) = '\' then
+                           Esc := True;
+                        elsif JSON (J) = '"' then
+                           I := J + 1;  --  past closing "
+                           exit;
+                        end if;
+                        J := J + 1;
+                     end loop;
+                  end;
                end;
+
+            elsif JSON (I) = '{' then
+               --  Nested object element — capture raw JSON text
+               declare
+                  Close_Pos : constant Natural := Find_Matching_Close (JSON, I);
+               begin
+                  if Close_Pos = 0 then
+                     exit;  --  Malformed JSON, stop parsing
+                  end if;
+                  Result.Append (To_Unbounded_String (
+                     JSON (I .. Close_Pos)));
+                  I := Close_Pos + 1;
+               end;
+
+            elsif JSON (I) = '[' then
+               --  Nested array element — capture raw JSON text
+               declare
+                  Close_Pos : constant Natural := Find_Matching_Close (JSON, I);
+               begin
+                  if Close_Pos = 0 then
+                     exit;  --  Malformed JSON, stop parsing
+                  end if;
+                  Result.Append (To_Unbounded_String (
+                     JSON (I .. Close_Pos)));
+                  I := Close_Pos + 1;
+               end;
+
+            elsif JSON (I) in '0' .. '9' or else JSON (I) = '-' then
+               --  Number element
+               declare
+                  Num_End : constant Positive := Find_Number_End (JSON, I);
+               begin
+                  Result.Append (To_Unbounded_String (
+                     JSON (I .. Num_End - 1)));
+                  I := Num_End;
+               end;
+
+            elsif I + 3 <= JSON'Last and then
+                  JSON (I .. I + 3) = "true"
+            then
+               --  Boolean true
+               Result.Append (To_Unbounded_String ("true"));
+               I := I + 4;
+
+            elsif I + 4 <= JSON'Last and then
+                  JSON (I .. I + 4) = "false"
+            then
+               --  Boolean false
+               Result.Append (To_Unbounded_String ("false"));
+               I := I + 5;
+
+            elsif I + 3 <= JSON'Last and then
+                  JSON (I .. I + 3) = "null"
+            then
+               --  Null value
+               Result.Append (To_Unbounded_String ("null"));
+               I := I + 4;
+
+            else
+               --  Unexpected character, skip it to avoid infinite loop
+               I := I + 1;
             end if;
 
-            --  Skip comma
+            --  Skip comma between elements
             I := Skip_Whitespace (JSON, I);
             if I <= JSON'Last and then JSON (I) = ',' then
                I := I + 1;

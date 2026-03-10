@@ -1,8 +1,19 @@
 -------------------------------------------------------------------------------
 --  Cerro_Import_Debian - Debian Source Package Importer
+--  SPDX-License-Identifier: PMPL-1.0-or-later
+--  Palimpsest-Covenant: 1.0
 --
 --  Imports Debian source packages (.dsc) and converts them to Cerro Torre
 --  manifest format with full provenance tracking.
+--
+--  Supported operations:
+--    - Import from local .dsc file (Import_From_Dsc)
+--    - Import by package name with optional version (Import_Package)
+--    - Import from APT repository sources (Import_From_Apt_Source)
+--
+--  The importer parses Debian control file format, extracts provenance
+--  data (checksums, upstream URLs), and maps Debian concepts to the
+--  Cerro Torre manifest model.
 -------------------------------------------------------------------------------
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
@@ -58,14 +69,18 @@ package Cerro_Import_Debian is
    ---------------------------------------------------------------------------
 
    type Dsc_Info is record
-      Source         : Unbounded_String;
-      Version        : Unbounded_String;
-      Maintainer     : Unbounded_String;
-      Build_Depends  : Unbounded_String;
-      Orig_Tarball   : Unbounded_String;
-      Orig_Hash      : Unbounded_String;
-      Debian_Tarball : Unbounded_String;
-      Debian_Hash    : Unbounded_String;
+      Source            : Unbounded_String;
+      Version           : Unbounded_String;
+      Maintainer        : Unbounded_String;
+      Build_Depends     : Unbounded_String;
+      Architecture      : Unbounded_String;  --  e.g., "any", "amd64 i386"
+      Format            : Unbounded_String;  --  e.g., "3.0 (quilt)", "3.0 (native)"
+      Standards_Version : Unbounded_String;  --  e.g., "4.6.2"
+      Homepage          : Unbounded_String;  --  Upstream homepage URL
+      Orig_Tarball      : Unbounded_String;
+      Orig_Hash         : Unbounded_String;
+      Debian_Tarball    : Unbounded_String;
+      Debian_Hash       : Unbounded_String;
    end record;
 
    function Parse_Dsc (Content : String) return Dsc_Info;

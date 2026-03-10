@@ -21,6 +21,9 @@ with Cerro_Explain;
 with Cerro_Trust_Store;
 with Cerro_Runtime;
 with Cerro_Crypto_OpenSSL;
+with Cerro_Export_OCI;
+with Cerro_Import_Debian;
+with Cerro_Manifest;
 
 package body Cerro_CLI is
 
@@ -1806,19 +1809,294 @@ package body Cerro_CLI is
    ------------
 
    procedure Run_Import is
+      use Cerro_Import_Debian;
+      use Ada.Directories;
+
+      Source_Path   : Unbounded_String := Null_Unbounded_String;
+      Output_Dir    : Unbounded_String := Null_Unbounded_String;
+      Release       : Unbounded_String := To_Unbounded_String ("stable");
+      Verbose       : Boolean := False;
+      Verify_After  : Boolean := False;
+      Is_Dsc        : Boolean := False;
+      Is_Apt        : Boolean := False;
+      Package_Name  : Unbounded_String := Null_Unbounded_String;
+      Package_Version : Unbounded_String := Null_Unbounded_String;
+
+      procedure Show_Help is
+      begin
+         Put_Line ("Usage: ct import <source> [options]");
+         Put_Line ("");
+         Put_Line ("Import a package from Debian sources into a .ctp manifest.");
+         Put_Line ("");
+         Put_Line ("Source formats:");
+         Put_Line ("  <file.dsc>           Import from local Debian .dsc file");
+         Put_Line ("  --apt <package>      Import from Debian APT repositories");
+         Put_Line ("  --deb <name> [ver]   Import Debian package by name/version");
+         Put_Line ("");
+         Put_Line ("Options:");
+         Put_Line ("  -o, --output <dir>   Output directory for manifest");
+         Put_Line ("  --release <name>     Debian release (default: stable)");
+         Put_Line ("  --verify             Verify imported manifest");
+         Put_Line ("  -v, --verbose        Show detailed progress");
+         Put_Line ("");
+         Put_Line ("Examples:");
+         Put_Line ("  ct import hello_2.10-3.dsc -o manifests/");
+         Put_Line ("  ct import --apt nginx -o manifests/");
+         Put_Line ("  ct import --deb hello 2.10-3 -o manifests/");
+         Put_Line ("  ct import --apt curl --release testing -v");
+      end Show_Help;
+
    begin
-      Put_Line ("Usage: ct import <archive> [--verify]");
-      Put_Line ("");
-      Put_Line ("Import from offline archive.");
-      Put_Line ("");
-      Put_Line ("Options:");
-      Put_Line ("  --verify            Verify each bundle after import");
-      Put_Line ("  --policy <file>     Policy for verification");
-      Put_Line ("  --keys-only         Only import keys, not bundles");
-      Put_Line ("  --output-dir <dir>  Where to place imported bundles");
-      Put_Line ("");
-      Put_Line ("(v0.2 - Not yet implemented)");
-      Set_Exit_Status (CT_Errors.Exit_General_Failure);
+      if Argument_Count < 2 then
+         Show_Help;
+         Set_Exit_Status (CT_Errors.Exit_General_Failure);
+         return;
+      end if;
+
+      --  Parse arguments
+      declare
+         I : Positive := 2;
+      begin
+         while I <= Argument_Count loop
+            declare
+               Arg : constant String := Argument (I);
+            begin
+               if Arg = "-h" or Arg = "--help" then
+                  Show_Help;
+                  Set_Exit_Status (CT_Errors.Exit_Success);
+                  return;
+               elsif Arg = "--apt" and then I < Argument_Count then
+                  Is_Apt := True;
+                  I := I + 1;
+                  Package_Name := To_Unbounded_String (Argument (I));
+               elsif Arg = "--deb" and then I < Argument_Count then
+                  I := I + 1;
+                  Package_Name := To_Unbounded_String (Argument (I));
+                  --  Check for optional version
+                  if I < Argument_Count and then
+                     Argument (I + 1) (Argument (I + 1)'First) /= '-'
+                  then
+                     I := I + 1;
+                     Package_Version := To_Unbounded_String (Argument (I));
+                  end if;
+               elsif (Arg = "-o" or Arg = "--output")
+                  and then I < Argument_Count
+               then
+                  I := I + 1;
+                  Output_Dir := To_Unbounded_String (Argument (I));
+               elsif Arg = "--release" and then I < Argument_Count then
+                  I := I + 1;
+                  Release := To_Unbounded_String (Argument (I));
+               elsif Arg = "--verify" then
+                  Verify_After := True;
+               elsif Arg = "-v" or Arg = "--verbose" then
+                  Verbose := True;
+               elsif Arg (Arg'First) /= '-' and then Length (Source_Path) = 0 then
+                  Source_Path := To_Unbounded_String (Arg);
+                  --  Detect .dsc file
+                  if Arg'Length > 4 and then
+                     Arg (Arg'Last - 3 .. Arg'Last) = ".dsc"
+                  then
+                     Is_Dsc := True;
+                  end if;
+               end if;
+            end;
+            I := I + 1;
+         end loop;
+      end;
+
+      --  Validate we have a source to import
+      if Length (Source_Path) = 0 and Length (Package_Name) = 0 then
+         Put_Line ("Error: No source specified.");
+         Put_Line ("  Provide a .dsc file, --apt <package>, or --deb <name>");
+         Set_Exit_Status (CT_Errors.Exit_General_Failure);
+         return;
+      end if;
+
+      --  Default output directory
+      if Length (Output_Dir) = 0 then
+         Output_Dir := To_Unbounded_String (".");
+      end if;
+
+      --  Ensure output directory exists
+      if not Exists (To_String (Output_Dir)) then
+         begin
+            Create_Path (To_String (Output_Dir));
+         exception
+            when others =>
+               Put_Line ("Error: Cannot create output directory: " &
+                         To_String (Output_Dir));
+               Set_Exit_Status (CT_Errors.Exit_IO_Error);
+               return;
+         end;
+      end if;
+
+      --  Perform the import
+      declare
+         Result : Import_Result;
+      begin
+         if Is_Dsc then
+            --  Import from local .dsc file
+            declare
+               Dsc_Path : constant String := To_String (Source_Path);
+            begin
+               if not Exists (Dsc_Path) then
+                  Put_Line ("Error: File not found: " & Dsc_Path);
+                  Set_Exit_Status (CT_Errors.Exit_IO_Error);
+                  return;
+               end if;
+
+               if Verbose then
+                  Put_Line ("Importing from .dsc: " & Dsc_Path);
+                  Put_Line ("");
+               end if;
+
+               Result := Import_From_Dsc (Dsc_Path);
+            end;
+
+         elsif Is_Apt then
+            --  Import from APT repository
+            if Verbose then
+               Put_Line ("Importing from APT: " & To_String (Package_Name));
+               Put_Line ("  Release: " & To_String (Release));
+               Put_Line ("");
+            end if;
+
+            Result := Import_From_Apt_Source (
+               To_String (Package_Name),
+               To_String (Release));
+
+         elsif Length (Package_Name) > 0 then
+            --  Import by package name with optional version
+            if Verbose then
+               Put_Line ("Importing Debian package: " &
+                         To_String (Package_Name));
+               if Length (Package_Version) > 0 then
+                  Put_Line ("  Version: " & To_String (Package_Version));
+               end if;
+               Put_Line ("");
+            end if;
+
+            Result := Import_Package (
+               To_String (Package_Name),
+               To_String (Package_Version));
+
+         else
+            --  Fallback: treat source as .dsc path
+            if Verbose then
+               Put_Line ("Importing from: " & To_String (Source_Path));
+               Put_Line ("");
+            end if;
+
+            Result := Import_From_Dsc (To_String (Source_Path));
+         end if;
+
+         --  Handle result
+         case Result.Status is
+            when Cerro_Import_Debian.Success =>
+               --  Write manifest to output directory
+               declare
+                  Pkg_Name : constant String :=
+                     To_String (Result.Manifest.Metadata.Name);
+                  Pkg_Ver  : constant String :=
+                     To_String (Result.Manifest.Metadata.Version.Upstream);
+                  Manifest_File : constant String :=
+                     To_String (Output_Dir) & "/" & Pkg_Name & ".ctp";
+               begin
+                  --  Serialize and write manifest
+                  declare
+                     Out_File : Ada.Text_IO.File_Type;
+                  begin
+                     Ada.Text_IO.Create (Out_File, Ada.Text_IO.Out_File,
+                                         Manifest_File);
+                     Cerro_Manifest.Write_Manifest (Out_File,
+                                                     Result.Manifest);
+                     Ada.Text_IO.Close (Out_File);
+                  exception
+                     when E : others =>
+                        Put_Line ("Error writing manifest: " &
+                                  Ada.Exceptions.Exception_Message (E));
+                        Set_Exit_Status (CT_Errors.Exit_IO_Error);
+                        return;
+                  end;
+
+                  Put_Line ("Imported: " & Pkg_Name & " " & Pkg_Ver);
+                  Put_Line ("  Manifest: " & Manifest_File);
+
+                  if Verbose then
+                     Put_Line ("  Source:   " &
+                        To_String (Result.Manifest.Provenance.Imported_From));
+                     Put_Line ("  Hash:     " &
+                        To_String (Result.Manifest.Provenance.Upstream_Hash.Digest));
+                     Put_Line ("");
+                  end if;
+
+                  --  Optionally verify the imported manifest
+                  if Verify_After then
+                     Put_Line ("  Verifying imported manifest...");
+                     declare
+                        Verify_Opts : Cerro_Verify.Verify_Options := (
+                           Bundle_Path => To_Unbounded_String (Manifest_File),
+                           Policy_Path => Null_Unbounded_String,
+                           Offline     => True,
+                           Verbose     => False);
+                        Verify_Result : constant Cerro_Verify.Verify_Result :=
+                           Cerro_Verify.Verify_Bundle (Verify_Opts);
+                     begin
+                        if Verify_Result.Code = Cerro_Verify.OK then
+                           Put_Line ("  Verification passed");
+                        else
+                           Put_Line ("  Verification: " &
+                                     To_String (Verify_Result.Details));
+                        end if;
+                     end;
+                  end if;
+
+                  Set_Exit_Status (CT_Errors.Exit_Success);
+               end;
+
+            when Package_Not_Found =>
+               Put_Line ("Error: Package not found");
+               if Length (Result.Errors) > 0 then
+                  Put_Line ("  " & To_String (Result.Errors));
+               end if;
+               Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+            when Download_Failed =>
+               Put_Line ("Error: Download failed");
+               if Length (Result.Errors) > 0 then
+                  Put_Line ("  " & To_String (Result.Errors));
+               end if;
+               Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+            when Parse_Error =>
+               Put_Line ("Error: Failed to parse source package");
+               if Length (Result.Errors) > 0 then
+                  Put_Line ("  " & To_String (Result.Errors));
+               end if;
+               Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+            when Hash_Mismatch =>
+               Put_Line ("Error: Hash verification failed");
+               if Length (Result.Errors) > 0 then
+                  Put_Line ("  " & To_String (Result.Errors));
+               end if;
+               Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+            when Unsupported_Format =>
+               Put_Line ("Error: Unsupported source format");
+               if Length (Result.Errors) > 0 then
+                  Put_Line ("  " & To_String (Result.Errors));
+               end if;
+               Set_Exit_Status (CT_Errors.Exit_General_Failure);
+         end case;
+      end;
+
+   exception
+      when E : others =>
+         Put_Line ("Error: Import failed: " &
+                   Ada.Exceptions.Exception_Message (E));
+         Set_Exit_Status (CT_Errors.Exit_General_Failure);
    end Run_Import;
 
    ---------
@@ -2087,19 +2365,190 @@ package body Cerro_CLI is
    ------------
 
    procedure Run_Export is
+      use Cerro_Export_OCI;
+      use Cerro_Manifest;
+      use Ada.Directories;
+
+      Manifest_Path : Unbounded_String := Null_Unbounded_String;
+      Output_Dir    : Unbounded_String := Null_Unbounded_String;
+      Verbose       : Boolean := False;
+      Registry_Str  : Unbounded_String := Null_Unbounded_String;
+      Repository    : Unbounded_String := Null_Unbounded_String;
+      Entrypoint    : Unbounded_String := Null_Unbounded_String;
+
+      procedure Show_Help is
+      begin
+         Put_Line ("Usage: ct export <manifest.ctp> -o <output-dir> [options]");
+         Put_Line ("");
+         Put_Line ("Export a Cerro Torre package as an OCI container image.");
+         Put_Line ("");
+         Put_Line ("Arguments:");
+         Put_Line ("  <manifest.ctp>       Path to .ctp manifest file");
+         Put_Line ("");
+         Put_Line ("Options:");
+         Put_Line ("  -o, --output <dir>   Output directory or tarball path (required)");
+         Put_Line ("  --registry <url>     Target registry for image reference");
+         Put_Line ("  --repo <prefix>      Repository name prefix");
+         Put_Line ("  --entrypoint <cmd>   Container entrypoint command");
+         Put_Line ("  -v, --verbose        Show detailed progress");
+         Put_Line ("");
+         Put_Line ("Examples:");
+         Put_Line ("  ct export manifests/hello.ctp -o ./hello.tar");
+         Put_Line ("  ct export nginx.ctp -o ./oci/ --entrypoint /usr/bin/nginx");
+         Put_Line ("  ct export app.ctp -o app.tar --repo myorg/myapp");
+      end Show_Help;
+
    begin
-      Put_Line ("Usage: ct export <bundles...> -o <archive>");
-      Put_Line ("");
-      Put_Line ("Export bundles for offline transfer.");
-      Put_Line ("");
-      Put_Line ("Options:");
-      Put_Line ("  -o, --output <file>    Output archive path");
-      Put_Line ("  --manifest <file>      File listing bundles to export");
-      Put_Line ("  --include-keys         Include public keys for verification");
-      Put_Line ("  --format <fmt>         Archive format: tar, tar.gz, tar.zst");
-      Put_Line ("");
-      Put_Line ("(v0.2 - Not yet implemented)");
-      Set_Exit_Status (CT_Errors.Exit_General_Failure);
+      if Argument_Count < 2 then
+         Show_Help;
+         Set_Exit_Status (CT_Errors.Exit_General_Failure);
+         return;
+      end if;
+
+      --  First positional argument is the manifest path
+      Manifest_Path := To_Unbounded_String (Argument (2));
+
+      --  Parse remaining arguments
+      declare
+         I : Positive := 3;
+      begin
+         while I <= Argument_Count loop
+            declare
+               Arg : constant String := Argument (I);
+            begin
+               if (Arg = "-o" or Arg = "--output")
+                  and then I < Argument_Count
+               then
+                  I := I + 1;
+                  Output_Dir := To_Unbounded_String (Argument (I));
+               elsif Arg = "--registry" and then I < Argument_Count then
+                  I := I + 1;
+                  Registry_Str := To_Unbounded_String (Argument (I));
+               elsif Arg = "--repo" and then I < Argument_Count then
+                  I := I + 1;
+                  Repository := To_Unbounded_String (Argument (I));
+               elsif Arg = "--entrypoint" and then I < Argument_Count then
+                  I := I + 1;
+                  Entrypoint := To_Unbounded_String (Argument (I));
+               elsif Arg = "-v" or Arg = "--verbose" then
+                  Verbose := True;
+               elsif Arg = "-h" or Arg = "--help" then
+                  Show_Help;
+                  Set_Exit_Status (CT_Errors.Exit_Success);
+                  return;
+               end if;
+            end;
+            I := I + 1;
+         end loop;
+      end;
+
+      --  Validate required arguments
+      if Length (Output_Dir) = 0 then
+         Put_Line ("Error: Output path required (-o <dir>)");
+         Set_Exit_Status (CT_Errors.Exit_General_Failure);
+         return;
+      end if;
+
+      --  Validate manifest file exists
+      if not Exists (To_String (Manifest_Path)) then
+         Put_Line ("Error: Manifest not found: " & To_String (Manifest_Path));
+         Set_Exit_Status (CT_Errors.Exit_IO_Error);
+         return;
+      end if;
+
+      if Verbose then
+         Put_Line ("Exporting package to OCI image:");
+         Put_Line ("  Manifest: " & To_String (Manifest_Path));
+         Put_Line ("  Output:   " & To_String (Output_Dir));
+         if Length (Repository) > 0 then
+            Put_Line ("  Repo:     " & To_String (Repository));
+         end if;
+         if Length (Entrypoint) > 0 then
+            Put_Line ("  Entry:    " & To_String (Entrypoint));
+         end if;
+         Put_Line ("");
+      end if;
+
+      --  Parse the manifest file
+      declare
+         Parse_Result : constant Cerro_Manifest.Parse_Result :=
+            Cerro_Manifest.Parse_File (To_String (Manifest_Path));
+      begin
+         if not Parse_Result.Success then
+            Put_Line ("Error: Failed to parse manifest: " &
+                      To_String (Parse_Result.Error_Message));
+            Set_Exit_Status (CT_Errors.Exit_General_Failure);
+            return;
+         end if;
+
+         if Verbose then
+            Put_Line ("Parsed manifest: " &
+                      To_String (Parse_Result.M.Metadata.Name) & " " &
+                      To_String (Parse_Result.M.Metadata.Version.Upstream));
+            Put_Line ("");
+         end if;
+
+         --  Build OCI export configuration
+         declare
+            Config : OCI_Config := Default_Config;
+         begin
+            if Length (Registry_Str) > 0 then
+               Config.Registry := Registry_Str;
+            end if;
+            if Length (Repository) > 0 then
+               Config.Repository := Repository;
+            end if;
+            if Length (Entrypoint) > 0 then
+               Config.Entrypoint := Entrypoint;
+            end if;
+
+            --  Export to tarball
+            declare
+               Result : constant Export_Result :=
+                  Export_To_Tarball (Parse_Result.M, To_String (Output_Dir), Config);
+            begin
+               case Result.Status is
+                  when Cerro_Export_OCI.Success =>
+                     Put_Line ("Exported OCI image: " &
+                               To_String (Result.Image_Ref));
+                     Put_Line ("  Digest: " & To_String (Result.Digest));
+                     Put_Line ("  Size:   " &
+                               Natural'Image (Result.Size_Bytes) & " bytes");
+                     Put_Line ("  Layers: " &
+                               Natural'Image (Result.Layers));
+                     if Verbose then
+                        Put_Line ("");
+                        Put_Line ("Load with:");
+                        Put_Line ("  podman load < " &
+                                  To_String (Output_Dir));
+                     end if;
+                     Set_Exit_Status (CT_Errors.Exit_Success);
+
+                  when Invalid_Manifest =>
+                     Put_Line ("Error: Invalid manifest (missing required fields)");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+                  when Build_Failed =>
+                     Put_Line ("Error: Image build failed");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+                  when Registry_Error =>
+                     Put_Line ("Error: Registry operation failed");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+
+                  when Push_Failed =>
+                     Put_Line ("Error: Push to registry failed");
+                     Set_Exit_Status (CT_Errors.Exit_General_Failure);
+               end case;
+            end;
+         end;
+      end;
+
+   exception
+      when E : others =>
+         Put_Line ("Error: Export failed: " &
+                   Ada.Exceptions.Exception_Message (E));
+         Set_Exit_Status (CT_Errors.Exit_General_Failure);
    end Run_Export;
 
    ---------

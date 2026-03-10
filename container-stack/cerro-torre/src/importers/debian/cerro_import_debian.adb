@@ -1,5 +1,7 @@
 -------------------------------------------------------------------------------
 --  Cerro_Import_Debian - Implementation
+--  SPDX-License-Identifier: PMPL-1.0-or-later
+--  Palimpsest-Covenant: 1.0
 -------------------------------------------------------------------------------
 
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
@@ -206,6 +208,11 @@ package body Cerro_Import_Debian is
       Info.Version := To_Unbounded_String (Extract_Field (Content, "Version"));
       Info.Maintainer := To_Unbounded_String (Extract_Field (Content, "Maintainer"));
       Info.Build_Depends := To_Unbounded_String (Extract_Field (Content, "Build-Depends"));
+      Info.Architecture := To_Unbounded_String (Extract_Field (Content, "Architecture"));
+      Info.Format := To_Unbounded_String (Extract_Field (Content, "Format"));
+      Info.Standards_Version := To_Unbounded_String (
+         Extract_Field (Content, "Standards-Version"));
+      Info.Homepage := To_Unbounded_String (Extract_Field (Content, "Homepage"));
 
       --  Look for Checksums-Sha256 section
       declare
@@ -352,32 +359,141 @@ package body Cerro_Import_Debian is
             --  Convert Dsc_Info to Cerro_Manifest.Manifest
             declare
                M : Manifest;
+               Arch_Str : constant String := To_String (Dsc.Architecture);
+               Fmt_Str  : constant String := To_String (Dsc.Format);
             begin
+               --------------------------------------------------------
                --  [metadata] section
+               --------------------------------------------------------
                M.Metadata.Name := Dsc.Source;
-               M.Metadata.Version := Parse_Debian_Version (To_String (Dsc.Version));
-               M.Metadata.Summary := To_Unbounded_String (
-                  "Debian package: " & To_String (Dsc.Source));
-               M.Metadata.Description := M.Metadata.Summary;
+               M.Metadata.Version := Parse_Debian_Version (
+                  To_String (Dsc.Version));
+
+               --  Build a descriptive summary including architecture
+               if Arch_Str'Length > 0 then
+                  M.Metadata.Summary := To_Unbounded_String (
+                     "Debian source package: " & To_String (Dsc.Source) &
+                     " [" & Arch_Str & "]");
+               else
+                  M.Metadata.Summary := To_Unbounded_String (
+                     "Debian source package: " & To_String (Dsc.Source));
+               end if;
+
+               --  Description includes format and standards version
+               declare
+                  Desc : Unbounded_String := To_Unbounded_String (
+                     "Imported from Debian source format");
+               begin
+                  if Fmt_Str'Length > 0 then
+                     Append (Desc, " (" & Fmt_Str & ")");
+                  end if;
+                  if Length (Dsc.Standards_Version) > 0 then
+                     Append (Desc, "; Standards-Version " &
+                        To_String (Dsc.Standards_Version));
+                  end if;
+                  M.Metadata.Description := Desc;
+               end;
+
+               --  License is unknown from .dsc alone; requires
+               --  debian/copyright parsing for accurate SPDX
                M.Metadata.License := To_Unbounded_String ("UNKNOWN");
-               M.Metadata.Homepage := Null_Unbounded_String;
+
+               --  Homepage from .dsc if present, otherwise empty
+               if Length (Dsc.Homepage) > 0 then
+                  M.Metadata.Homepage := Dsc.Homepage;
+               else
+                  M.Metadata.Homepage := Null_Unbounded_String;
+               end if;
+
                M.Metadata.Maintainer := Dsc.Maintainer;
 
+               --------------------------------------------------------
                --  [provenance] section
-               M.Provenance.Upstream_URL := To_Unbounded_String (
-                  To_String (Current_Mirror.URL) & "/pool/main/" &
-                  To_String (Dsc.Orig_Tarball));
-               M.Provenance.Upstream_Hash := (
-                  Algorithm => SHA256,
-                  Digest    => Dsc.Orig_Hash);
+               --------------------------------------------------------
+
+               --  Upstream URL: construct pool path from mirror and
+               --  orig tarball name.  Pool layout is:
+               --    /pool/main/<first-letter>/<source>/<tarball>
+               if Length (Dsc.Orig_Tarball) > 0 then
+                  declare
+                     Src_Name : constant String := To_String (Dsc.Source);
+                     First_Ch : constant String :=
+                        (1 => Src_Name (Src_Name'First));
+                  begin
+                     --  Handle "lib*" packages which use l/ prefix in pool
+                     if Src_Name'Length >= 4
+                        and then Src_Name (Src_Name'First ..
+                                           Src_Name'First + 2) = "lib"
+                     then
+                        M.Provenance.Upstream_URL := To_Unbounded_String (
+                           To_String (Current_Mirror.URL) &
+                           "/pool/main/" &
+                           Src_Name (Src_Name'First ..
+                                     Src_Name'First + 3) & "/" &
+                           Src_Name & "/" &
+                           To_String (Dsc.Orig_Tarball));
+                     else
+                        M.Provenance.Upstream_URL := To_Unbounded_String (
+                           To_String (Current_Mirror.URL) &
+                           "/pool/main/" & First_Ch & "/" &
+                           Src_Name & "/" &
+                           To_String (Dsc.Orig_Tarball));
+                     end if;
+                  end;
+               else
+                  M.Provenance.Upstream_URL := Null_Unbounded_String;
+               end if;
+
+               --  Upstream hash (SHA-256 from Checksums-Sha256 section)
+               if Length (Dsc.Orig_Hash) > 0 then
+                  M.Provenance.Upstream_Hash := (
+                     Algorithm => SHA256,
+                     Digest    => Dsc.Orig_Hash);
+               else
+                  M.Provenance.Upstream_Hash := (
+                     Algorithm => SHA256,
+                     Digest    => Null_Unbounded_String);
+               end if;
+
                M.Provenance.Upstream_Signature := Null_Unbounded_String;
                M.Provenance.Upstream_Keyring := Null_Unbounded_String;
-               M.Provenance.Imported_From := To_Unbounded_String (
-                  "debian:" & To_String (Dsc.Source) & "/" & To_String (Dsc.Version));
-               M.Provenance.Import_Date := Ada.Calendar.Clock;
-               M.Provenance.Patches := String_Vectors.Empty_Vector;
 
+               --  Imported_From: encode format, source, and version
+               --  Format: "debian-source:<format>:<source>/<version>"
+               if Fmt_Str'Length > 0 then
+                  M.Provenance.Imported_From := To_Unbounded_String (
+                     "debian-source:" & Fmt_Str & ":" &
+                     To_String (Dsc.Source) & "/" &
+                     To_String (Dsc.Version));
+               else
+                  M.Provenance.Imported_From := To_Unbounded_String (
+                     "debian-source:" &
+                     To_String (Dsc.Source) & "/" &
+                     To_String (Dsc.Version));
+               end if;
+
+               M.Provenance.Import_Date := Ada.Calendar.Clock;
+
+               --  Patches: record the Debian delta tarball as a patch
+               --  source with its SHA-256 hash for verification
+               M.Provenance.Patches := String_Vectors.Empty_Vector;
+               if Length (Dsc.Debian_Tarball) > 0 then
+                  declare
+                     Patch_Entry : Unbounded_String := To_Unbounded_String (
+                        "debian-delta:" &
+                        To_String (Dsc.Debian_Tarball));
+                  begin
+                     if Length (Dsc.Debian_Hash) > 0 then
+                        Append (Patch_Entry,
+                           "#sha256=" & To_String (Dsc.Debian_Hash));
+                     end if;
+                     String_Vectors.Append (M.Provenance.Patches, Patch_Entry);
+                  end;
+               end if;
+
+               --------------------------------------------------------
                --  [dependencies] section
+               --------------------------------------------------------
                M.Dependencies.Runtime := Dependency_Vectors.Empty_Vector;
                M.Dependencies.Build := Parse_Debian_Dependencies (
                   To_String (Dsc.Build_Depends));
@@ -387,19 +503,65 @@ package body Cerro_Import_Debian is
                M.Dependencies.Provides := Dependency_Vectors.Empty_Vector;
                M.Dependencies.Replaces := Dependency_Vectors.Empty_Vector;
 
-               --  [build] section - assume autoconf for most Debian packages
-               M.Build.System := Autoconf;
+               --------------------------------------------------------
+               --  [build] section
+               --------------------------------------------------------
+
+               --  Detect build system from Build-Depends where possible
+               declare
+                  BD : constant String := To_String (Dsc.Build_Depends);
+               begin
+                  if Index (BD, "cmake") > 0 then
+                     M.Build.System := CMake;
+                  elsif Index (BD, "meson") > 0 then
+                     M.Build.System := Meson;
+                  elsif Index (BD, "dh-cargo") > 0
+                     or Index (BD, "cargo") > 0
+                  then
+                     M.Build.System := Cargo;
+                  elsif Index (BD, "dune-build") > 0
+                     or Index (BD, "ocaml-dune") > 0
+                  then
+                     M.Build.System := Dune;
+                  elsif Index (BD, "elixir") > 0 then
+                     M.Build.System := Mix;
+                  else
+                     --  Default: most Debian packages use autoconf/automake
+                     M.Build.System := Autoconf;
+                  end if;
+               end;
+
                M.Build.Configure_Flags := String_Vectors.Empty_Vector;
                M.Build.Build_Flags := String_Vectors.Empty_Vector;
                M.Build.Install_Flags := String_Vectors.Empty_Vector;
 
+               --------------------------------------------------------
                --  [outputs] section
+               --------------------------------------------------------
                M.Outputs.Primary := Dsc.Source;
-               M.Outputs.Split := String_Vectors.Empty_Vector;
 
-               --  [attestations] section - minimal for imports
+               --  Common Debian split packages: -dev, -doc, -dbgsym
+               M.Outputs.Split := String_Vectors.Empty_Vector;
+               String_Vectors.Append (M.Outputs.Split,
+                  To_Unbounded_String (To_String (Dsc.Source) & "-dev"));
+               String_Vectors.Append (M.Outputs.Split,
+                  To_Unbounded_String (To_String (Dsc.Source) & "-doc"));
+
+               --------------------------------------------------------
+               --  [attestations] section
+               --------------------------------------------------------
+
+               --  Require source signature verification for imports
                M.Attestations.Required := Attestation_Vectors.Empty_Vector;
+               Attestation_Vectors.Append (M.Attestations.Required,
+                  Source_Signature);
+
+               --  Recommend reproducible build and SBOM
                M.Attestations.Recommended := Attestation_Vectors.Empty_Vector;
+               Attestation_Vectors.Append (M.Attestations.Recommended,
+                  Reproducible_Build);
+               Attestation_Vectors.Append (M.Attestations.Recommended,
+                  SBOM_Complete);
 
                Result.Status := Success;
                Result.Manifest := M;
@@ -442,11 +604,22 @@ package body Cerro_Import_Debian is
       Create_Directory (Temp_Dir);
 
       --  Build URL to package's .dsc file
-      --  Debian mirror structure: /pool/main/[first-letter]/[package]/[package]_[version].dsc
+      --  Debian mirror structure: /pool/main/[prefix]/[package]/[package]_[version].dsc
+      --  Prefix is first letter, except "lib*" packages use first 4 chars
       declare
-         First_Letter : constant Character := Package_Name (Package_Name'First);
-         Pool_Path : constant String := "/pool/main/" & First_Letter & "/" & Package_Name & "/";
-         Mirror_URL : constant String := To_String (Current_Mirror.URL) & Pool_Path;
+         Pool_Prefix : constant String :=
+            (if Package_Name'Length >= 4
+                and then Package_Name (Package_Name'First ..
+                                       Package_Name'First + 2) = "lib"
+             then
+                Package_Name (Package_Name'First ..
+                              Package_Name'First + 3)
+             else
+                (1 => Package_Name (Package_Name'First)));
+         Pool_Path : constant String :=
+            "/pool/main/" & Pool_Prefix & "/" & Package_Name & "/";
+         Mirror_URL : constant String :=
+            To_String (Current_Mirror.URL) & Pool_Path;
 
          --  If version not specified, we need to query the Sources file
          --  For now, fallback to Import_From_Apt_Source
