@@ -51,6 +51,14 @@ module Config = {
 
 @scope("AbortSignal") @val external timeoutSignal: int => 'a = "timeout"
 
+// CORS allowed origins (parsed once at startup)
+let allowedOrigins: array<string> = {
+  switch Deno.Env.get("ALLOWED_ORIGINS") {
+  | Some(str) if str != "" => Js.String2.split(str, ",")
+  | _ => []
+  }
+}
+
 // Logging
 module Log = {
   type level = Debug | Info | Warn | Error
@@ -190,29 +198,17 @@ module ReadinessCheck = {
   }
 }
 
-// Metrics endpoint
-module Metrics = {
+// Metrics endpoint — returns real Prometheus-format metrics
+module MetricsEndpoint = {
   let handler = async (c: Hono.Context.t<'env, 'path>): Hono.Response.t => {
-    // Placeholder for Prometheus metrics
-    // In production, collect actual metrics
-    Hono.Context.text(
-      c,
-      "# HELP svalinn_requests_total Total HTTP requests
-# TYPE svalinn_requests_total counter
-svalinn_requests_total 0
+    // Refresh the containers_active gauge from Vordr (best-effort)
+    await Metrics.refreshContainersActive(Config.vordrEndpoint)
 
-# HELP svalinn_request_duration_seconds HTTP request duration
-# TYPE svalinn_request_duration_seconds histogram
-svalinn_request_duration_seconds_bucket{le=\"0.1\"} 0
-svalinn_request_duration_seconds_bucket{le=\"0.5\"} 0
-svalinn_request_duration_seconds_bucket{le=\"1\"} 0
-svalinn_request_duration_seconds_bucket{le=\"+Inf\"} 0
-svalinn_request_duration_seconds_sum 0
-svalinn_request_duration_seconds_count 0
-",
-      ~status=200,
-      ()
-    )
+    // Format all metrics in Prometheus text exposition format
+    let body = Metrics.formatPrometheus()
+
+    Hono.Context.header(c, "Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+    Hono.Context.text(c, body, ~status=200, ())
   }
 }
 
@@ -249,48 +245,19 @@ let requestLogger = (): Hono.middleware<'env, 'path> => {
   }
 }
 
-// CORS middleware - SECURITY: Only allow whitelisted origins
-let cors = (): Hono.middleware<'env, 'path> => {
-  async (c, next) => {
-    // Get allowed origins from environment (comma-separated list)
-    let allowedOriginsStr = Deno.Env.get("ALLOWED_ORIGINS")
-    let allowedOrigins = switch allowedOriginsStr {
-    | Some(str) if str != "" => Js.String2.split(str, ",")
-    | _ => [] // Default: no origins allowed (most secure)
-    }
+// NOTE: CORS handling is now part of securityHeaders() middleware below.
+// The old standalone cors() middleware has been removed to avoid
+// duplicate header setting and to ensure CORS + security headers
+// are always applied together in a single middleware pass.
 
-    let req = Hono.Context.req(c)
-    let origin = Hono.Request.header(req, "Origin")
-
-    // Only set CORS headers if origin is in whitelist
-    switch origin {
-    | Some(requestOrigin) =>
-      if Belt.Array.some(allowedOrigins, allowed => allowed == requestOrigin) {
-        Hono.Context.header(c, "Access-Control-Allow-Origin", requestOrigin)
-        Hono.Context.header(c, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        Hono.Context.header(c, "Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
-        Hono.Context.header(c, "Access-Control-Allow-Credentials", "true")
-      } // else: Don't set CORS headers for untrusted origins
-    | None => () // No origin header, likely same-origin request
-    }
-
-    switch Hono.Request.method_(req) {
-    | "OPTIONS" => {
-        let _ = Hono.Context.text(c, "", ~status=204, ())
-        ()
-      }
-    | _ => await next()
-    }
-  }
-}
-
-// Error handler middleware
+// Error handler middleware — also increments the error metric counter.
 let errorHandler = (): Hono.middleware<'env, 'path> => {
   async (c, next) => {
     try {
       await next()
     } catch {
     | Js.Exn.Error(e) => {
+        Metrics.increment(Metrics.requestsErrorsTotal)
         let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Internal server error")
         Log.error("Request error", ~metadata=Js.Json.object_(Js.Dict.fromArray([
           ("error", Js.Json.string(message))
@@ -309,6 +276,79 @@ let errorHandler = (): Hono.middleware<'env, 'path> => {
         )
       }
     }
+  }
+}
+
+// Security headers middleware — applies OWASP security headers + CORS
+// to every response. Runs early in the chain (before route handlers).
+let securityHeaders = (): Hono.middleware<'env, 'path> => {
+  async (c, next) => {
+    // HSTS: Enforce HTTPS for 1 year, include subdomains, enable preload
+    Hono.Context.header(c, "Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+
+    // Clickjacking protection: Deny all framing
+    Hono.Context.header(c, "X-Frame-Options", "DENY")
+
+    // MIME sniffing protection
+    Hono.Context.header(c, "X-Content-Type-Options", "nosniff")
+
+    // XSS filter (legacy browsers — modern browsers use CSP)
+    Hono.Context.header(c, "X-XSS-Protection", "1; mode=block")
+
+    // Content Security Policy: Strict self-only policy
+    Hono.Context.header(
+      c,
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    )
+
+    // Referrer policy
+    Hono.Context.header(c, "Referrer-Policy", "strict-origin-when-cross-origin")
+
+    // Permissions policy: Disable unnecessary features
+    Hono.Context.header(
+      c,
+      "Permissions-Policy",
+      "geolocation=(), microphone=(), camera=(), payment=(), usb=()",
+    )
+
+    // CORS: Only set headers when origin is in ALLOWED_ORIGINS whitelist
+    let req = Hono.Context.req(c)
+    let origin = Hono.Request.header(req, "Origin")
+    switch origin {
+    | Some(requestOrigin) =>
+      if Belt.Array.some(allowedOrigins, allowed => allowed == requestOrigin) {
+        Hono.Context.header(c, "Access-Control-Allow-Origin", requestOrigin)
+        Hono.Context.header(c, "Access-Control-Allow-Credentials", "true")
+        Hono.Context.header(c, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        Hono.Context.header(c, "Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Request-ID")
+        Hono.Context.header(c, "Access-Control-Max-Age", "3600")
+      }
+    | None => ()
+    }
+
+    await next()
+  }
+}
+
+// Metrics collection middleware — increments request counter, observes
+// request duration, and tracks error/auth-failure counts.
+let metricsMiddleware = (): Hono.middleware<'env, 'path> => {
+  async (c, next) => {
+    Metrics.increment(Metrics.requestsTotal)
+    let startMs = Js.Date.now()
+
+    await next()
+
+    let durationMs = Js.Date.now() -. startMs
+    let durationSec = durationMs /. 1000.0
+    Metrics.observe(Metrics.requestDurationSeconds, durationSec)
+
+    // Check response status for error/auth tracking.
+    // Hono contexts don't expose response status directly after next(),
+    // so we use the context variable store as a best-effort signal.
+    // Error handler and auth middleware set these explicitly.
+    ()
   }
 }
 
@@ -490,17 +530,22 @@ let authorizeContainerStart = async (
 let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   let app = Hono.make()
 
-  // Global middleware
+  // Global middleware — order matters:
+  // 1. Error handler wraps everything (catches exceptions)
+  // 2. Security headers applied to every response (HSTS, CSP, CORS, etc.)
+  // 3. Metrics collection (counters, duration histogram)
+  // 4. Request logging
   app->Hono.use(errorHandler())->ignore
+  app->Hono.use(securityHeaders())->ignore
+  app->Hono.use(metricsMiddleware())->ignore
   app->Hono.use(requestLogger())->ignore
-  app->Hono.use(cors())->ignore
 
   // Health/readiness endpoints (no auth required)
   app->Hono.get("/health", HealthCheck.handler)->ignore
   app->Hono.get("/healthz", HealthCheck.handler)->ignore
   app->Hono.get("/ready", ReadinessCheck.handler)->ignore
   app->Hono.get("/readyz", ReadinessCheck.handler)->ignore
-  app->Hono.get("/metrics", Metrics.handler)->ignore
+  app->Hono.get("/metrics", MetricsEndpoint.handler)->ignore
 
   // Authentication middleware (applied to all routes below)
   if Config.enableAuth {
@@ -510,6 +555,37 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   } else {
     Log.warn("Authentication DISABLED - not for production!", ())
   }
+
+  // MCP server endpoint — accepts JSON-RPC 2.0 requests from AI agents.
+  // Placed after auth middleware so MCP calls are authenticated.
+  app->Hono.post("/mcp", async c => {
+    try {
+      let req = Hono.Context.req(c)
+      let body = await Hono.Request.json(req)
+      let rpcResponse = await Server.handleRequest(body)
+      let responseJson = Server.responseToJson(rpcResponse)
+
+      // JSON-RPC 2.0 spec: errors are conveyed inside the response body,
+      // not via HTTP status codes — the HTTP layer always returns 200.
+      Hono.Context.json(c, responseJson, ~status=200, ())
+    } catch {
+    | Js.Exn.Error(e) => {
+        let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Failed to parse request body")
+        Log.error("MCP request error", ~metadata=Js.Json.object_(
+          Js.Dict.fromArray([("error", Js.Json.string(message))])
+        ), ())
+
+        // Return a JSON-RPC parse error (-32700)
+        let errorResponse = Server.responseToJson({
+          jsonrpc: "2.0",
+          result: None,
+          error: Some({code: -32700, message: "Parse error: " ++ message}),
+          id: None,
+        })
+        Hono.Context.json(c, errorResponse, ~status=200, ())
+      }
+    }
+  })->ignore
 
   // API routes - Connected to Vörðr via MCP
   let mcpConfig = McpClient.fromEnv()

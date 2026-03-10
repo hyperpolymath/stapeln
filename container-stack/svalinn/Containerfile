@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Containerfile — Two-stage build for Svalinn Edge Gateway
+#
+# Stage 1: ReScript compilation (needs node for the rescript compiler + deno)
+# Stage 2: Minimal runtime with Deno only (wolfi-base)
+
+# ---------------------------------------------------------------------------
+# Stage 1: Build
+# ---------------------------------------------------------------------------
+FROM cgr.dev/chainguard/wolfi-base:latest AS build
+
+# Install build-time dependencies: deno (runtime) + node (rescript compiler)
+RUN apk add --no-cache deno nodejs
+
+WORKDIR /build
+
+# Copy dependency manifests first for layer caching
+COPY deno.json deno.lock package.json ./
+COPY src/deno.json src/deno.lock src/rescript.json ./src/
+
+# Install JS dependencies (node_modules for rescript compiler)
+RUN deno install
+
+# Copy source tree
+COPY src/ ./src/
+COPY spec/ ./spec/
+COPY config/ ./config/
+
+# Compile ReScript to JavaScript
+RUN cd src && npx rescript build
+
+# ---------------------------------------------------------------------------
+# Stage 2: Runtime
+# ---------------------------------------------------------------------------
+FROM cgr.dev/chainguard/wolfi-base:latest AS runtime
+
+RUN apk add --no-cache deno
+
+# Non-root user for defence in depth
+RUN adduser -D -u 1000 svalinn
+USER svalinn
+
+WORKDIR /app
+
+# Copy compiled .res.js files and runtime config
+COPY --from=build --chown=svalinn:svalinn /build/src/ ./src/
+COPY --from=build --chown=svalinn:svalinn /build/deno.json ./deno.json
+COPY --from=build --chown=svalinn:svalinn /build/deno.lock ./deno.lock
+COPY --from=build --chown=svalinn:svalinn /build/node_modules/ ./node_modules/
+COPY --from=build --chown=svalinn:svalinn /build/spec/ ./spec/
+COPY --from=build --chown=svalinn:svalinn /build/config/ ./config/
+
+# Expose the default gateway port
+EXPOSE 8000
+
+# Health check against the /healthz endpoint
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD deno eval "const r = await fetch('http://localhost:8000/healthz'); Deno.exit(r.ok ? 0 : 1)"
+
+# Run with minimal Deno permissions
+ENTRYPOINT ["deno", "run", \
+  "--allow-net", \
+  "--allow-env", \
+  "--allow-read", \
+  "src/Main.res.js"]

@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Integration tests for Svalinn Gateway
+//
+// Tests cover: policy engine, validation, auth types, RBAC scope checking,
+// security headers configuration, MCP client config, and gateway types.
+// MCP calls to Vordr are not exercised (no live backend); instead we test
+// the pure logic that surrounds those calls.
 
-// Test framework bindings
+// ---------------------------------------------------------------------------
+// Test framework
+// ---------------------------------------------------------------------------
 module Test = {
   type testResult = {
     name: string,
@@ -16,12 +23,12 @@ module Test = {
       try {
         await fn()
         results := Belt.Array.concat(results.contents, [{name, passed: true, error: None}])
-        Js.Console.log("✓ " ++ name)
+        Js.Console.log("  PASS  " ++ name)
       } catch {
       | Js.Exn.Error(e) => {
           let message = Js.Exn.message(e)->Belt.Option.getWithDefault("Unknown error")
           results := Belt.Array.concat(results.contents, [{name, passed: false, error: Some(message)}])
-          Js.Console.error("✗ " ++ name ++ ": " ++ message)
+          Js.Console.error("  FAIL  " ++ name ++ ": " ++ message)
         }
       }
     }
@@ -30,7 +37,11 @@ module Test = {
 
   let assertEquals = (actual: 'a, expected: 'a, message: string): unit => {
     if actual != expected {
-      raise(Js.Exn.raiseError(message ++ " (expected: " ++ Js.String.make(expected) ++ ", got: " ++ Js.String.make(actual) ++ ")"))
+      raise(
+        Js.Exn.raiseError(
+          message ++ " (expected: " ++ Js.String.make(expected) ++ ", got: " ++ Js.String.make(actual) ++ ")",
+        ),
+      )
     }
   }
 
@@ -64,82 +75,231 @@ module Test = {
   }
 }
 
-// MCP Client Tests
+// ===========================================================================
+// 1. MCP Client Tests
+// ===========================================================================
 module McpClientTests = {
-  test("MCP config from environment", async () => {
+  Test.test("MCP config from environment uses correct defaults", async () => {
     let config = McpClient.fromEnv()
     Test.assertEquals(config.endpoint, "http://localhost:8080", "Default endpoint should be localhost:8080")
     Test.assertEquals(config.timeout, 30000, "Default timeout should be 30s")
     Test.assertEquals(config.retries, 3, "Default retries should be 3")
   })
 
-  // Note: Skip actual MCP calls unless Vörðr is running
-  // test("MCP health check", async () => {
-  //   let config = McpClient.defaultConfig
-  //   let isHealthy = await McpClient.health(config)
-  //   Test.assertTrue(isHealthy, "Vörðr should be healthy")
-  // })
+  Test.test("MCP defaultConfig matches documented values", async () => {
+    let config = McpClient.defaultConfig
+    Test.assertEquals(config.endpoint, "http://localhost:8080", "Default endpoint")
+    Test.assertEquals(config.timeout, 30000, "Default timeout 30s")
+    Test.assertEquals(config.retries, 3, "Default retries 3")
+  })
 }
 
-// Validation Tests
+// ===========================================================================
+// 2. Validation Tests
+// ===========================================================================
 module ValidationTests = {
-  test("Validation module initialization", async () => {
-    let validator = Validation.make()
+  Test.test("Validator initializes without error", async () => {
+    let _validator = Validation.make()
     Test.assertTrue(true, "Validator should initialize")
   })
 
-  test("Validate run request - valid", async () => {
-    let validator = Validation.make()
-    let validRequest = Js.Json.object_(
+  Test.test("hasRequiredFields returns true when all fields present", async () => {
+    let data = Js.Json.object_(
       Js.Dict.fromArray([
         ("imageDigest", Js.Json.string("sha256:abc123")),
         ("imageName", Js.Json.string("alpine:latest")),
-      ])
+      ]),
     )
-
-    // Note: Need to load schemas first
-    // let result = Validation.validateRunRequest(validator, validRequest)
-    // Test.assertTrue(result.valid, "Valid request should pass validation")
-    Test.assertTrue(true, "Validation test placeholder")
+    let result = Validation.hasRequiredFields(data, ["imageDigest", "imageName"])
+    Test.assertTrue(result, "Should detect all required fields present")
   })
 
-  test("Validate run request - missing required field", async () => {
-    let validator = Validation.make()
-    let invalidRequest = Js.Json.object_(
-      Js.Dict.fromArray([
-        ("imageName", Js.Json.string("alpine:latest")),
-        // Missing imageDigest
-      ])
+  Test.test("hasRequiredFields returns false when field missing", async () => {
+    let data = Js.Json.object_(
+      Js.Dict.fromArray([("imageName", Js.Json.string("alpine:latest"))]),
     )
+    let result = Validation.hasRequiredFields(data, ["imageDigest", "imageName"])
+    Test.assertFalse(result, "Should detect missing imageDigest")
+  })
 
-    // let result = Validation.validateRunRequest(validator, invalidRequest)
-    // Test.assertFalse(result.valid, "Invalid request should fail validation")
-    Test.assertTrue(true, "Validation test placeholder")
+  Test.test("hasRequiredFields returns false for non-object JSON", async () => {
+    let data = Js.Json.string("not an object")
+    let result = Validation.hasRequiredFields(data, ["field"])
+    Test.assertFalse(result, "Non-object should fail required fields check")
+  })
+
+  Test.test("getString extracts string field correctly", async () => {
+    let data = Js.Json.object_(
+      Js.Dict.fromArray([("name", Js.Json.string("test-container"))]),
+    )
+    let value = Validation.getString(data, "name")
+    Test.assertTrue(Belt.Option.isSome(value), "Should find name field")
+    Test.assertEquals(
+      Belt.Option.getWithDefault(value, ""),
+      "test-container",
+      "Should extract correct string value",
+    )
+  })
+
+  Test.test("getString returns None for missing field", async () => {
+    let data = Js.Json.object_(Js.Dict.fromArray([]))
+    let value = Validation.getString(data, "missing")
+    Test.assertTrue(Belt.Option.isNone(value), "Should return None for missing field")
+  })
+
+  Test.test("getBool extracts boolean field correctly", async () => {
+    let data = Js.Json.object_(
+      Js.Dict.fromArray([("allowed", Js.Json.boolean(true))]),
+    )
+    let value = Validation.getBool(data, "allowed")
+    Test.assertTrue(Belt.Option.isSome(value), "Should find allowed field")
+    Test.assertEquals(Belt.Option.getWithDefault(value, false), true, "Should extract true")
+  })
+
+  Test.test("getNumber extracts numeric field correctly", async () => {
+    let data = Js.Json.object_(
+      Js.Dict.fromArray([("port", Js.Json.number(8080.0))]),
+    )
+    let value = Validation.getNumber(data, "port")
+    Test.assertTrue(Belt.Option.isSome(value), "Should find port field")
+    Test.assertEquals(Belt.Option.getWithDefault(value, 0.0), 8080.0, "Should extract 8080")
+  })
+
+  Test.test("getArray extracts array field correctly", async () => {
+    let data = Js.Json.object_(
+      Js.Dict.fromArray([
+        ("items", Js.Json.array([Js.Json.string("a"), Js.Json.string("b")])),
+      ]),
+    )
+    let value = Validation.getArray(data, "items")
+    Test.assertTrue(Belt.Option.isSome(value), "Should find items field")
+    Test.assertEquals(
+      Belt.Array.length(Belt.Option.getWithDefault(value, [])),
+      2,
+      "Should have 2 items",
+    )
+  })
+
+  Test.test("validate returns schema-not-found for unknown schema id", async () => {
+    let validator = Validation.make()
+    let data = Js.Json.object_(Js.Dict.fromArray([]))
+    let result = Validation.validate(validator, "nonexistent-schema", data)
+    Test.assertFalse(result.valid, "Should fail for unknown schema")
+    Test.assertTrue(Belt.Option.isSome(result.errors), "Should contain error details")
+  })
+
+  Test.test("isAllowedRegistry permits known registries", async () => {
+    let policy = Validation.defaultPolicy
+    Test.assertTrue(
+      Validation.isAllowedRegistry("docker.io/library/alpine:latest", policy),
+      "docker.io should be allowed",
+    )
+    Test.assertTrue(
+      Validation.isAllowedRegistry("ghcr.io/hyperpolymath/svalinn:v1", policy),
+      "ghcr.io should be allowed",
+    )
+    Test.assertTrue(
+      Validation.isAllowedRegistry("quay.io/wolfi-base:latest", policy),
+      "quay.io should be allowed",
+    )
+  })
+
+  Test.test("isAllowedRegistry rejects unknown registries", async () => {
+    let policy = Validation.defaultPolicy
+    Test.assertFalse(
+      Validation.isAllowedRegistry("evil-registry.example.com/malware:latest", policy),
+      "Unknown registry should be rejected",
+    )
+  })
+
+  Test.test("isDeniedImage blocks denied images", async () => {
+    let policy: Validation.policy = {
+      allowedRegistries: [],
+      deniedImages: ["bad-image:latest"],
+    }
+    Test.assertTrue(
+      Validation.isDeniedImage("bad-image:latest", policy),
+      "Denied image should be flagged",
+    )
+    Test.assertFalse(
+      Validation.isDeniedImage("good-image:latest", policy),
+      "Non-denied image should pass",
+    )
   })
 }
 
-// Policy Engine Tests
+// ===========================================================================
+// 3. Policy Engine Tests
+// ===========================================================================
 module PolicyEngineTests = {
-  test("Parse strict policy", async () => {
+  // -- Parsing --
+
+  Test.test("parsePolicy parses valid strict policy JSON", async () => {
     let policyJson = Js.Json.object_(
       Js.Dict.fromArray([
         ("version", Js.Json.number(1.0)),
-        ("requiredPredicates", Js.Json.array([
-          Js.Json.string("https://slsa.dev/provenance/v1")
-        ])),
-        ("allowedSigners", Js.Json.array([
-          Js.Json.string("sha256:abc123")
-        ])),
+        (
+          "requiredPredicates",
+          Js.Json.array([Js.Json.string("https://slsa.dev/provenance/v1")]),
+        ),
+        ("allowedSigners", Js.Json.array([Js.Json.string("sha256:abc123")])),
         ("logQuorum", Js.Json.number(1.0)),
         ("mode", Js.Json.string("strict")),
-      ])
+      ]),
     )
 
     let policy = PolicyEngine.parsePolicy(policyJson)
     Test.assertTrue(Belt.Option.isSome(policy), "Should parse valid policy")
+
+    let p = Belt.Option.getExn(policy)
+    Test.assertEquals(p.version, 1, "Version should be 1")
+    Test.assertEquals(
+      Belt.Array.length(p.requiredPredicates),
+      1,
+      "Should have 1 required predicate",
+    )
+    Test.assertEquals(
+      Belt.Array.length(p.allowedSigners),
+      1,
+      "Should have 1 allowed signer",
+    )
+    Test.assertEquals(p.logQuorum, 1, "Log quorum should be 1")
+    Test.assertEquals(p.mode, Some(PolicyEngine.Strict), "Mode should be Strict")
   })
 
-  test("Evaluate policy - all requirements met", async () => {
+  Test.test("parsePolicy parses permissive mode", async () => {
+    let policyJson = Js.Json.object_(
+      Js.Dict.fromArray([
+        ("version", Js.Json.number(1.0)),
+        ("requiredPredicates", Js.Json.array([])),
+        ("allowedSigners", Js.Json.array([])),
+        ("logQuorum", Js.Json.number(0.0)),
+        ("mode", Js.Json.string("permissive")),
+      ]),
+    )
+    let policy = PolicyEngine.parsePolicy(policyJson)
+    Test.assertTrue(Belt.Option.isSome(policy), "Should parse permissive policy")
+    let p = Belt.Option.getExn(policy)
+    Test.assertEquals(p.mode, Some(PolicyEngine.Permissive), "Mode should be Permissive")
+  })
+
+  Test.test("parsePolicy returns None for malformed JSON", async () => {
+    let bad = Js.Json.string("not an object")
+    let result = PolicyEngine.parsePolicy(bad)
+    Test.assertTrue(Belt.Option.isNone(result), "Should return None for non-object")
+  })
+
+  Test.test("parsePolicy returns None when required fields missing", async () => {
+    let partial = Js.Json.object_(
+      Js.Dict.fromArray([("version", Js.Json.number(1.0))]),
+    )
+    let result = PolicyEngine.parsePolicy(partial)
+    Test.assertTrue(Belt.Option.isNone(result), "Should return None when requiredPredicates missing")
+  })
+
+  // -- Evaluation: strict mode --
+
+  Test.test("Strict: allow when all requirements met", async () => {
     let policy: PolicyEngine.policy = {
       version: 1,
       requiredPredicates: ["https://slsa.dev/provenance/v1"],
@@ -155,15 +315,18 @@ module PolicyEngineTests = {
         subject: ["sha256:image123"],
         signer: "sha256:abc123",
         logEntry: Some("rekor-entry-123"),
-      }
+      },
     ]
 
     let result = PolicyEngine.evaluate(policy, attestations)
     Test.assertTrue(result.allowed, "Should allow when all requirements met")
     Test.assertEquals(Belt.Array.length(result.violations), 0, "Should have no violations")
+    Test.assertEquals(Belt.Array.length(result.predicatesFound), 1, "Should find 1 predicate")
+    Test.assertEquals(Belt.Array.length(result.signersVerified), 1, "Should verify 1 signer")
+    Test.assertTrue(result.logQuorumMet, "Log quorum should be met")
   })
 
-  test("Evaluate policy - missing predicate", async () => {
+  Test.test("Strict: reject when required predicate missing", async () => {
     let policy: PolicyEngine.policy = {
       version: 1,
       requiredPredicates: ["https://slsa.dev/provenance/v1", "https://spdx.dev/Document"],
@@ -175,19 +338,101 @@ module PolicyEngineTests = {
 
     let attestations: array<PolicyEngine.attestation> = [
       {
-        predicateType: "https://slsa.dev/provenance/v1", // Missing SPDX
+        predicateType: "https://slsa.dev/provenance/v1",
         subject: ["sha256:image123"],
         signer: "sha256:abc123",
         logEntry: Some("rekor-entry-123"),
-      }
+      },
     ]
 
     let result = PolicyEngine.evaluate(policy, attestations)
     Test.assertFalse(result.allowed, "Should reject when predicate missing in strict mode")
     Test.assertTrue(Belt.Array.length(result.violations) > 0, "Should have violations")
+    Test.assertEquals(
+      Belt.Array.length(result.missingPredicates),
+      1,
+      "Should report 1 missing predicate",
+    )
+    Test.assertEquals(
+      result.missingPredicates->Belt.Array.get(0)->Belt.Option.getWithDefault(""),
+      "https://spdx.dev/Document",
+      "Missing predicate should be spdx.dev/Document",
+    )
   })
 
-  test("Evaluate policy - permissive mode allows with warnings", async () => {
+  Test.test("Strict: reject when signer not in allowed list", async () => {
+    let policy: PolicyEngine.policy = {
+      version: 1,
+      requiredPredicates: ["https://slsa.dev/provenance/v1"],
+      allowedSigners: ["sha256:trusted-key"],
+      logQuorum: 1,
+      mode: Some(PolicyEngine.Strict),
+      notes: None,
+    }
+
+    let attestations: array<PolicyEngine.attestation> = [
+      {
+        predicateType: "https://slsa.dev/provenance/v1",
+        subject: ["sha256:image123"],
+        signer: "sha256:untrusted-key",
+        logEntry: Some("rekor-entry-456"),
+      },
+    ]
+
+    let result = PolicyEngine.evaluate(policy, attestations)
+    Test.assertFalse(result.allowed, "Should reject untrusted signer in strict mode")
+    Test.assertEquals(
+      Belt.Array.length(result.invalidSigners),
+      1,
+      "Should report 1 invalid signer",
+    )
+  })
+
+  Test.test("Strict: reject when log quorum not met", async () => {
+    let policy: PolicyEngine.policy = {
+      version: 1,
+      requiredPredicates: ["https://slsa.dev/provenance/v1"],
+      allowedSigners: ["sha256:abc123"],
+      logQuorum: 2,
+      mode: Some(PolicyEngine.Strict),
+      notes: None,
+    }
+
+    let attestations: array<PolicyEngine.attestation> = [
+      {
+        predicateType: "https://slsa.dev/provenance/v1",
+        subject: ["sha256:image123"],
+        signer: "sha256:abc123",
+        logEntry: Some("single-entry"),
+      },
+    ]
+
+    let result = PolicyEngine.evaluate(policy, attestations)
+    Test.assertFalse(result.allowed, "Should reject when log quorum not met")
+    Test.assertFalse(result.logQuorumMet, "logQuorumMet should be false")
+    Test.assertEquals(result.logCount, 1, "Should count 1 log entry")
+  })
+
+  Test.test("Strict: reject with empty attestations", async () => {
+    let policy: PolicyEngine.policy = {
+      version: 1,
+      requiredPredicates: ["https://slsa.dev/provenance/v1"],
+      allowedSigners: ["sha256:abc123"],
+      logQuorum: 1,
+      mode: Some(PolicyEngine.Strict),
+      notes: None,
+    }
+
+    let attestations: array<PolicyEngine.attestation> = []
+
+    let result = PolicyEngine.evaluate(policy, attestations)
+    Test.assertFalse(result.allowed, "Empty attestations should be rejected in strict mode")
+    Test.assertTrue(Belt.Array.length(result.violations) > 0, "Should have violations")
+  })
+
+  // -- Evaluation: permissive mode --
+
+  Test.test("Permissive: allow even with violations, emit warnings", async () => {
     let policy: PolicyEngine.policy = {
       version: 1,
       requiredPredicates: ["https://slsa.dev/provenance/v1"],
@@ -197,57 +442,526 @@ module PolicyEngineTests = {
       notes: None,
     }
 
-    let attestations: array<PolicyEngine.attestation> = [] // Empty - should violate but allow
+    let attestations: array<PolicyEngine.attestation> = []
 
     let result = PolicyEngine.evaluate(policy, attestations)
     Test.assertTrue(result.allowed, "Permissive mode should allow even with violations")
     Test.assertTrue(Belt.Array.length(result.warnings) > 0, "Should have warnings")
   })
-}
 
-// Auth Tests  
-module AuthTests = {
-  test("Parse auth method from string", async () => {
-    let oauth2 = Types.authMethodFromString("oauth2")
-    Test.assertTrue(Belt.Option.isSome(oauth2), "Should parse oauth2")
+  Test.test("Permissive: violations become warnings, not blockers", async () => {
+    let policy: PolicyEngine.policy = {
+      version: 1,
+      requiredPredicates: ["https://slsa.dev/provenance/v1", "https://spdx.dev/Document"],
+      allowedSigners: ["sha256:trusted"],
+      logQuorum: 3,
+      mode: Some(PolicyEngine.Permissive),
+      notes: None,
+    }
 
-    let invalid = Types.authMethodFromString("invalid")
-    Test.assertTrue(Belt.Option.isNone(invalid), "Should reject invalid method")
+    let attestations: array<PolicyEngine.attestation> = [
+      {
+        predicateType: "https://slsa.dev/provenance/v1",
+        subject: ["sha256:img"],
+        signer: "sha256:unknown",
+        logEntry: None,
+      },
+    ]
+
+    let result = PolicyEngine.evaluate(policy, attestations)
+    Test.assertTrue(result.allowed, "Should be allowed in permissive mode")
+    // Missing predicate (spdx), invalid signer, log quorum not met
+    Test.assertTrue(Belt.Array.length(result.warnings) >= 2, "Should have multiple warnings")
   })
 
-  test("Default auth config", async () => {
+  // -- Mode conversion --
+
+  Test.test("policyModeFromString round-trips correctly", async () => {
+    Test.assertEquals(
+      PolicyEngine.policyModeFromString("strict"),
+      Some(PolicyEngine.Strict),
+      "strict string",
+    )
+    Test.assertEquals(
+      PolicyEngine.policyModeFromString("permissive"),
+      Some(PolicyEngine.Permissive),
+      "permissive string",
+    )
+    Test.assertTrue(
+      Belt.Option.isNone(PolicyEngine.policyModeFromString("invalid")),
+      "invalid should return None",
+    )
+  })
+
+  Test.test("policyModeToString produces expected strings", async () => {
+    Test.assertEquals(PolicyEngine.policyModeToString(Strict), "strict", "Strict to string")
+    Test.assertEquals(
+      PolicyEngine.policyModeToString(Permissive),
+      "permissive",
+      "Permissive to string",
+    )
+  })
+
+  // -- Default policies --
+
+  Test.test("defaultPolicy is strict with SLSA and SPDX predicates", async () => {
+    let p = PolicyEngine.defaultPolicy
+    Test.assertEquals(p.mode, Some(PolicyEngine.Strict), "Default should be strict")
+    Test.assertEquals(
+      Belt.Array.length(p.requiredPredicates),
+      2,
+      "Default should require 2 predicates",
+    )
+    Test.assertTrue(
+      Belt.Array.some(p.requiredPredicates, pred => pred == "https://slsa.dev/provenance/v1"),
+      "Should require SLSA provenance",
+    )
+    Test.assertTrue(
+      Belt.Array.some(p.requiredPredicates, pred => pred == "https://spdx.dev/Document"),
+      "Should require SPDX document",
+    )
+  })
+
+  Test.test("permissivePolicy allows everything", async () => {
+    let p = PolicyEngine.permissivePolicy
+    Test.assertEquals(p.mode, Some(PolicyEngine.Permissive), "Should be permissive")
+    Test.assertEquals(p.logQuorum, 0, "Should have zero log quorum")
+    Test.assertEquals(
+      Belt.Array.length(p.requiredPredicates),
+      0,
+      "Should have no required predicates",
+    )
+  })
+
+  // -- formatResult --
+
+  Test.test("formatResult produces well-formed JSON", async () => {
+    let evalResult: PolicyEngine.evaluationResult = {
+      allowed: true,
+      mode: PolicyEngine.Strict,
+      predicatesFound: ["https://slsa.dev/provenance/v1"],
+      missingPredicates: [],
+      signersVerified: ["sha256:abc"],
+      invalidSigners: [],
+      logCount: 1,
+      logQuorumMet: true,
+      violations: [],
+      warnings: [],
+    }
+
+    let json = PolicyEngine.formatResult(evalResult)
+    let obj = json->Js.Json.decodeObject
+    Test.assertTrue(Belt.Option.isSome(obj), "Should be a JSON object")
+
+    let dict = Belt.Option.getExn(obj)
+    let allowed = dict->Js.Dict.get("allowed")->Belt.Option.flatMap(Js.Json.decodeBoolean)
+    Test.assertEquals(allowed, Some(true), "allowed field should be true")
+
+    let mode = dict->Js.Dict.get("mode")->Belt.Option.flatMap(Js.Json.decodeString)
+    Test.assertEquals(mode, Some("strict"), "mode field should be 'strict'")
+  })
+
+  // -- Attestation parsing --
+
+  Test.test("parseAttestation parses valid attestation JSON", async () => {
+    let json = Js.Json.object_(
+      Js.Dict.fromArray([
+        ("predicateType", Js.Json.string("https://slsa.dev/provenance/v1")),
+        ("subject", Js.Json.array([Js.Json.string("sha256:img123")])),
+        ("signer", Js.Json.string("sha256:signer-key")),
+        ("logEntry", Js.Json.string("rekor-entry-789")),
+      ]),
+    )
+
+    let att = PolicyEngine.parseAttestation(json)
+    Test.assertTrue(Belt.Option.isSome(att), "Should parse valid attestation")
+    let a = Belt.Option.getExn(att)
+    Test.assertEquals(a.predicateType, "https://slsa.dev/provenance/v1", "predicateType")
+    Test.assertEquals(a.signer, "sha256:signer-key", "signer")
+    Test.assertEquals(a.logEntry, Some("rekor-entry-789"), "logEntry")
+  })
+
+  Test.test("parseAttestation returns None for invalid JSON", async () => {
+    let bad = Js.Json.string("bad data")
+    Test.assertTrue(
+      Belt.Option.isNone(PolicyEngine.parseAttestation(bad)),
+      "Should return None for non-object",
+    )
+  })
+}
+
+// ===========================================================================
+// 4. Auth Types Tests
+// ===========================================================================
+module AuthTypesTests = {
+  // -- authMethod conversion --
+
+  Test.test("authMethodFromString parses all valid methods", async () => {
+    Test.assertEquals(AuthTypes.authMethodFromString("oauth2"), Some(AuthTypes.OAuth2), "oauth2")
+    Test.assertEquals(AuthTypes.authMethodFromString("oidc"), Some(AuthTypes.OIDC), "oidc")
+    Test.assertEquals(AuthTypes.authMethodFromString("api-key"), Some(AuthTypes.ApiKey), "api-key")
+    Test.assertEquals(AuthTypes.authMethodFromString("mtls"), Some(AuthTypes.MTLS), "mtls")
+    Test.assertEquals(AuthTypes.authMethodFromString("none"), Some(AuthTypes.None), "none")
+  })
+
+  Test.test("authMethodFromString rejects unknown methods", async () => {
+    Test.assertTrue(
+      Belt.Option.isNone(AuthTypes.authMethodFromString("invalid")),
+      "Should reject 'invalid'",
+    )
+    Test.assertTrue(
+      Belt.Option.isNone(AuthTypes.authMethodFromString("basic")),
+      "Should reject 'basic'",
+    )
+    Test.assertTrue(Belt.Option.isNone(AuthTypes.authMethodFromString("")), "Should reject empty")
+  })
+
+  Test.test("authMethodToString round-trips with authMethodFromString", async () => {
+    let methods: array<AuthTypes.authMethod> = [
+      AuthTypes.OAuth2,
+      AuthTypes.OIDC,
+      AuthTypes.ApiKey,
+      AuthTypes.MTLS,
+      AuthTypes.None,
+    ]
+    Belt.Array.forEach(methods, method => {
+      let str = AuthTypes.authMethodToString(method)
+      let parsed = AuthTypes.authMethodFromString(str)
+      Test.assertTrue(
+        Belt.Option.isSome(parsed),
+        "Round-trip should succeed for " ++ str,
+      )
+    })
+  })
+
+  // -- permissionAction conversion --
+
+  Test.test("permissionActionFromString parses CRUD + Execute", async () => {
+    Test.assertEquals(
+      AuthTypes.permissionActionFromString("create"),
+      Some(AuthTypes.Create),
+      "create",
+    )
+    Test.assertEquals(
+      AuthTypes.permissionActionFromString("read"),
+      Some(AuthTypes.Read),
+      "read",
+    )
+    Test.assertEquals(
+      AuthTypes.permissionActionFromString("update"),
+      Some(AuthTypes.Update),
+      "update",
+    )
+    Test.assertEquals(
+      AuthTypes.permissionActionFromString("delete"),
+      Some(AuthTypes.Delete),
+      "delete",
+    )
+    Test.assertEquals(
+      AuthTypes.permissionActionFromString("execute"),
+      Some(AuthTypes.Execute),
+      "execute",
+    )
+  })
+
+  Test.test("permissionActionFromString rejects invalid actions", async () => {
+    Test.assertTrue(
+      Belt.Option.isNone(AuthTypes.permissionActionFromString("admin")),
+      "Should reject 'admin'",
+    )
+  })
+
+  Test.test("permissionActionToString round-trips correctly", async () => {
+    let actions: array<AuthTypes.permissionAction> = [
+      AuthTypes.Create,
+      AuthTypes.Read,
+      AuthTypes.Update,
+      AuthTypes.Delete,
+      AuthTypes.Execute,
+    ]
+    Belt.Array.forEach(actions, action => {
+      let str = AuthTypes.permissionActionToString(action)
+      let parsed = AuthTypes.permissionActionFromString(str)
+      Test.assertTrue(Belt.Option.isSome(parsed), "Round-trip should succeed for " ++ str)
+    })
+  })
+
+  // -- RBAC default roles --
+
+  Test.test("defaultRoles has 4 roles: admin, operator, viewer, auditor", async () => {
+    let roles = AuthTypes.defaultRoles
+    Test.assertEquals(Belt.Array.length(roles), 4, "Should have 4 default roles")
+
+    let roleNames = Belt.Array.map(roles, r => r.name)
+    Test.assertTrue(Belt.Array.some(roleNames, n => n == "admin"), "Should have admin role")
+    Test.assertTrue(Belt.Array.some(roleNames, n => n == "operator"), "Should have operator role")
+    Test.assertTrue(Belt.Array.some(roleNames, n => n == "viewer"), "Should have viewer role")
+    Test.assertTrue(Belt.Array.some(roleNames, n => n == "auditor"), "Should have auditor role")
+  })
+
+  Test.test("admin role has wildcard resource with all actions", async () => {
+    let adminRole =
+      Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "admin")
+      ->Belt.Array.get(0)
+      ->Belt.Option.getExn
+
+    Test.assertEquals(Belt.Array.length(adminRole.permissions), 1, "Admin should have 1 permission")
+    let perm = adminRole.permissions->Belt.Array.get(0)->Belt.Option.getExn
+    Test.assertEquals(perm.resource, "*", "Admin resource should be wildcard")
+    Test.assertEquals(Belt.Array.length(perm.actions), 5, "Admin should have all 5 actions")
+  })
+
+  Test.test("operator role can manage containers but only read policies", async () => {
+    let operatorRole =
+      Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "operator")
+      ->Belt.Array.get(0)
+      ->Belt.Option.getExn
+
+    // Container permission should have all CRUD + Execute
+    let containerPerm =
+      Belt.Array.keep(operatorRole.permissions, p => p.resource == "containers")
+      ->Belt.Array.get(0)
+      ->Belt.Option.getExn
+    Test.assertEquals(
+      Belt.Array.length(containerPerm.actions),
+      5,
+      "Operator should have full container access",
+    )
+
+    // Policy permission should be read-only
+    let policyPerm =
+      Belt.Array.keep(operatorRole.permissions, p => p.resource == "policies")
+      ->Belt.Array.get(0)
+      ->Belt.Option.getExn
+    Test.assertEquals(
+      Belt.Array.length(policyPerm.actions),
+      1,
+      "Operator should have read-only policy access",
+    )
+    Test.assertEquals(
+      policyPerm.actions->Belt.Array.get(0)->Belt.Option.getExn,
+      AuthTypes.Read,
+      "Policy action should be Read",
+    )
+  })
+
+  Test.test("viewer role is read-only across all resources", async () => {
+    let viewerRole =
+      Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "viewer")
+      ->Belt.Array.get(0)
+      ->Belt.Option.getExn
+
+    Belt.Array.forEach(viewerRole.permissions, perm => {
+      Test.assertEquals(
+        Belt.Array.length(perm.actions),
+        1,
+        "Viewer should have exactly 1 action per resource",
+      )
+      Test.assertEquals(
+        perm.actions->Belt.Array.get(0)->Belt.Option.getExn,
+        AuthTypes.Read,
+        "Viewer action should always be Read for resource " ++ perm.resource,
+      )
+    })
+  })
+
+  // -- Default scopes --
+
+  Test.test("defaultScopes contains expected scope keys", async () => {
+    let scopes = AuthTypes.defaultScopes
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "svalinn:read"),
+      "Should have svalinn:read scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "svalinn:write"),
+      "Should have svalinn:write scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "svalinn:admin"),
+      "Should have svalinn:admin scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "containers:create"),
+      "Should have containers:create scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "containers:read"),
+      "Should have containers:read scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "containers:delete"),
+      "Should have containers:delete scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "images:verify"),
+      "Should have images:verify scope",
+    )
+    Test.assertTrue(
+      Belt.Map.String.has(scopes, "policies:manage"),
+      "Should have policies:manage scope",
+    )
+  })
+}
+
+// ===========================================================================
+// 5. Auth Middleware Tests
+// ===========================================================================
+module AuthMiddlewareTests = {
+  Test.test("createAuthConfig produces disabled auth by default", async () => {
     let config = Middleware.createAuthConfig(())
     Test.assertFalse(config.enabled, "Auth should be disabled by default")
-    Test.assertEquals(Belt.Array.length(config.excludePaths), 5, "Should have default excluded paths")
+    Test.assertEquals(
+      Belt.Array.length(config.excludePaths),
+      5,
+      "Should have 5 default excluded paths",
+    )
   })
 
-  // JWT tests would require actual OIDC provider or mock
-  // OAuth2 tests would require actual auth server or mock
+  Test.test("Default excluded paths include health and metrics", async () => {
+    let config = Middleware.createAuthConfig(())
+    let paths = config.excludePaths
+    Test.assertTrue(Belt.Array.some(paths, p => p == "/healthz"), "Should exclude /healthz")
+    Test.assertTrue(Belt.Array.some(paths, p => p == "/health"), "Should exclude /health")
+    Test.assertTrue(Belt.Array.some(paths, p => p == "/ready"), "Should exclude /ready")
+    Test.assertTrue(Belt.Array.some(paths, p => p == "/metrics"), "Should exclude /metrics")
+    Test.assertTrue(
+      Belt.Array.some(paths, p => p == "/.well-known/"),
+      "Should exclude /.well-known/",
+    )
+  })
+
+  Test.test("Default auth methods are OIDC and ApiKey", async () => {
+    let config = Middleware.createAuthConfig(())
+    Test.assertEquals(Belt.Array.length(config.methods), 2, "Should have 2 auth methods")
+    Test.assertEquals(
+      config.methods->Belt.Array.get(0)->Belt.Option.getExn,
+      AuthTypes.OIDC,
+      "First method should be OIDC",
+    )
+    Test.assertEquals(
+      config.methods->Belt.Array.get(1)->Belt.Option.getExn,
+      AuthTypes.ApiKey,
+      "Second method should be ApiKey",
+    )
+  })
+
+  Test.test("Default apiKey config uses X-API-Key header", async () => {
+    let config = Middleware.createAuthConfig(())
+    Test.assertTrue(Belt.Option.isSome(config.apiKey), "Should have apiKey config")
+    let apiKeyConfig = Belt.Option.getExn(config.apiKey)
+    Test.assertEquals(apiKeyConfig.header, "X-API-Key", "Header should be X-API-Key")
+    Test.assertTrue(Belt.Option.isNone(apiKeyConfig.prefix), "No prefix by default")
+  })
 }
 
-// Gateway Integration Tests
-module GatewayTests = {
-  // These would require running server
-  // test("Gateway starts and responds to health check", async () => {
-  //   // Start server
-  //   // Make HTTP request to /health
-  //   // Assert 200 OK
-  // })
+// ===========================================================================
+// 6. Security Headers Tests (configuration-level validation)
+// ===========================================================================
+module SecurityHeadersTests = {
+  // SecurityHeaders operates on Hono context objects which require a running
+  // HTTP server. Here we verify the module structure and constants are
+  // accessible. Full header-presence tests would run against a live server.
+
+  Test.test("SecurityHeaders module exports applySecurityHeaders function", async () => {
+    // Confirm the function exists at the module level. If it were missing
+    // this would be a compile error, but we keep it as a runtime sanity check.
+    let _fn = SecurityHeaders.applySecurityHeaders
+    Test.assertTrue(true, "applySecurityHeaders is exported")
+  })
+
+  Test.test("SecurityHeaders module exports middleware function", async () => {
+    let _fn = SecurityHeaders.middleware
+    Test.assertTrue(true, "middleware is exported")
+  })
+
+  Test.test("SecurityHeaders module exports applyCorsHeaders function", async () => {
+    let _fn = SecurityHeaders.applyCorsHeaders
+    Test.assertTrue(true, "applyCorsHeaders is exported")
+  })
+
+  Test.test("SecurityHeaders module exports applyRateLimitHeaders function", async () => {
+    let _fn = SecurityHeaders.applyRateLimitHeaders
+    Test.assertTrue(true, "applyRateLimitHeaders is exported")
+  })
+
+  Test.test("SecurityHeaders module exports applyErrorHeaders function", async () => {
+    let _fn = SecurityHeaders.applyErrorHeaders
+    Test.assertTrue(true, "applyErrorHeaders is exported")
+  })
 }
 
+// ===========================================================================
+// 7. Gateway Types Tests
+// ===========================================================================
+module GatewayTypesTests = {
+  Test.test("containerState variants are correctly defined", async () => {
+    // Verify variant construction compiles and the set is complete
+    let states: array<GatewayTypes.containerState> = [
+      GatewayTypes.Created,
+      GatewayTypes.Running,
+      GatewayTypes.Paused,
+      GatewayTypes.Stopped,
+      GatewayTypes.Removed,
+    ]
+    Test.assertEquals(Belt.Array.length(states), 5, "Should have 5 container states")
+  })
+
+  Test.test("runRequest type constructs with all fields", async () => {
+    let req: GatewayTypes.runRequest = {
+      imageName: "alpine",
+      imageDigest: "sha256:abc123",
+      name: Some("test-container"),
+      command: Some(["sh", "-c", "echo hello"]),
+      env: Some(Js.Dict.fromArray([("FOO", "bar")])),
+      detach: Some(true),
+      removeOnExit: Some(false),
+      profile: Some("default"),
+    }
+    Test.assertEquals(req.imageName, "alpine", "imageName")
+    Test.assertEquals(req.imageDigest, "sha256:abc123", "imageDigest")
+    Test.assertTrue(Belt.Option.isSome(req.name), "name should be Some")
+    Test.assertTrue(Belt.Option.isSome(req.command), "command should be Some")
+  })
+
+  Test.test("apiResponse Ok and Error variants construct correctly", async () => {
+    let ok: GatewayTypes.apiResponse<string> = GatewayTypes.Ok("success")
+    let err: GatewayTypes.apiResponse<string> = GatewayTypes.Error({
+      code: "NOT_FOUND",
+      message: "Container not found",
+      details: None,
+    })
+
+    switch ok {
+    | GatewayTypes.Ok(v) => Test.assertEquals(v, "success", "Ok value")
+    | GatewayTypes.Error(_) => Test.assertTrue(false, "Should be Ok")
+    }
+
+    switch err {
+    | GatewayTypes.Ok(_) => Test.assertTrue(false, "Should be Error")
+    | GatewayTypes.Error(e) =>
+      Test.assertEquals(e.code, "NOT_FOUND", "Error code should be NOT_FOUND")
+    }
+  })
+}
+
+// ===========================================================================
 // Run all tests
+// ===========================================================================
 let runTests = async () => {
   Js.Console.log("Running Svalinn Integration Tests\n")
 
-  // Run test suites
+  // Trigger all test module side effects (tests are registered at module init)
   McpClientTests.test
   ValidationTests.test
   PolicyEngineTests.test
-  AuthTests.test
-  // GatewayTests.test // Skip until we can start server in tests
+  AuthTypesTests.test
+  AuthMiddlewareTests.test
+  SecurityHeadersTests.test
+  GatewayTypesTests.test
 
-  // Wait for async tests to complete
-  await %raw(`new Promise(resolve => setTimeout(resolve, 100))`)
+  // Wait for async tests to settle
+  await %raw(`new Promise(resolve => setTimeout(resolve, 200))`)
 
   Test.report()
 }

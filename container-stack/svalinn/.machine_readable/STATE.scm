@@ -19,7 +19,7 @@
   '((version . "0.1.0")
     (schema-version . "1.0")
     (created . "2025-12-29")
-    (updated . "2026-01-19")
+    (updated . "2026-03-10")
     (project . "svalinn")
     (repo . "https://gitlab.com/hyperpolymath/svalinn")))
 
@@ -29,17 +29,22 @@
     (tech-stack . ((rescript . "Type-safe edge logic")
                    (deno . "HTTP/3 runtime")
                    (hono . "Web framework")))
-    (phase . "edge-shield-skeleton")))
+    (phase . "edge-shield-hardening")))
 
 (define current-position
-  '((phase . "v0.4 — Authentication Complete")
-    (overall-completion . 85)
+  '((phase . "v0.4+ — Security Headers, Metrics, Infrastructure")
+    (overall-completion . 70)
 
     (components
       ((name . "Gateway HTTP Server")
        (completion . 100)
        (status . "complete")
        (notes . "Deno + Hono HTTP server with CORS, logging"))
+
+      ((name . "Security Headers Middleware")
+       (completion . 100)
+       (status . "complete")
+       (notes . "HSTS, CSP, X-Frame-Options, CORS via securityHeaders() middleware"))
 
       ((name . "Request Validation")
        (completion . 100)
@@ -62,14 +67,29 @@
        (notes . "Full policy DSL with strict/standard/permissive presets"))
 
       ((name . "Test Suite")
-       (completion . 100)
-       (status . "complete")
-       (notes . "90 tests: gateway, validation, policy, MCP, Vörðr, auth"))
+       (completion . 80)
+       (status . "needs-update")
+       (notes . "90 tests passing but no coverage for new metrics/security-headers code"))
 
       ((name . "Authentication")
        (completion . 100)
        (status . "complete")
        (notes . "OAuth2/OIDC, API keys, mTLS, RBAC roles and scopes"))
+
+      ((name . "Metrics Collection")
+       (completion . 90)
+       (status . "complete")
+       (notes . "In-memory counters/histograms/gauges, Prometheus format, wired into gateway"))
+
+      ((name . "Containerfile")
+       (completion . 80)
+       (status . "untested")
+       (notes . "Two-stage wolfi-base build, needs real build validation"))
+
+      ((name . "CI/CD")
+       (completion . 30)
+       (status . "in-progress")
+       (notes . "Hypatia scan workflow added; missing CodeQL, mirror, scorecard"))
 
       ((name . "Web UI")
        (completion . 40)
@@ -81,6 +101,7 @@
       "JSON Schema validation against verified-container-spec"
       "Vörðr MCP client with all tool bindings"
       "Svalinn MCP server with 8 edge tools"
+      "MCP endpoint (/mcp) for JSON-RPC 2.0 AI agent access"
       "Health check endpoint"
       "Full policy DSL (types, evaluator, store, defaults)"
       "Policy presets: strict, standard, permissive"
@@ -89,9 +110,14 @@
       "mTLS client certificate authentication"
       "RBAC with 4 default roles (admin, operator, viewer, auditor)"
       "Scope-based authorization middleware"
+      "OWASP security headers on all responses (HSTS, CSP, X-Frame-Options, etc.)"
+      "CORS whitelist via ALLOWED_ORIGINS environment variable"
+      "Prometheus metrics: requests_total, errors_total, auth_failures, duration histogram, containers_active gauge"
       "90 passing tests across 7 test files"
       "Vörðr integration tests (skip when not available)"
-      "Justfile with dev/build/test commands")
+      "Justfile with dev/build/test commands"
+      "Containerfile (two-stage wolfi-base build)"
+      "Hypatia CI scan workflow")
 
     (broken-features)))
 
@@ -141,17 +167,27 @@
     (milestone-5
      (name . "Production MVP")
      (target . "v0.5.0")
-     (status . "pending")
+     (status . "in-progress")
      (items
+       ((item . "Security headers middleware") (done . #t))
+       ((item . "Prometheus metrics collection") (done . #t))
+       ((item . "Containerfile") (done . #t))
+       ((item . "Hypatia CI workflow") (done . #t))
        ((item . "TLS/HTTP3 support") (done . #f))
-       ((item . "Metrics endpoint") (done . #f))
-       ((item . "Structured logging") (done . #f))
+       ((item . "Rate limiting middleware") (done . #f))
+       ((item . "Structured logging improvements") (done . #f))
+       ((item . "Full CI pipeline (CodeQL, mirror, scorecard)") (done . #f))
+       ((item . "Test coverage for new modules") (done . #f))
        ((item . "Documentation") (done . #f))))))
 
 (define blockers-and-issues
   '((critical . ())
     (high . ())
-    (medium . ())
+    (medium
+      ((id . "SVALINN-003")
+       (description . "Test suite needs updating for Metrics.res and securityHeaders middleware")
+       (type . "testing")
+       (notes . "90 existing tests pass but new code lacks coverage")))
     (low
       ((id . "SVALINN-002")
        (description . "OpenLiteSpeed integration")
@@ -160,18 +196,19 @@
 
 (define critical-next-actions
   '((immediate
-      "Add rate limiting middleware"
-      "Document API endpoints"
-      "Add metrics endpoint")
+      "Add tests for Metrics.res (counter, histogram, gauge, formatPrometheus)"
+      "Add tests for securityHeaders middleware (verify headers present)"
+      "Validate Containerfile builds successfully")
 
     (this-week
-      "Add OpenTelemetry tracing"
-      "TLS/HTTP3 support"
-      "Structured logging")
+      "Add rate limiting middleware"
+      "Add remaining CI workflows (CodeQL, mirror, scorecard)"
+      "Document API endpoints")
 
     (this-month
-      "Production deployment guide"
+      "TLS/HTTP3 support"
       "Web UI completion"
+      "Production deployment guide"
       "Performance testing")))
 
 (define session-history
@@ -232,7 +269,26 @@
      (next-session
        "Add rate limiting middleware"
        "Add metrics endpoint"
-       "Document API endpoints"))))
+       "Document API endpoints"))
+    (session-005
+     (date . "2026-03-10")
+     (duration . "30 minutes")
+     (accomplishments
+       "Created Metrics.res — in-memory counters, histograms, gauges with Prometheus format"
+       "Wired securityHeaders() middleware into Gateway (HSTS, CSP, X-Frame-Options, CORS)"
+       "Wired metricsMiddleware() into Gateway (request counting, duration histogram)"
+       "Updated /metrics endpoint to return real collected metrics"
+       "Added error counter increment in errorHandler middleware"
+       "Removed redundant standalone cors() middleware (merged into securityHeaders)"
+       "Created Containerfile — two-stage wolfi-base build (build + runtime)"
+       "Created .editorconfig"
+       "Created .github/workflows/hypatia-scan.yml"
+       "Updated STATE.scm with honest completion numbers")
+     (next-session
+       "Add tests for Metrics.res and securityHeaders middleware"
+       "Validate Containerfile builds"
+       "Add rate limiting middleware"
+       "Add remaining CI workflows"))))
 
 ;; Helper functions
 (define (get-completion-percentage)

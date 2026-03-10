@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Hypatia Neurosymbolic Security Scan
+# Enrols Svalinn into the hyperpolymath Hypatia scanning pipeline.
+
+name: Hypatia Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly scan on Mondays at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  hypatia-scan:
+    name: Neurosymbolic Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+
+      - name: Run Hypatia scan
+        uses: hyperpolymath/hypatia-action@main
+        with:
+          scan-mode: "full"
+          fail-on-critical: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -34,7 +34,7 @@ pub async fn provenance(
         .with_context(|| "Failed to parse provenance JSON")?;
 
     println!("Provenance for {} ({})", service_name, service.image);
-    println!("=".repeat(60));
+    println!("{}", "=".repeat(60));
     println!();
 
     // Display builder info if present
