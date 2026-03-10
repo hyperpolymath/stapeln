@@ -44,6 +44,16 @@ defmodule StapelnWeb.Router do
     post "/security/panic-attacker", SecurityController, :start
     post "/security/panic-attacker/stop", SecurityController, :stop
     get "/security/panic-attacker/status", SecurityController, :status
+
+    # Assembly pipeline operations
+    post "/pipelines/validate", PipelineController, :validate
+    post "/pipelines/generate", PipelineController, :generate
+    post "/pipelines/optimize", PipelineController, :optimize
+    get "/pipelines/templates", PipelineController, :templates
+    post "/pipelines", PipelineController, :create
+    get "/pipelines/:id", PipelineController, :show
+    put "/pipelines/:id", PipelineController, :update
+    delete "/pipelines/:id", PipelineController, :delete
   end
 
   scope "/api" do

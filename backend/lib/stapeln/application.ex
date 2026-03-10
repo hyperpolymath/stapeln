@@ -25,6 +25,7 @@ defmodule Stapeln.Application do
         repo_children ++
         [
           Stapeln.StackStore,
+          Stapeln.PipelineStore,
           Stapeln.Auth.UserStore,
           Stapeln.SettingsStore,
           Stapeln.Firewall.PinholeManager,

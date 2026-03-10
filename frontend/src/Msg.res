@@ -3,6 +3,50 @@
 
 open Model
 
+// Messages for the visual pipeline designer (node-graph editor)
+type pipelineMsg =
+  // Node management
+  | AddNode(PipelineModel.nodeKind, float, float) // kind, x, y
+  | RemoveNode(string) // nodeId
+  | MoveNode(string, float, float) // nodeId, x, y
+  | SelectNode(string) // nodeId
+  | DeselectNode
+  | UpdateNodeConfig(string, PipelineModel.nodeKind) // nodeId, updated kind
+  // Connection management
+  | StartConnection(string, string) // fromNode, fromPort
+  | UpdateConnection(float, float) // mouseX, mouseY (while drawing)
+  | CompleteConnection(string, string) // toNode, toPort
+  | CancelConnection
+  | RemoveConnection(string) // connectionId
+  // Drag and drop (node movement)
+  | StartDrag(string, float, float) // nodeId, offsetX, offsetY
+  | Drag(float, float) // mouseX, mouseY
+  | EndDrag
+  // Canvas navigation
+  | SetZoom(float)
+  | SetPan(float, float) // panX, panY
+  // Validation
+  | ValidatePipeline
+  | ValidationResult(PipelineModel.pipelineValidation)
+  // Code generation
+  | GenerateOutput(PipelineModel.outputFormat)
+  | OutputGenerated(string) // generated code
+  // Persistence
+  | LoadTemplate(string) // templateId
+  | SavePipeline
+  | LoadPipeline(string) // pipelineId
+  | PipelineSaved(Result.t<string, string>)
+  | PipelineLoaded(Result.t<PipelineModel.pipeline, string>)
+  // Panel controls
+  | SetLeftTab(PipelineModel.leftTab)
+  | SetRightTab(PipelineModel.rightTab)
+  | ToggleLeftPanel
+  | ToggleRightPanel
+  // Pipeline execution
+  | RunPipeline
+  | StopPipeline
+  | NodeStatusUpdate(string, PipelineModel.nodeStatus) // nodeId, new status
+
 type msg =
   // Component management
   | AddComponent(componentType, position)
@@ -64,3 +108,5 @@ type msg =
   | WsSecurityResult(JSON.t)
   | WsGapAnalysis
   | WsGapResult(JSON.t)
+  // Pipeline designer
+  | Pipeline(pipelineMsg)

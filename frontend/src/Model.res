@@ -69,6 +69,8 @@ type rec model = {
   settings: settingsConfig,
   // WebSocket state (optional — None means REST-only mode)
   wsState: Socket.connectionState,
+  // Pipeline designer (visual assembly node-graph editor)
+  pipelineDesigner: PipelineModel.pipelineDesignerState,
 }
 
 and validationResult = {
@@ -92,6 +94,7 @@ let initialModel = {
   currentStackId: None,
   settings: defaultSettingsConfig,
   wsState: Disconnected,
+  pipelineDesigner: PipelineModel.initialState(),
 }
 
 // Helper functions
