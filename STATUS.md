@@ -1,6 +1,6 @@
 # stapeln Status (Source of Truth)
 
-**Date:** 2026-02-11
+**Date:** 2026-03-10
 
 ## Product Goal
 
@@ -8,23 +8,26 @@ A reasonably IT-capable 12-year-old can help their parents build a secure contai
 
 ## What Works Today
 
-- **UI Prototype (frontend):** 8 views implemented and navigable.
-- **Views:** Network.
-- **Views:** Stack.
-- **Views:** Lago Grey.
-- **Views:** Ports.
-- **Views:** Security.
-- **Views:** Gaps.
-- **Views:** Simulation.
-- **Views:** Settings.
-- **TEA Architecture:** State, Msg, Update, View pattern in place.
-- **Security UX Components:** Port config, security inspector, gap analysis, simulation mode.
-- **Import/Export Hooks:** Buttons exist (not fully wired to durable storage).
-- **Backend API (MVP):** Phoenix REST endpoints for stacks and validation are live.
-- **GraphQL API (MVP):** Absinthe endpoint at `/api/graphql` is live.
+- **UI Prototype (frontend):** 8 views implemented as ReScript modules in `frontend/src/`.
+- **TEA Architecture:** State, Msg, Update, View pattern in place via AppIntegrated.res.
+- **Security UX Components:** Port config, security inspector, gap analysis, simulation mode modules exist.
+- **Import/Export Hooks:** Buttons exist (not wired to durable storage).
+- **Backend API (MVP):** Phoenix REST endpoints for stacks and validation are defined.
+- **GraphQL API (MVP):** Absinthe schema at `/api/graphql` is defined.
 - **Shared API Boundary:** REST/GraphQL route through `backend/lib/stapeln/native_bridge.ex`.
-- **ABI/FFI Contract:** Idris2 ABI (`src/abi/*`) and Zig FFI (`ffi/zig/src/main.zig`) are concrete.
-- **Runtime Boundary:** `stapeln/backend` is the design/control plane (stack metadata + validation). Container lifecycle orchestration is delegated to `container-stack/svalinn` and `container-stack/vordr`.
+- **ABI/FFI Contract:** Idris2 ABI (`src/abi/*`) has 8 genuine proofs (no believe_me). Zig FFI (`ffi/zig/src/main.zig`) provides CRUD + validate + dispatch.
+- **VeriSimDB Integration:** Remote client with JSONL local fallback, configurable timeouts.
+- **Runtime Boundary:** `stapeln/backend` is the design/control plane. Container lifecycle orchestration is delegated to `container-stack/svalinn` and `container-stack/vordr`.
+
+## What Is Partial or Scaffolded
+
+- **Dark mode:** Hardcoded to `false` in StackView.res; AppIntegrated passes `isDark` but StackView ignores it.
+- **WebSocket integration:** Socket.res exists but no live channel push/receive logic.
+- **Auth:** JWT + Plug module present but no token refresh, revocation, or session management.
+- **Firewall:** Schema exists but no nftables integration.
+- **Database:** Ecto schemas and conditional Repo present but no migrations.
+- **Post-Quantum Crypto:** Module scaffolded; no real XMSS implementation.
+- **Simulation:** Packet flow UI renders but no real backend simulation engine.
 
 ## Preserved Future Work
 

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-09 -->
+<!-- Last updated: 2026-03-10 -->
 
 # stapeln — Project Topology
 
@@ -77,41 +77,41 @@
 COMPONENT                          STATUS              NOTES
 ---------------------------------  ------------------  ---------------------------------
 FRONTEND
-  Frontend UI (8 views)            ##########  95%     0 warnings, all views wired
-  Frontend-Backend Wiring          ##########  95%     REST + WebSocket, all endpoints
-  Lago Grey Designer               ##########  95%     Catalog + layer editor + custom + reorder
-  Drag-and-Drop Canvas             ##########  95%     Snap-to-grid, connect, delete, undo
-  WebSocket Integration            #########.  85%     Phoenix channels + Socket.res
+  Frontend UI (8 views)            ########..  80%     Views exist; dark mode hardcoded, no durable state sync
+  Frontend-Backend Wiring          ######....  60%     REST wired; WS scaffolded but no live events
+  Lago Grey Designer               #######...  70%     Catalog + editor; export not fully wired
+  Drag-and-Drop Canvas             #######...  70%     Snap-to-grid present; undo/delete partial
+  WebSocket Integration            #####.....  50%     Socket.res exists; no channel push/receive logic
 
 BACKEND & API
-  Phoenix API (REST+GQL+WS)        ##########  95%     Full CRUD + validation + codegen
-  Auth (JWT + Plug)                #########.  85%     Register/login + dual-mode plug
-  Settings Persistence             ##########  90%     Backend store + UI + API
-  Firewall Config                  ########..  80%     Ephemeral pinholes, auto-expiry
-  Database Integration             ########..  75%     Ecto schemas + DbStore + conditional Repo
-  Codegen Engine                   ##########  95%     Containerfile + compose + selur + podman
+  Phoenix API (REST+GQL+WS)        ########..  80%     CRUD + validation live; some endpoints thin
+  Auth (JWT + Plug)                ######....  60%     Module exists; no session/token refresh/revoke
+  Settings Persistence             #######...  70%     GenServer store; no DB persistence yet
+  Firewall Config                  #####.....  50%     Schema present; nftables integration absent
+  Database Integration             #####.....  50%     Ecto schemas + conditional Repo; no migrations
+  Codegen Engine                   ########..  80%     Containerfile + compose output works
 
 SECURITY & ANALYSIS
-  Security Inspector               ##########  90%     Real scanner + miniKanren + JSON parsing
-  Gap Analysis                     ##########  90%     Real analyzer + JSON parsing
-  Security Reasoning (miniKanren)  #########.  85%     Core + rules + integrated into scanner
-  Post-Quantum Crypto              ########..  75%     Hybrid Ed25519 + XMSS hash signatures
-  Stack Validator                  ##########  95%     12 check categories (ports, deps, resources...)
+  Security Inspector               #######...  70%     Scanner module exists; miniKanren rules basic
+  Gap Analysis                     #######...  70%     Analyzer module exists; rule coverage limited
+  Security Reasoning (miniKanren)  ######....  60%     Core module; small rule set, not deeply tested
+  Post-Quantum Crypto              ###.......  30%     Module scaffolded; no real XMSS implementation
+  Stack Validator                  ########..  80%     12 check categories defined; some stub-level
 
 SIMULATION & EXPORT
-  Simulation Mode                  ##########  90%     Full packet flow, presets, stats, log
-  Export / Import                  ##########  95%     JSON + compose + K8s YAML + Helm chart
+  Simulation Mode                  #######...  70%     Packet flow UI; no real backend simulation
+  Export / Import                  #######...  70%     JSON + compose export; K8s/Helm templates only
 
 ABI / FFI
-  Idris2 ABI (Formal Proofs)       ##########  90%     8 genuine proofs, no believe_me
-  Zig FFI                          ##########  95%     CRUD + validate + security + gaps + dispatch
+  Idris2 ABI (Formal Proofs)       #########.  90%     8 genuine proofs, no believe_me, 5 postulates
+  Zig FFI                          ########..  80%     CRUD + validate + dispatch; CLI bridge partial
 
 DATA & DOCS
-  VeriSimDB Integration            #######...  70%     Audit trail + JSONL + remote client
-  Documentation                    ########..  80%     Extensive, some aspirational content
+  VeriSimDB Integration            ######....  60%     JSONL fallback + remote client; no query UI
+  Documentation                    ######....  60%     Extensive docs; many claims aspirational
 
 ---------------------------------------------------------------------------
-OVERALL:                           ##########  ~100%   Complete MVP
+OVERALL:                           #######...  ~65%    Solid MVP skeleton; many features partial
 ```
 
 ## Key Dependencies

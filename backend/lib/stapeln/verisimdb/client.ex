@@ -14,8 +14,47 @@ defmodule Stapeln.VeriSimDB.Client do
 
   @write_path "/api/v1/audit"
   @query_path "/api/v1/audit"
-  @connect_timeout 5_000
-  @receive_timeout 10_000
+  @default_connect_timeout 5_000
+  @default_receive_timeout 10_000
+
+  @doc """
+  Return the configured connect timeout in milliseconds.
+
+  Reads from application config `:stapeln, :verisimdb_connect_timeout`,
+  falling back to #{@default_connect_timeout} ms.
+  """
+  @spec connect_timeout() :: pos_integer()
+  def connect_timeout do
+    Application.get_env(:stapeln, :verisimdb_connect_timeout, @default_connect_timeout)
+  end
+
+  @doc """
+  Return the configured receive timeout in milliseconds.
+
+  Reads from application config `:stapeln, :verisimdb_receive_timeout`,
+  falling back to #{@default_receive_timeout} ms.
+  """
+  @spec receive_timeout() :: pos_integer()
+  def receive_timeout do
+    Application.get_env(:stapeln, :verisimdb_receive_timeout, @default_receive_timeout)
+  end
+
+  @doc """
+  Perform a lightweight health check against the remote VeriSimDB instance.
+
+  Returns `:ok` when the instance is reachable, or `{:error, reason}`
+  when the URL is not configured or the instance does not respond.
+  """
+  @spec health_check() :: :ok | {:error, term()}
+  def health_check do
+    with {:ok, base_url} <- verisimdb_url() do
+      case get(base_url <> "/api/v1/health") do
+        {:ok, %{status: status}} when status in 200..299 -> :ok
+        {:ok, %{status: status}} -> {:error, {:verisimdb_status, status}}
+        {:error, reason} -> {:error, {:verisimdb_request, reason}}
+      end
+    end
+  end
 
   @doc """
   Write an audit entry to the remote VeriSimDB instance.
@@ -77,8 +116,8 @@ defmodule Stapeln.VeriSimDB.Client do
     Req.post(url,
       body: body,
       headers: [{"content-type", "application/json"}, {"accept", "application/json"}],
-      connect_options: [timeout: @connect_timeout],
-      receive_timeout: @receive_timeout
+      connect_options: [timeout: connect_timeout()],
+      receive_timeout: receive_timeout()
     )
   rescue
     error -> {:error, {:http_error, error}}
@@ -87,8 +126,8 @@ defmodule Stapeln.VeriSimDB.Client do
   defp get(url) do
     Req.get(url,
       headers: [{"accept", "application/json"}],
-      connect_options: [timeout: @connect_timeout],
-      receive_timeout: @receive_timeout
+      connect_options: [timeout: connect_timeout()],
+      receive_timeout: receive_timeout()
     )
   rescue
     error -> {:error, {:http_error, error}}
