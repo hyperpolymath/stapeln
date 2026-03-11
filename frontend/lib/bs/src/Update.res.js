@@ -540,6 +540,12 @@ function update(model, msg) {
       case "ExportToPodmanCompose" :
         Export.exportToPodmanCompose(model);
         return model;
+      case "ExportToKubernetesYaml" :
+        Export.exportToKubernetesYaml(model);
+        return model;
+      case "ExportToHelmChart" :
+        Export.exportToHelmChart(model);
+        return model;
       case "TriggerImportDesign" :
         Import.triggerImport(importedModel => {
           console.log("Design imported successfully:", importedModel);

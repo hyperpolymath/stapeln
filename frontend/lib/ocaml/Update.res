@@ -627,6 +627,16 @@ let update = (model: model, msg: msg): model => {
       model
     }
 
+  | ExportToKubernetesYaml => {
+      Export.exportToKubernetesYaml(model)
+      model
+    }
+
+  | ExportToHelmChart => {
+      Export.exportToHelmChart(model)
+      model
+    }
+
   // Import
   | TriggerImportDesign => {
       // Trigger file picker (side effect)
