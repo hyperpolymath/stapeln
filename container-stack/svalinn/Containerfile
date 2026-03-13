@@ -27,7 +27,7 @@ COPY spec/ ./spec/
 COPY config/ ./config/
 
 # Compile ReScript to JavaScript
-RUN cd src && npx rescript build
+RUN cd src && ./node_modules/.bin/rescript build
 
 # ---------------------------------------------------------------------------
 # Stage 2: Runtime

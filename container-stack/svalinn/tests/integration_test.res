@@ -2,7 +2,8 @@
 // Integration tests for Svalinn Gateway
 //
 // Tests cover: policy engine, validation, auth types, RBAC scope checking,
-// security headers configuration, MCP client config, and gateway types.
+// security headers configuration, MCP client config, gateway types,
+// metrics collection, pattern-matched parsing, and error handling.
 // MCP calls to Vordr are not exercised (no live backend); instead we test
 // the pure logic that surrounds those calls.
 
@@ -251,7 +252,10 @@ module PolicyEngineTests = {
     let policy = PolicyEngine.parsePolicy(policyJson)
     Test.assertTrue(Belt.Option.isSome(policy), "Should parse valid policy")
 
-    let p = Belt.Option.getExn(policy)
+    let p = switch policy {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected Some for policy"))
+    }
     Test.assertEquals(p.version, 1, "Version should be 1")
     Test.assertEquals(
       Belt.Array.length(p.requiredPredicates),
@@ -279,7 +283,10 @@ module PolicyEngineTests = {
     )
     let policy = PolicyEngine.parsePolicy(policyJson)
     Test.assertTrue(Belt.Option.isSome(policy), "Should parse permissive policy")
-    let p = Belt.Option.getExn(policy)
+    let p = switch policy {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected Some for permissive policy"))
+    }
     Test.assertEquals(p.mode, Some(PolicyEngine.Permissive), "Mode should be Permissive")
   })
 
@@ -553,7 +560,10 @@ module PolicyEngineTests = {
     let obj = json->Js.Json.decodeObject
     Test.assertTrue(Belt.Option.isSome(obj), "Should be a JSON object")
 
-    let dict = Belt.Option.getExn(obj)
+    let dict = switch obj {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected formatResult to return a JSON object"))
+    }
     let allowed = dict->Js.Dict.get("allowed")->Belt.Option.flatMap(Js.Json.decodeBoolean)
     Test.assertEquals(allowed, Some(true), "allowed field should be true")
 
@@ -575,7 +585,10 @@ module PolicyEngineTests = {
 
     let att = PolicyEngine.parseAttestation(json)
     Test.assertTrue(Belt.Option.isSome(att), "Should parse valid attestation")
-    let a = Belt.Option.getExn(att)
+    let a = switch att {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected Some for attestation"))
+    }
     Test.assertEquals(a.predicateType, "https://slsa.dev/provenance/v1", "predicateType")
     Test.assertEquals(a.signer, "sha256:signer-key", "signer")
     Test.assertEquals(a.logEntry, Some("rekor-entry-789"), "logEntry")
@@ -700,28 +713,31 @@ module AuthTypesTests = {
   })
 
   Test.test("admin role has wildcard resource with all actions", async () => {
-    let adminRole =
-      Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "admin")
-      ->Belt.Array.get(0)
-      ->Belt.Option.getExn
+    let adminRole = switch Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "admin")->Belt.Array.get(0) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected admin role to exist"))
+    }
 
     Test.assertEquals(Belt.Array.length(adminRole.permissions), 1, "Admin should have 1 permission")
-    let perm = adminRole.permissions->Belt.Array.get(0)->Belt.Option.getExn
+    let perm = switch Belt.Array.get(adminRole.permissions, 0) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected admin permissions[0] to exist"))
+    }
     Test.assertEquals(perm.resource, "*", "Admin resource should be wildcard")
     Test.assertEquals(Belt.Array.length(perm.actions), 5, "Admin should have all 5 actions")
   })
 
   Test.test("operator role can manage containers but only read policies", async () => {
-    let operatorRole =
-      Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "operator")
-      ->Belt.Array.get(0)
-      ->Belt.Option.getExn
+    let operatorRole = switch Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "operator")->Belt.Array.get(0) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected operator role to exist"))
+    }
 
     // Container permission should have all CRUD + Execute
-    let containerPerm =
-      Belt.Array.keep(operatorRole.permissions, p => p.resource == "containers")
-      ->Belt.Array.get(0)
-      ->Belt.Option.getExn
+    let containerPerm = switch Belt.Array.keep(operatorRole.permissions, p => p.resource == "containers")->Belt.Array.get(0) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected operator containers permission to exist"))
+    }
     Test.assertEquals(
       Belt.Array.length(containerPerm.actions),
       5,
@@ -729,27 +745,30 @@ module AuthTypesTests = {
     )
 
     // Policy permission should be read-only
-    let policyPerm =
-      Belt.Array.keep(operatorRole.permissions, p => p.resource == "policies")
-      ->Belt.Array.get(0)
-      ->Belt.Option.getExn
+    let policyPerm = switch Belt.Array.keep(operatorRole.permissions, p => p.resource == "policies")->Belt.Array.get(0) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected operator policies permission to exist"))
+    }
     Test.assertEquals(
       Belt.Array.length(policyPerm.actions),
       1,
       "Operator should have read-only policy access",
     )
     Test.assertEquals(
-      policyPerm.actions->Belt.Array.get(0)->Belt.Option.getExn,
+      switch Belt.Array.get(policyPerm.actions, 0) {
+      | Some(v) => v
+      | None => raise(Js.Exn.raiseError("Expected policy actions[0] to exist"))
+      },
       AuthTypes.Read,
       "Policy action should be Read",
     )
   })
 
   Test.test("viewer role is read-only across all resources", async () => {
-    let viewerRole =
-      Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "viewer")
-      ->Belt.Array.get(0)
-      ->Belt.Option.getExn
+    let viewerRole = switch Belt.Array.keep(AuthTypes.defaultRoles, r => r.name == "viewer")->Belt.Array.get(0) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected viewer role to exist"))
+    }
 
     Belt.Array.forEach(viewerRole.permissions, perm => {
       Test.assertEquals(
@@ -758,7 +777,10 @@ module AuthTypesTests = {
         "Viewer should have exactly 1 action per resource",
       )
       Test.assertEquals(
-        perm.actions->Belt.Array.get(0)->Belt.Option.getExn,
+        switch Belt.Array.get(perm.actions, 0) {
+        | Some(v) => v
+        | None => raise(Js.Exn.raiseError("Expected viewer actions[0] to exist for " ++ perm.resource))
+        },
         AuthTypes.Read,
         "Viewer action should always be Read for resource " ++ perm.resource,
       )
@@ -835,12 +857,18 @@ module AuthMiddlewareTests = {
     let config = Middleware.createAuthConfig(())
     Test.assertEquals(Belt.Array.length(config.methods), 2, "Should have 2 auth methods")
     Test.assertEquals(
-      config.methods->Belt.Array.get(0)->Belt.Option.getExn,
+      switch Belt.Array.get(config.methods, 0) {
+      | Some(v) => v
+      | None => raise(Js.Exn.raiseError("Expected methods[0] to exist"))
+      },
       AuthTypes.OIDC,
       "First method should be OIDC",
     )
     Test.assertEquals(
-      config.methods->Belt.Array.get(1)->Belt.Option.getExn,
+      switch Belt.Array.get(config.methods, 1) {
+      | Some(v) => v
+      | None => raise(Js.Exn.raiseError("Expected methods[1] to exist"))
+      },
       AuthTypes.ApiKey,
       "Second method should be ApiKey",
     )
@@ -849,7 +877,10 @@ module AuthMiddlewareTests = {
   Test.test("Default apiKey config uses X-API-Key header", async () => {
     let config = Middleware.createAuthConfig(())
     Test.assertTrue(Belt.Option.isSome(config.apiKey), "Should have apiKey config")
-    let apiKeyConfig = Belt.Option.getExn(config.apiKey)
+    let apiKeyConfig = switch config.apiKey {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("Expected apiKey config to exist"))
+    }
     Test.assertEquals(apiKeyConfig.header, "X-API-Key", "Header should be X-API-Key")
     Test.assertTrue(Belt.Option.isNone(apiKeyConfig.prefix), "No prefix by default")
   })
@@ -946,6 +977,208 @@ module GatewayTypesTests = {
 }
 
 // ===========================================================================
+// 8. Metrics Tests
+// ===========================================================================
+module MetricsTests = {
+  Test.test("Counter starts at zero and increments", async () => {
+    let counter = Metrics.makeCounter(~name="test_counter", ~help="Test")
+    Test.assertEquals(counter.value, 0.0, "Counter starts at 0")
+    Metrics.increment(counter)
+    Test.assertEquals(counter.value, 1.0, "Counter is 1 after increment")
+    Metrics.incrementBy(counter, 5.0)
+    Test.assertEquals(counter.value, 6.0, "Counter is 6 after incrementBy(5)")
+  })
+
+  Test.test("Gauge can be set to arbitrary values", async () => {
+    let gauge = Metrics.makeGauge(~name="test_gauge", ~help="Test")
+    Test.assertEquals(gauge.value, 0.0, "Gauge starts at 0")
+    Metrics.setGauge(gauge, 42.0)
+    Test.assertEquals(gauge.value, 42.0, "Gauge is 42 after set")
+    Metrics.setGauge(gauge, 0.0)
+    Test.assertEquals(gauge.value, 0.0, "Gauge back to 0")
+  })
+
+  Test.test("Histogram observe updates sum, count, and buckets", async () => {
+    let h = Metrics.makeHistogram(
+      ~name="test_hist",
+      ~help="Test",
+      ~buckets=[0.1, 0.5, 1.0],
+    )
+    Test.assertEquals(h.sum, 0.0, "Sum starts at 0")
+    Test.assertEquals(h.count, 0.0, "Count starts at 0")
+
+    Metrics.observe(h, 0.05)
+    Test.assertEquals(h.count, 1.0, "Count is 1 after one observation")
+    Test.assertEquals(h.sum, 0.05, "Sum is 0.05")
+
+    Metrics.observe(h, 0.3)
+    Test.assertEquals(h.count, 2.0, "Count is 2 after two observations")
+
+    Metrics.observe(h, 2.0)
+    Test.assertEquals(h.count, 3.0, "Count is 3")
+  })
+
+  Test.test("formatCounter produces Prometheus text format", async () => {
+    let counter = Metrics.makeCounter(~name="http_total", ~help="Total requests")
+    Metrics.increment(counter)
+    let output = Metrics.formatCounter(counter)
+    Test.assertTrue(
+      Js.String2.includes(output, "# HELP http_total Total requests"),
+      "Should contain HELP line",
+    )
+    Test.assertTrue(
+      Js.String2.includes(output, "# TYPE http_total counter"),
+      "Should contain TYPE line",
+    )
+    Test.assertTrue(
+      Js.String2.includes(output, "http_total 1"),
+      "Should contain value",
+    )
+  })
+
+  Test.test("formatGauge produces Prometheus text format", async () => {
+    let gauge = Metrics.makeGauge(~name="active_conns", ~help="Active connections")
+    Metrics.setGauge(gauge, 5.0)
+    let output = Metrics.formatGauge(gauge)
+    Test.assertTrue(
+      Js.String2.includes(output, "# TYPE active_conns gauge"),
+      "Should contain gauge TYPE",
+    )
+    Test.assertTrue(
+      Js.String2.includes(output, "active_conns 5"),
+      "Should contain value 5",
+    )
+  })
+
+  Test.test("formatHistogram produces cumulative bucket lines", async () => {
+    let h = Metrics.makeHistogram(
+      ~name="duration",
+      ~help="Duration",
+      ~buckets=[0.1, 1.0],
+    )
+    Metrics.observe(h, 0.05)
+    Metrics.observe(h, 0.5)
+    let output = Metrics.formatHistogram(h)
+    Test.assertTrue(
+      Js.String2.includes(output, "# TYPE duration histogram"),
+      "Should contain histogram TYPE",
+    )
+    Test.assertTrue(
+      Js.String2.includes(output, "duration_sum"),
+      "Should contain sum line",
+    )
+    Test.assertTrue(
+      Js.String2.includes(output, "duration_count 2"),
+      "Should contain count",
+    )
+    Test.assertTrue(
+      Js.String2.includes(output, `le="+Inf"`),
+      "Should contain +Inf bucket",
+    )
+  })
+
+  // Sentinel for module init
+  let test = ()
+}
+
+// ===========================================================================
+// 9. PolicyEngine Pattern-Match Tests
+// ===========================================================================
+module PolicyEngineParsingTests = {
+  Test.test("parsePolicy returns None for non-object JSON", async () => {
+    let result = PolicyEngine.parsePolicy(Js.Json.string("not an object"))
+    Test.assertTrue(Belt.Option.isNone(result), "String input should return None")
+  })
+
+  Test.test("parsePolicy returns None for missing required fields", async () => {
+    let json = Js.Json.object_(Js.Dict.fromArray([
+      ("version", Js.Json.number(1.0)),
+      // missing requiredPredicates, allowedSigners, logQuorum
+    ]))
+    let result = PolicyEngine.parsePolicy(json)
+    Test.assertTrue(Belt.Option.isNone(result), "Missing fields should return None")
+  })
+
+  Test.test("parsePolicy succeeds with all required fields", async () => {
+    let json = Js.Json.object_(Js.Dict.fromArray([
+      ("version", Js.Json.number(1.0)),
+      ("requiredPredicates", Js.Json.array([Js.Json.string("https://slsa.dev/provenance/v1")])),
+      ("allowedSigners", Js.Json.array([Js.Json.string("signer-1")])),
+      ("logQuorum", Js.Json.number(1.0)),
+    ]))
+    let result = PolicyEngine.parsePolicy(json)
+    Test.assertTrue(Belt.Option.isSome(result), "Valid policy should parse")
+  })
+
+  Test.test("parsePolicy preserves optional mode field", async () => {
+    let json = Js.Json.object_(Js.Dict.fromArray([
+      ("version", Js.Json.number(1.0)),
+      ("requiredPredicates", Js.Json.array([])),
+      ("allowedSigners", Js.Json.array([])),
+      ("logQuorum", Js.Json.number(0.0)),
+      ("mode", Js.Json.string("permissive")),
+    ]))
+    let result = PolicyEngine.parsePolicy(json)
+    Test.assertTrue(Belt.Option.isSome(result), "Should parse with mode")
+    switch result {
+    | Some(p) =>
+      Test.assertTrue(Belt.Option.isSome(p.mode), "Mode should be Some")
+    | None => Test.assertTrue(false, "Should have parsed")
+    }
+  })
+
+  Test.test("parseAttestation returns None for non-object JSON", async () => {
+    let result = PolicyEngine.parseAttestation(Js.Json.number(42.0))
+    Test.assertTrue(Belt.Option.isNone(result), "Number input should return None")
+  })
+
+  Test.test("parseAttestation returns None when predicateType missing", async () => {
+    let json = Js.Json.object_(Js.Dict.fromArray([
+      ("signer", Js.Json.string("signer-1")),
+    ]))
+    let result = PolicyEngine.parseAttestation(json)
+    Test.assertTrue(Belt.Option.isNone(result), "Missing predicateType should return None")
+  })
+
+  Test.test("parseAttestation returns None when signer missing", async () => {
+    let json = Js.Json.object_(Js.Dict.fromArray([
+      ("predicateType", Js.Json.string("https://slsa.dev/provenance/v1")),
+    ]))
+    let result = PolicyEngine.parseAttestation(json)
+    Test.assertTrue(Belt.Option.isNone(result), "Missing signer should return None")
+  })
+
+  Test.test("parseAttestation succeeds with required fields", async () => {
+    let json = Js.Json.object_(Js.Dict.fromArray([
+      ("predicateType", Js.Json.string("https://slsa.dev/provenance/v1")),
+      ("signer", Js.Json.string("signer-1")),
+    ]))
+    let result = PolicyEngine.parseAttestation(json)
+    Test.assertTrue(Belt.Option.isSome(result), "Valid attestation should parse")
+  })
+
+  let test = ()
+}
+
+// ===========================================================================
+// 10. McpClient Error Handling Tests
+// ===========================================================================
+module McpClientErrorTests = {
+  Test.test("MCP health returns false when endpoint unreachable", async () => {
+    // Use a port that's almost certainly not listening
+    let config: McpClient.config = {
+      endpoint: "http://127.0.0.1:19999",
+      timeout: 500,
+      retries: 0,
+    }
+    let result = await McpClient.health(config)
+    Test.assertFalse(result, "Health should be false for unreachable endpoint")
+  })
+
+  let test = ()
+}
+
+// ===========================================================================
 // Run all tests
 // ===========================================================================
 let runTests = async () => {
@@ -959,6 +1192,9 @@ let runTests = async () => {
   AuthMiddlewareTests.test
   SecurityHeadersTests.test
   GatewayTypesTests.test
+  MetricsTests.test
+  PolicyEngineParsingTests.test
+  McpClientErrorTests.test
 
   // Wait for async tests to settle
   await %raw(`new Promise(resolve => setTimeout(resolve, 200))`)

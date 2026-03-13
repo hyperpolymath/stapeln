@@ -47,6 +47,9 @@ module Config = {
   }
 
   let logLevel = getEnv("LOG_LEVEL")->Belt.Option.getWithDefault("info")
+
+  let rateLimitWindowMs = parseIntWithBounds(getEnv("RATE_LIMIT_WINDOW_MS"), 60000, ~min=1000, ~max=300000)
+  let rateLimitMaxRequests = parseIntWithBounds(getEnv("RATE_LIMIT_MAX_REQUESTS"), 100, ~min=1, ~max=10000)
 }
 
 @scope("AbortSignal") @val external timeoutSignal: int => 'a = "timeout"
@@ -537,6 +540,7 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   // 4. Request logging
   app->Hono.use(errorHandler())->ignore
   app->Hono.use(securityHeaders())->ignore
+  app->Hono.use(RateLimiter.middleware(~config={windowMs: Config.rateLimitWindowMs, maxRequests: Config.rateLimitMaxRequests}, ()))->ignore
   app->Hono.use(metricsMiddleware())->ignore
   app->Hono.use(requestLogger())->ignore
 

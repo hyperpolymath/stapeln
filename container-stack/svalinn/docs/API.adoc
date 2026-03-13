@@ -1,0 +1,523 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Svalinn API Reference
+:toc: macro
+:toclevels: 3
+:sectnums:
+
+API documentation for the Svalinn container gateway, generated from `Gateway.res` routes.
+
+toc::[]
+
+== Overview
+
+Svalinn exposes a REST API for container lifecycle management, image verification,
+and MCP (Model Context Protocol) integration. All authenticated endpoints require
+a valid bearer token when `AUTH_ENABLED=true`.
+
+Base URL:: `http://{SVALINN_HOST}:{SVALINN_PORT}`
+
+Spec version:: Controlled by `SPEC_VERSION` (default `v0.1.0`)
+
+== Authentication
+
+When `AUTH_ENABLED=true`, all endpoints under `/api/v1/` and `/mcp` require a
+bearer token in the `Authorization` header:
+
+[source]
+----
+Authorization: Bearer <token>
+----
+
+Health, readiness, metrics, and policy endpoints do not require authentication.
+
+== Endpoints
+
+=== Health and Operations
+
+These endpoints require no authentication.
+
+==== `GET /health` | `GET /healthz`
+
+Health check. Reports Svalinn status and Vordr connectivity.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Svalinn is healthy and Vordr is reachable
+
+| `503 Service Unavailable`
+| Vordr unreachable or internal failure
+|===
+
+.Example response
+[source,json]
+----
+{
+  "status": "healthy",
+  "vordr": "connected"
+}
+----
+
+==== `GET /ready` | `GET /readyz`
+
+Readiness probe. Indicates whether Svalinn is ready to accept requests.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Ready
+
+| `503 Service Unavailable`
+| Not ready
+|===
+
+==== `GET /metrics`
+
+Prometheus-format metrics.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Metrics payload (`text/plain; version=0.0.4`)
+|===
+
+=== MCP
+
+==== `POST /mcp`
+
+JSON-RPC 2.0 endpoint for AI agent interaction via the Model Context Protocol.
+Requires authentication.
+
+.Example request
+[source,json]
+----
+{
+  "jsonrpc": "2.0",
+  "method": "tools/list",
+  "id": 1
+}
+----
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| JSON-RPC response
+
+| `401 Unauthorized`
+| Missing or invalid token
+
+| `400 Bad Request`
+| Malformed JSON-RPC payload
+|===
+
+=== Containers
+
+All container endpoints require authentication and are prefixed with `/api/v1/containers`.
+
+==== `GET /api/v1/containers`
+
+List all containers.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Array of container objects
+|===
+
+==== `GET /api/v1/containers/:id`
+
+Get a single container by ID.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Container object
+
+| `404 Not Found`
+| No container with that ID
+|===
+
+==== `POST /api/v1/containers`
+
+Create a new container.
+
+.Request body
+[source,json]
+----
+{
+  "image": "cgr.dev/chainguard/wolfi-base:latest",
+  "name": "my-container",
+  "config": {}
+}
+----
+
+[cols="1,2"]
+|===
+| Field | Required
+
+| `image` | Yes
+| `name` | No
+| `config` | No
+|===
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `201 Created`
+| Container created
+
+| `400 Bad Request`
+| Missing `image` or invalid body
+|===
+
+==== `POST /api/v1/containers/:id/start`
+
+Start a container. Performs a Rokur gate check before starting (when
+`ROKUR_GATE_ENABLED=true`).
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Container started
+
+| `403 Forbidden`
+| Rokur gate denied start
+
+| `404 Not Found`
+| No container with that ID
+|===
+
+==== `POST /api/v1/containers/:id/stop`
+
+Stop a running container.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Container stopped
+
+| `404 Not Found`
+| No container with that ID
+|===
+
+==== `DELETE /api/v1/containers/:id`
+
+Remove a container.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Container removed
+
+| `404 Not Found`
+| No container with that ID
+|===
+
+=== Images
+
+All image endpoints require authentication and are prefixed with `/api/v1/images`.
+
+==== `GET /api/v1/images`
+
+List available images.
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Array of image objects
+|===
+
+==== `POST /api/v1/images/pull`
+
+Pull an image from a registry.
+
+.Request body
+[source,json]
+----
+{
+  "image": "cgr.dev/chainguard/static:latest"
+}
+----
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Image pulled
+
+| `400 Bad Request`
+| Missing `image`
+|===
+
+==== `POST /api/v1/images/verify`
+
+Verify an image digest against policy.
+
+.Request body
+[source,json]
+----
+{
+  "digest": "sha256:abc123...",
+  "policy": "permissive"
+}
+----
+
+[cols="1,2"]
+|===
+| Field | Required
+
+| `digest` | Yes
+| `policy` | No (defaults to `default`)
+|===
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Verification result
+
+| `400 Bad Request`
+| Missing `digest`
+|===
+
+=== Orchestration
+
+High-level endpoints that combine validation, policy checks, and container operations.
+Require authentication.
+
+==== `POST /api/v1/run`
+
+Run a container with full validation and policy enforcement.
+
+.Request body
+[source,json]
+----
+{
+  "image": "cgr.dev/chainguard/wolfi-base:latest",
+  "name": "my-service",
+  "config": {}
+}
+----
+
+[cols="1,2"]
+|===
+| Field | Required
+
+| `image` | Yes
+| `name` | No
+| `config` | No
+|===
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Container running
+
+| `400 Bad Request`
+| Missing `image` or invalid body
+
+| `403 Forbidden`
+| Policy or Rokur gate denied
+|===
+
+==== `POST /api/v1/verify`
+
+Verify a bundle against policy without running it.
+
+.Request body
+[source,json]
+----
+{
+  "digest": "sha256:abc123...",
+  "policy": "default"
+}
+----
+
+[cols="1,2"]
+|===
+| Field | Required
+
+| `digest` | Yes
+| `policy` | No (defaults to `default`)
+|===
+
+[cols="1,3"]
+|===
+| Status | Meaning
+
+| `200 OK`
+| Verification result
+
+| `400 Bad Request`
+| Missing `digest`
+|===
+
+=== Policies
+
+==== `GET /api/v1/policies`
+
+List available policies. No authentication required.
+
+.Example response
+[source,json]
+----
+[
+  {"name": "default", "description": "Standard security policy"},
+  {"name": "permissive", "description": "Relaxed policy for development"}
+]
+----
+
+== Error Format
+
+All errors return a JSON body with the following shape:
+
+[source,json]
+----
+{
+  "error": "not_found",
+  "message": "Container abc123 does not exist"
+}
+----
+
+Standard HTTP status codes are used:
+
+[cols="1,3"]
+|===
+| Code | Meaning
+
+| `400` | Bad request (missing or invalid parameters)
+| `401` | Unauthorized (missing or invalid token)
+| `403` | Forbidden (policy or gate denial)
+| `404` | Resource not found
+| `429` | Rate limit exceeded
+| `500` | Internal server error
+| `503` | Service unavailable
+|===
+
+== Response Headers
+
+All responses include the following security and rate-limiting headers:
+
+[cols="2,3"]
+|===
+| Header | Value
+
+| `Strict-Transport-Security`
+| HSTS policy
+
+| `X-Frame-Options`
+| `DENY`
+
+| `X-Content-Type-Options`
+| `nosniff`
+
+| `X-XSS-Protection`
+| `1; mode=block`
+
+| `Content-Security-Policy`
+| Restrictive CSP
+
+| `Referrer-Policy`
+| Strict referrer policy
+
+| `Permissions-Policy`
+| Restrictive permissions
+
+| `X-RateLimit-Limit`
+| Maximum requests per window
+
+| `X-RateLimit-Remaining`
+| Requests remaining in current window
+
+| `Retry-After`
+| Seconds until rate limit resets (only on `429`)
+|===
+
+== Environment Variables
+
+[cols="2,2,4"]
+|===
+| Variable | Default | Description
+
+| `SVALINN_PORT`
+| `8000`
+| Port to listen on
+
+| `SVALINN_HOST`
+| `0.0.0.0`
+| Host to bind to
+
+| `VORDR_ENDPOINT`
+| `http://localhost:8080`
+| Vordr runtime endpoint
+
+| `ROKUR_ENDPOINT`
+| `http://localhost:9090`
+| Rokur gate endpoint
+
+| `ROKUR_GATE_ENABLED`
+| `true`
+| Enable Rokur gate checks before container start
+
+| `ROKUR_API_TOKEN`
+| _(none)_
+| Bearer token for Rokur API
+
+| `ROKUR_TIMEOUT_MS`
+| `2000`
+| Rokur request timeout in milliseconds (100-30000)
+
+| `ROKUR_RETRY_COUNT`
+| `1`
+| Rokur retry attempts on failure (0-5)
+
+| `SPEC_VERSION`
+| `v0.1.0`
+| API specification version
+
+| `AUTH_ENABLED`
+| `false`
+| Require bearer token authentication
+
+| `LOG_LEVEL`
+| `info`
+| Logging verbosity (`debug`, `info`, `warn`, `error`)
+
+| `ALLOWED_ORIGINS`
+| _(none)_
+| Comma-separated list of allowed CORS origins
+
+| `RATE_LIMIT_WINDOW_MS`
+| `60000`
+| Rate limit window in milliseconds
+
+| `RATE_LIMIT_MAX_REQUESTS`
+| `100`
+| Maximum requests per rate limit window
+|===

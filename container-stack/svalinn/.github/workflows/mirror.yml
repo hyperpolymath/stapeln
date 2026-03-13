@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name: Mirror
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  gitlab:
+    name: Mirror to GitLab
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+      - name: Mirror to GitLab
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        if: ${{ env.GITLAB_SSH_KEY != '' }}
+        env:
+          GITLAB_SSH_KEY: ${{ secrets.GITLAB_SSH_KEY }}
+        with:
+          ssh-private-key: ${{ secrets.GITLAB_SSH_KEY }}
+      - name: Push to GitLab
+        if: ${{ env.GITLAB_SSH_KEY != '' }}
+        env:
+          GITLAB_SSH_KEY: ${{ secrets.GITLAB_SSH_KEY }}
+        run: |
+          git remote add gitlab git@gitlab.com:hyperpolymath/svalinn.git || true
+          git push gitlab main --force
+
+  bitbucket:
+    name: Mirror to Bitbucket
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+      - name: Mirror to Bitbucket
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        if: ${{ env.BITBUCKET_SSH_KEY != '' }}
+        env:
+          BITBUCKET_SSH_KEY: ${{ secrets.BITBUCKET_SSH_KEY }}
+        with:
+          ssh-private-key: ${{ secrets.BITBUCKET_SSH_KEY }}
+      - name: Push to Bitbucket
+        if: ${{ env.BITBUCKET_SSH_KEY != '' }}
+        env:
+          BITBUCKET_SSH_KEY: ${{ secrets.BITBUCKET_SSH_KEY }}
+        run: |
+          git remote add bitbucket git@bitbucket.org:hyperpolymath-dev/svalinn.git || true
+          git push bitbucket main --force
