@@ -33,7 +33,7 @@
 
 (define current-position
   '((phase . "v0.4+ — Security Headers, Metrics, Infrastructure")
-    (overall-completion . 75)
+    (overall-completion . 85)
 
     (components
       ((name . "Gateway HTTP Server")
@@ -67,9 +67,9 @@
        (notes . "Full policy DSL with strict/standard/permissive presets"))
 
       ((name . "Test Suite")
-       (completion . 80)
-       (status . "needs-update")
-       (notes . "90 tests passing but no coverage for new metrics/security-headers code"))
+       (completion . 95)
+       (status . "complete")
+       (notes . "106+ tests: metrics (7), policy parsing (8), MCP error (1), zero getExn in tests"))
 
       ((name . "Authentication")
        (completion . 100)
@@ -82,14 +82,19 @@
        (notes . "In-memory counters/histograms/gauges, Prometheus format, wired into gateway"))
 
       ((name . "Containerfile")
-       (completion . 80)
-       (status . "untested")
-       (notes . "Two-stage wolfi-base build, needs real build validation"))
+       (completion . 90)
+       (status . "validated")
+       (notes . "Two-stage wolfi-base build, npx→node_modules/.bin fix, structure validated"))
 
       ((name . "CI/CD")
-       (completion . 30)
+       (completion . 70)
        (status . "in-progress")
-       (notes . "Hypatia scan workflow added; missing CodeQL, mirror, scorecard"))
+       (notes . "6 workflows: Hypatia, CodeQL, Scorecard, quality, mirror, secret-scanner"))
+
+      ((name . "Rate Limiting")
+       (completion . 100)
+       (status . "complete")
+       (notes . "Per-IP fixed-window rate limiter with X-RateLimit headers and 429 responses"))
 
       ((name . "Web UI")
        (completion . 40)
