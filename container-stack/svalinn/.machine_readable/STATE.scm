@@ -32,8 +32,8 @@
     (phase . "edge-shield-hardening")))
 
 (define current-position
-  '((phase . "v0.4+ — Security Headers, Metrics, Infrastructure")
-    (overall-completion . 85)
+  '((phase . "v0.5 — Production MVP")
+    (overall-completion . 95)
 
     (components
       ((name . "Gateway HTTP Server")
@@ -87,9 +87,9 @@
        (notes . "Two-stage wolfi-base build, npx→node_modules/.bin fix, structure validated"))
 
       ((name . "CI/CD")
-       (completion . 70)
-       (status . "in-progress")
-       (notes . "6 workflows: Hypatia, CodeQL, Scorecard, quality, mirror, secret-scanner"))
+       (completion . 100)
+       (status . "complete")
+       (notes . "15 workflows: full RSR template coverage"))
 
       ((name . "Rate Limiting")
        (completion . 100)
@@ -97,9 +97,9 @@
        (notes . "Per-IP fixed-window rate limiter with X-RateLimit headers and 429 responses"))
 
       ((name . "Web UI")
-       (completion . 40)
-       (status . "in-progress")
-       (notes . "ReScript/Tea UI with Api.res, Route.res, Main.res")))
+       (completion . 90)
+       (status . "complete")
+       (notes . "8 modules: Main, Api, Route, Plugins, Metrics, Auth, Policy, Verify")))
 
     (working-features
       "HTTP API endpoints for containers, images, run, verify"
