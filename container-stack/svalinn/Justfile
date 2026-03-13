@@ -156,6 +156,13 @@ podman-push:
     @echo "🐳 Fallback: Pushing with podman (dev only)"
     podman push svalinn:latest
 
+# --- Production Validation ---
+validate url="http://localhost:8000":
+    deno run --allow-net --allow-env tests/production/validate.js --url={{url}}
+
+validate-strict url="http://localhost:8000":
+    deno run --allow-net --allow-env tests/production/validate.js --url={{url}} --strict
+
 # --- Performance Testing ---
 perf:
     @echo "Running Svalinn load test"

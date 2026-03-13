@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= OpenLiteSpeed HTTP/3 Reverse Proxy
+:toc: preamble
+
+OpenLiteSpeed provides HTTP/3 (QUIC) termination for the Svalinn edge gateway.
+Deno does not natively support HTTP/3, so OLS fronts the gateway on ports 80/443
+and proxies to the Deno backend on port 8000.
+
+== Architecture
+
+----
+Client ──HTTP/3(QUIC)──▶ OLS :443 ──HTTP/1.1──▶ Svalinn :8000 ──MCP──▶ Vörðr
+       ──HTTP/2────────▶         └──────────────▶
+       ──HTTP/1.1──────▶ OLS :80 (redirect 301)
+----
+
+== Quick Start
+
+[source,shell]
+----
+# Build and run with Podman Compose
+cd config/ols
+podman build -f Containerfile.ols -t svalinn-ols:latest .
+
+# Run alongside Svalinn
+podman run -d --name svalinn -p 8000:8000 svalinn:latest
+podman run -d --name svalinn-ols \
+  -p 80:80 -p 443:443 -p 443:443/udp \
+  --link svalinn \
+  -v /etc/letsencrypt:/etc/letsencrypt:ro \
+  svalinn-ols:latest
+----
+
+== TLS Certificates
+
+OLS expects certificates at:
+- `/etc/letsencrypt/live/svalinn/privkey.pem`
+- `/etc/letsencrypt/live/svalinn/fullchain.pem`
+
+For development, generate self-signed:
+[source,shell]
+----
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+  -keyout privkey.pem -out fullchain.pem -days 365 -nodes \
+  -subj "/CN=localhost"
+----
+
+== HTTP/3 Verification
+
+[source,shell]
+----
+# Verify HTTP/3 is advertised
+curl -I https://your-domain/ 2>&1 | grep -i alt-svc
+
+# Test with HTTP/3 client
+curl --http3 https://your-domain/healthz
+----
+
+== Configuration Files
+
+[cols="1,2",options="header"]
+|===
+|File |Purpose
+
+|`httpd_config.conf`
+|Main OLS server settings (QUIC, connections, buffers)
+
+|`vhconf.conf`
+|Virtual host: proxy rules, TLS, access control
+
+|`listeners.conf`
+|Port bindings (80 HTTP redirect, 443 HTTPS+HTTP/3)
+
+|`Containerfile.ols`
+|Container image for OLS reverse proxy
+
+|`../modsecurity/svalinn-modsecurity.conf`
+|WAF rules (OWASP CRS, custom svalinn rules)
+|===
+
+== Performance
+
+OLS HTTP/3 advantages over plain Deno TLS:
+- **0-RTT connection establishment** (QUIC vs TCP+TLS handshake)
+- **Multiplexed streams** without head-of-line blocking
+- **Connection migration** (IP changes don't break connections)
+- **ModSecurity WAF** integration for edge filtering
+- **Static asset serving** (bypasses Deno for UI files)

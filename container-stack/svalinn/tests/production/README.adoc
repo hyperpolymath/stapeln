@@ -1,0 +1,186 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Production Validation
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:toc:
+:sectnums:
+
+== Overview
+
+The production validation suite verifies that a running Svalinn instance meets
+all requirements for production deployment. It is a single Deno script that
+connects to the instance over HTTP(S) and runs a battery of checks, reporting
+results as a PASS/FAIL/SKIP table.
+
+== Checks
+
+=== Endpoint Health
+
+[cols="2,3"]
+|===
+| Check | Criteria
+
+| `GET /healthz`
+| Returns HTTP 200 with JSON body `{"status": "healthy"}`
+
+| `GET /readyz`
+| Returns HTTP 200 or 503 (must respond, not time out)
+
+| `GET /metrics`
+| Returns HTTP 200 with Prometheus-format text (lines starting with `# HELP`, `# TYPE`, or metric names)
+|===
+
+=== Security Headers
+
+Every response from Svalinn must include the following headers:
+
+[cols="2,2"]
+|===
+| Header | Expected Value
+
+| `Strict-Transport-Security` | Any (present)
+| `X-Frame-Options` | `DENY`
+| `X-Content-Type-Options` | `nosniff`
+| `Content-Security-Policy` | Any (present)
+| `Referrer-Policy` | Any (present)
+| `Permissions-Policy` | Any (present)
+|===
+
+=== Rate Limiting
+
+[cols="2,3"]
+|===
+| Check | Criteria
+
+| `X-RateLimit-Limit`
+| Header present on responses
+
+| `X-RateLimit-Remaining`
+| Header present on responses
+
+| 429 on burst
+| Sending 200 rapid requests triggers at least one HTTP 429 response
+|===
+
+=== Auth Enforcement
+
+Only checked when `AUTH_ENABLED=true` is set in the environment.
+
+[cols="2,3"]
+|===
+| Check | Criteria
+
+| `GET /api/v1/containers`
+| Returns 401 without a bearer token
+
+| `POST /api/v1/run`
+| Returns 401 without a bearer token
+|===
+
+=== CORS
+
+[cols="2,3"]
+|===
+| Check | Criteria
+
+| No wildcard origin
+| `Access-Control-Allow-Origin: *` must NOT be present
+
+| Unknown origin rejected
+| A request from `https://evil.example.com` must not be reflected in the CORS header
+|===
+
+=== TLS
+
+Only checked when the `--url` starts with `https://`.
+
+[cols="2,3"]
+|===
+| Check | Criteria
+
+| TLS active
+| HTTPS connection succeeds
+
+| Certificate valid
+| Deno accepts the certificate chain (no self-signed or expired certs)
+|===
+
+== Running
+
+=== Quick run (local dev)
+
+[source,bash]
+----
+deno run --allow-net --allow-env tests/production/validate.js
+----
+
+=== Custom URL
+
+[source,bash]
+----
+deno run --allow-net --allow-env tests/production/validate.js --url https://svalinn.example.com
+----
+
+=== Strict mode (for CI)
+
+[source,bash]
+----
+deno run --allow-net --allow-env tests/production/validate.js --url https://svalinn.example.com --strict
+----
+
+In strict mode, SKIP results (e.g. auth checks when `AUTH_ENABLED` is not set)
+are treated as failures and the script exits with code 1.
+
+=== Via Justfile
+
+[source,bash]
+----
+just validate                              # defaults to http://localhost:8000
+just validate https://svalinn.example.com  # custom URL
+just validate-strict https://prod.example.com  # CI mode
+----
+
+== Environment Variables
+
+[cols="2,2,3"]
+|===
+| Variable | Default | Purpose
+
+| `SVALINN_URL`
+| `http://localhost:8000`
+| Fallback base URL when `--url` is not given
+
+| `AUTH_ENABLED`
+| (unset)
+| Set to `true` to enable auth enforcement checks
+|===
+
+== Exit Codes
+
+[cols="1,3"]
+|===
+| Code | Meaning
+
+| `0`
+| All checks passed (SKIPs allowed unless `--strict`)
+
+| `1`
+| One or more checks failed, or SKIPs present in strict mode
+|===
+
+== CI Integration
+
+Add to your CI pipeline after deployment:
+
+[source,yaml]
+----
+- name: Validate production
+  run: |
+    deno run --allow-net --allow-env \
+      tests/production/validate.js \
+      --url ${{ vars.SVALINN_URL }} --strict
+  env:
+    AUTH_ENABLED: "true"
+----
+
+The `--strict` flag ensures that every check is either PASS or FAIL — no silent
+SKIPs in the pipeline.
