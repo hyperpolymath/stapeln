@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: PMPL-1.0-or-later */
+
 :root {
   --bg: #f6f3ee;
   --panel: #ffffff;
@@ -6,6 +8,12 @@
   --accent: #0a7b6f;
   --accent-2: #e07a2f;
   --border: #e4ddd3;
+  --green: #0a7b6f;
+  --red: #c0392b;
+  --yellow: #d4a017;
+  --green-bg: rgba(10, 123, 111, 0.1);
+  --red-bg: rgba(192, 57, 43, 0.1);
+  --yellow-bg: rgba(212, 160, 23, 0.1);
 }
 
 * {
@@ -60,6 +68,10 @@ body {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
 }
 
+.nav a:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
 .main {
   padding: 32px 40px;
 }
@@ -90,6 +102,18 @@ body {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
 }
 
+.card h3 {
+  margin: 0 0 8px 0;
+}
+
+.card h4 {
+  margin: 12px 0 6px 0;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -98,13 +122,386 @@ body {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  background: rgba(10, 123, 111, 0.1);
+  background: var(--green-bg);
   color: var(--accent);
 }
 
 .muted {
   color: var(--muted);
 }
+
+/* --------------------------------------------------------------------------
+   Metrics Grid
+   -------------------------------------------------------------------------- */
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card h3 {
+  font-size: 32px;
+  margin: 8px 0 4px 0;
+}
+
+/* --------------------------------------------------------------------------
+   Histogram
+   -------------------------------------------------------------------------- */
+
+.histogram-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.histogram-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.histogram-label {
+  width: 80px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.histogram-bar-track {
+  flex: 1;
+  height: 20px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.histogram-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.histogram-count {
+  width: 60px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Policy Cards
+   -------------------------------------------------------------------------- */
+
+.policy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.policy-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+}
+
+.policy-card h3 {
+  margin: 0 0 8px 0;
+}
+
+.policy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.policy-section {
+  margin: 12px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.policy-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.predicate-row,
+.signer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+/* --------------------------------------------------------------------------
+   Verification Badges
+   -------------------------------------------------------------------------- */
+
+.badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.badge-unverified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(90, 90, 90, 0.1);
+  color: var(--muted);
+}
+
+.badge-denied {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.badge-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--yellow-bg);
+  color: var(--yellow);
+}
+
+/* --------------------------------------------------------------------------
+   Verify Form & Results
+   -------------------------------------------------------------------------- */
+
+.verify-form {
+  margin-bottom: 24px;
+}
+
+.verify-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.verify-summary {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.verify-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.verify-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.verify-table-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.verify-table-row:last-child {
+  border-bottom: none;
+}
+
+/* --------------------------------------------------------------------------
+   Auth Form
+   -------------------------------------------------------------------------- */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.form-input {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 15px;
+  background: var(--panel);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--green-bg);
+}
+
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+button:hover {
+  background: #f0ebe4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: #096b61;
+}
+
+.btn-primary:disabled {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+.nav-logout {
+  margin-top: 16px;
+  width: 100%;
+  text-align: center;
+  background: transparent;
+  color: var(--red);
+  border-color: var(--red-bg);
+}
+
+.nav-logout:hover {
+  background: var(--red-bg);
+}
+
+/* --------------------------------------------------------------------------
+   Loading Spinner
+   -------------------------------------------------------------------------- */
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Error Banner
+   -------------------------------------------------------------------------- */
+
+.error-banner {
+  background: var(--red-bg);
+  color: var(--red);
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(192, 57, 43, 0.2);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Loading Placeholder (in-root before app mounts)
+   -------------------------------------------------------------------------- */
+
+.loading-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+  color: var(--muted);
+}
+
+.loading-placeholder .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
 
 @media (max-width: 900px) {
   .app {
@@ -114,5 +511,17 @@ body {
   .sidebar {
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .policy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .verify-summary {
+    flex-direction: column;
   }
 }

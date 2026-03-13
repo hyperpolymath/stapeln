@@ -56,10 +56,26 @@ module Http = {
     signal: option<'signal>,
   }
 
+  // TLS-enabled serve options — includes cert/key for native HTTPS
+  type serveTlsOptions<'signal> = {
+    port: int,
+    hostname: option<string>,
+    signal: option<'signal>,
+    cert: string,
+    key: string,
+  }
+
   @scope("Deno") @val
   external serve: (
     (Fetch.Request.t) => promise<Fetch.Response.t>,
     serveOptions<'a>,
+  ) => {..} = "serve"
+
+  // Deno.serve with TLS options — starts an HTTPS server
+  @scope("Deno") @val
+  external serveTls: (
+    (Fetch.Request.t) => promise<Fetch.Response.t>,
+    serveTlsOptions<'a>,
   ) => {..} = "serve"
 }
 

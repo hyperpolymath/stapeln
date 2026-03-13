@@ -1,161 +1,116 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-= Svalinn Deployment Guide
+= Production Deployment Guide
 :toc: preamble
 :toclevels: 3
 :icons: font
 
-Complete guide for deploying Svalinn Gateway in production.
+Complete guide for deploying Svalinn Edge Gateway in production environments.
 
 == Prerequisites
 
 === Runtime Requirements
 
-* **Deno** >= 2.0
-* **Vörðr** container runtime (must be accessible via MCP)
-* **System:** Linux (Fedora, Ubuntu, Debian, etc.)
+* **Deno** >= 2.0 (runtime for compiled ReScript output)
+* **Vordr** container runtime instance (accessible via MCP protocol)
+* **TLS certificates** for HTTPS (Let's Encrypt, internal CA, or self-signed for dev)
+* **Linux** host (Fedora, Ubuntu, Debian, etc.)
 
 === Build Requirements
 
-* **ReScript** compiler (`npm install -g rescript` or use Deno)
+* **ReScript** compiler (installed via `deno install`)
 * **Just** command runner (optional but recommended)
+* **Podman** >= 4.0 for container builds
 
-== Build from Source
+== Container Deployment (Recommended)
 
-=== 1. Clone Repository
+=== Build the Image
 
-[source,bash]
-----
-git clone https://github.com/hyperpolymath/svalinn.git
-cd svalinn
-----
-
-=== 2. Install Dependencies
-
-Deno automatically manages dependencies via `deno.json`. No separate install step needed.
-
-=== 3. Compile ReScript
+The repository ships a multi-stage `Containerfile` using Chainguard wolfi-base
+images. Stage 1 compiles ReScript; stage 2 produces a minimal runtime image.
 
 [source,bash]
 ----
-# Using Just
-just build-res
-
-# Or manually
-rescript build
+podman build -f Containerfile -t svalinn:latest .
 ----
 
-This compiles `*.res` files to `*.res.js` in the same directory.
-
-=== 4. Build Production Binary
+=== Run with Podman
 
 [source,bash]
 ----
-# Using Just
-just build
+podman run -d -p 8000:8000 --name svalinn \
+  -e VORDR_ENDPOINT=http://vordr:8080 \
+  -e AUTH_ENABLED=true \
+  -e TLS_CERT_FILE=/certs/server.crt \
+  -e TLS_KEY_FILE=/certs/server.key \
+  -v /etc/svalinn/certs:/certs:ro,Z \
+  svalinn:latest
+----
 
-# Or manually
-deno compile \
-  --allow-read \
-  --allow-write \
+=== Production Compose (selur-compose)
+
+[source,yaml]
+----
+version: "3"
+services:
+  svalinn:
+    image: svalinn:latest
+    ports:
+      - "8000:8000"
+    environment:
+      SVALINN_PORT: "8000"
+      SVALINN_HOST: "0.0.0.0"
+      VORDR_ENDPOINT: "http://vordr:8080"
+      ROKUR_ENDPOINT: "http://rokur:9090"
+      ROKUR_GATE_ENABLED: "true"
+      AUTH_ENABLED: "true"
+      AUTH_METHODS: "oidc,apikey"
+      TLS_CERT_FILE: "/certs/server.crt"
+      TLS_KEY_FILE: "/certs/server.key"
+      ALLOWED_ORIGINS: "https://dashboard.example.com"
+      RATE_LIMIT_WINDOW_MS: "60000"
+      RATE_LIMIT_MAX_REQUESTS: "200"
+      LOG_LEVEL: "info"
+    volumes:
+      - /etc/svalinn/certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "deno", "eval", "const r = await fetch('http://localhost:8000/healthz'); Deno.exit(r.ok ? 0 : 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - vordr
+      - rokur
+----
+
+== Bare Metal Deployment
+
+=== Direct Deno Execution
+
+[source,bash]
+----
+# Build ReScript source
+cd /opt/svalinn
+deno install
+cd src && ./node_modules/.bin/rescript build && cd ..
+
+# Run with production settings
+SVALINN_PORT=8000 \
+SVALINN_HOST=0.0.0.0 \
+VORDR_ENDPOINT=http://vordr.internal:8080 \
+ROKUR_ENDPOINT=http://rokur.internal:9090 \
+AUTH_ENABLED=true \
+TLS_CERT_FILE=/etc/svalinn/certs/server.crt \
+TLS_KEY_FILE=/etc/svalinn/certs/server.key \
+deno run \
   --allow-net \
   --allow-env \
-  --output=dist/svalinn \
-  src/main.ts
+  --allow-read \
+  src/Main.res.js
 ----
 
-Output: `dist/svalinn` (standalone executable)
-
-== Configuration
-
-=== Environment Variables
-
-[cols="1,2,1,2",options="header"]
-|===
-|Variable |Description |Required |Default
-
-|`SVALINN_PORT`
-|HTTP server port
-|No
-|`8000`
-
-|`SVALINN_HOST`
-|Bind address
-|No
-|`0.0.0.0`
-
-|`VORDR_ENDPOINT`
-|Vörðr MCP endpoint URL
-|Yes
-|`http://localhost:8080`
-
-|`VORDR_TIMEOUT`
-|MCP call timeout (ms)
-|No
-|`30000`
-
-|`VORDR_RETRIES`
-|MCP retry attempts
-|No
-|`3`
-
-|`SPEC_VERSION`
-|Spec version for validation
-|No
-|`v0.1.0`
-
-|`AUTH_ENABLED`
-|Enable authentication
-|No
-|`false`
-
-|`AUTH_METHODS`
-|Comma-separated: `oauth2,oidc,apikey,mtls`
-|No
-|`oauth2,oidc`
-
-|`OIDC_ISSUER`
-|OIDC issuer URL
-|If using OIDC
-|none
-
-|`OIDC_CLIENT_ID`
-|OIDC client ID
-|If using OIDC
-|none
-
-|`OIDC_SCOPES`
-|OIDC scopes (comma-separated)
-|No
-|`openid,profile,email`
-
-|`API_KEYS`
-|Valid API keys (comma-separated)
-|If using API keys
-|none
-|===
-
-=== Example Configuration
-
-[source,bash]
-----
-# Minimal (development)
-export SVALINN_PORT=8000
-export VORDR_ENDPOINT=http://localhost:8080
-
-# Production (with auth)
-export SVALINN_PORT=8000
-export SVALINN_HOST=0.0.0.0
-export VORDR_ENDPOINT=http://vordr.internal:8080
-export AUTH_ENABLED=true
-export AUTH_METHODS=oidc,apikey
-export OIDC_ISSUER=https://auth.example.com
-export OIDC_CLIENT_ID=svalinn-prod
-export API_KEYS=sk_prod_abc123,sk_prod_def456
-----
-
-== Deployment Options
-
-=== Option 1: Systemd Service
+=== Systemd Service
 
 Create `/etc/systemd/system/svalinn.service`:
 
@@ -171,21 +126,21 @@ Type=simple
 User=svalinn
 Group=svalinn
 WorkingDirectory=/opt/svalinn
-ExecStart=/opt/svalinn/dist/svalinn
+ExecStart=/usr/bin/deno run \
+  --allow-net --allow-env --allow-read \
+  src/Main.res.js
 Restart=on-failure
 RestartSec=5s
 
-# Environment
-Environment="SVALINN_PORT=8000"
-Environment="VORDR_ENDPOINT=http://localhost:8080"
-Environment="AUTH_ENABLED=true"
+# Environment file keeps secrets out of unit definitions
+EnvironmentFile=/etc/svalinn/svalinn.env
 
-# Security
+# Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/log/svalinn
+ReadOnlyPaths=/etc/svalinn/certs
 
 [Install]
 WantedBy=multi-user.target
@@ -196,67 +151,214 @@ Enable and start:
 [source,bash]
 ----
 sudo systemctl daemon-reload
-sudo systemctl enable svalinn
-sudo systemctl start svalinn
+sudo systemctl enable --now svalinn
 sudo systemctl status svalinn
 ----
 
-=== Option 2: Docker Container
+== Environment Variables
 
-Create `Dockerfile`:
+Full reference of every environment variable Svalinn reads.
 
-[source,dockerfile]
-----
-FROM denoland/deno:2.1.0
+[cols="2,3,1,2",options="header"]
+|===
+|Variable |Description |Required |Default
 
-WORKDIR /app
+|`SVALINN_PORT`
+|HTTP/HTTPS server listen port
+|No
+|`8000`
 
-# Copy source
-COPY src/ ./src/
-COPY spec/ ./spec/
-COPY deno.json .
-COPY rescript.json .
+|`SVALINN_HOST`
+|Bind address
+|No
+|`0.0.0.0`
 
-# Build
-RUN deno cache src/main.ts
+|`VORDR_ENDPOINT`
+|Vordr MCP endpoint URL
+|Yes
+|`http://localhost:8080`
 
-# Run
-EXPOSE 8000
-CMD ["deno", "run", "--allow-net", "--allow-env", "--allow-read", "src/main.ts"]
-----
+|`VORDR_TIMEOUT`
+|MCP call timeout (ms)
+|No
+|`30000`
 
-Build and run:
+|`VORDR_RETRIES`
+|MCP retry attempts
+|No
+|`3`
+
+|`ROKUR_ENDPOINT`
+|Rokur policy gate endpoint
+|No
+|`http://localhost:9090`
+
+|`ROKUR_GATE_ENABLED`
+|Enable Rokur container-start authorization
+|No
+|`true`
+
+|`ROKUR_API_TOKEN`
+|Bearer token for Rokur API
+|If Rokur enabled
+|`""`
+
+|`ROKUR_TIMEOUT_MS`
+|Rokur request timeout (100-30000 ms)
+|No
+|`2000`
+
+|`ROKUR_RETRY_COUNT`
+|Rokur retry attempts (0-5)
+|No
+|`1`
+
+|`SPEC_VERSION`
+|Spec version for validation
+|No
+|`v0.1.0`
+
+|`AUTH_ENABLED`
+|Enable authentication middleware
+|No
+|`false`
+
+|`AUTH_METHODS`
+|Comma-separated: `oauth2,oidc,apikey,mtls`
+|No
+|`oauth2,oidc`
+
+|`OIDC_ISSUER`
+|OIDC provider issuer URL
+|If using OIDC
+|none
+
+|`OIDC_CLIENT_ID`
+|OIDC client identifier
+|If using OIDC
+|`""`
+
+|`OIDC_CLIENT_SECRET`
+|OIDC client secret
+|If using OIDC
+|`""`
+
+|`OIDC_AUTH_ENDPOINT`
+|OIDC authorization endpoint
+|If using OIDC
+|`""`
+
+|`OIDC_TOKEN_ENDPOINT`
+|OIDC token endpoint
+|If using OIDC
+|`""`
+
+|`OIDC_USERINFO_ENDPOINT`
+|OIDC userinfo endpoint
+|If using OIDC
+|`""`
+
+|`OIDC_JWKS_URI`
+|OIDC JWKS URI for token validation
+|If using OIDC
+|`""`
+
+|`OIDC_REDIRECT_URI`
+|OIDC redirect URI after login
+|If using OIDC
+|`""`
+
+|`OIDC_SCOPES`
+|OIDC scopes (comma-separated)
+|No
+|`openid,profile,email`
+
+|`OIDC_END_SESSION_ENDPOINT`
+|OIDC logout endpoint
+|No
+|none
+
+|`API_KEYS`
+|Valid API keys (comma-separated)
+|If using API keys
+|none
+
+|`ALLOWED_ORIGINS`
+|CORS allowed origins (comma-separated)
+|No
+|`[]` (no CORS headers)
+
+|`LOG_LEVEL`
+|Logging threshold: `debug`, `info`, `warn`, `error`
+|No
+|`info`
+
+|`RATE_LIMIT_WINDOW_MS`
+|Rate-limit sliding window (1000-300000 ms)
+|No
+|`60000`
+
+|`RATE_LIMIT_MAX_REQUESTS`
+|Max requests per window (1-10000)
+|No
+|`100`
+
+|`TLS_CERT_FILE`
+|Path to PEM-encoded TLS certificate
+|For TLS
+|none
+
+|`TLS_KEY_FILE`
+|Path to PEM-encoded TLS private key
+|For TLS
+|none
+
+|`DENO_ENV`
+|Runtime environment identifier
+|No
+|none
+|===
+
+== TLS Configuration
+
+Svalinn supports native TLS via Deno's built-in HTTPS server. When both
+`TLS_CERT_FILE` and `TLS_KEY_FILE` are set, the gateway serves HTTPS directly
+without requiring a reverse proxy.
+
+=== Let's Encrypt (Production)
 
 [source,bash]
 ----
-docker build -t svalinn:latest .
-docker run -d \
-  -p 8000:8000 \
-  -e VORDR_ENDPOINT=http://vordr:8080 \
-  --name svalinn \
-  svalinn:latest
+# Provision certificates with certbot
+sudo certbot certonly --standalone -d api.example.com
+
+# Point Svalinn at the live certs
+export TLS_CERT_FILE=/etc/letsencrypt/live/api.example.com/fullchain.pem
+export TLS_KEY_FILE=/etc/letsencrypt/live/api.example.com/privkey.pem
 ----
 
-=== Option 3: Standalone Binary
+NOTE: Set up a cron job or systemd timer for `certbot renew`. After renewal,
+restart or send SIGHUP to the Svalinn process to pick up new certificates.
+
+=== Self-Signed (Development)
 
 [source,bash]
 ----
-# Copy binary to server
-scp dist/svalinn user@server:/opt/svalinn/
+# Generate a self-signed cert for local development
+openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+  -keyout dev-key.pem -out dev-cert.pem \
+  -subj "/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
 
-# Copy schemas
-scp -r spec/schemas user@server:/opt/svalinn/spec/
-
-# Run directly
-ssh user@server
-cd /opt/svalinn
-export VORDR_ENDPOINT=http://localhost:8080
-./svalinn
+export TLS_CERT_FILE=./dev-cert.pem
+export TLS_KEY_FILE=./dev-key.pem
 ----
 
-== Reverse Proxy (Recommended)
+=== Reverse Proxy TLS Termination (Alternative)
 
-=== Nginx Configuration
+If you prefer TLS termination at a reverse proxy (Nginx, Caddy), leave
+`TLS_CERT_FILE` and `TLS_KEY_FILE` unset. Svalinn will serve plain HTTP and
+the proxy handles HTTPS.
 
 [source,nginx]
 ----
@@ -278,140 +380,196 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
     }
 
-    # Health check endpoint (no auth)
-    location /health {
+    location /healthz {
         proxy_pass http://svalinn;
         access_log off;
     }
 }
 ----
 
-== Health Checks
+== Authentication Setup
 
-=== Endpoints
-
-[cols="1,2,2",options="header"]
-|===
-|Endpoint |Purpose |Expected Response
-
-|`/health`
-|Basic health check
-|`200 OK` with JSON status
-
-|`/healthz`
-|Kubernetes health
-|`200 OK`
-
-|`/ready`
-|Readiness check (Vörðr connected)
-|`200 OK` if Vörðr accessible, `503` otherwise
-
-|`/readyz`
-|Kubernetes readiness
-|Same as `/ready`
-
-|`/metrics`
-|Prometheus metrics
-|Text format metrics
-|===
-
-=== Monitoring Script
+=== OIDC Provider Configuration
 
 [source,bash]
 ----
-#!/bin/bash
-# Health check script for monitoring
-
-ENDPOINT="http://localhost:8000/ready"
-RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$ENDPOINT")
-
-if [ "$RESPONSE" -eq 200 ]; then
-  echo "✅ Svalinn healthy"
-  exit 0
-else
-  echo "❌ Svalinn unhealthy (HTTP $RESPONSE)"
-  exit 1
-fi
-----
-
-== Performance Tuning
-
-=== Deno Runtime Flags
-
-[source,bash]
-----
-deno run \
-  --allow-net \
-  --allow-env \
-  --allow-read \
-  --v8-flags=--max-old-space-size=4096 \
-  --unstable-worker-options \
-  src/main.ts
-----
-
-=== OS Tuning
-
-[source,bash]
-----
-# Increase file descriptor limit
-ulimit -n 65536
-
-# TCP tuning
-sysctl -w net.core.somaxconn=4096
-sysctl -w net.ipv4.tcp_max_syn_backlog=4096
-----
-
-== Security Hardening
-
-=== 1. TLS/HTTPS Only
-
-* Use reverse proxy (Nginx/Caddy) for TLS termination
-* Redirect HTTP to HTTPS
-* Use strong cipher suites
-
-=== 2. Authentication
-
-[source,bash]
-----
-# Production: Always enable auth
 export AUTH_ENABLED=true
 export AUTH_METHODS=oidc,apikey
 
-# OIDC (recommended)
-export OIDC_ISSUER=https://auth.example.com
+# OIDC provider (e.g. Keycloak, Authentik, Authelia)
+export OIDC_ISSUER=https://auth.example.com/realms/svalinn
 export OIDC_CLIENT_ID=svalinn-prod
-
-# API keys (for service accounts)
-export API_KEYS=sk_prod_$(openssl rand -hex 32)
+export OIDC_CLIENT_SECRET=<secret-from-provider>
+export OIDC_AUTH_ENDPOINT=https://auth.example.com/realms/svalinn/protocol/openid-connect/auth
+export OIDC_TOKEN_ENDPOINT=https://auth.example.com/realms/svalinn/protocol/openid-connect/token
+export OIDC_USERINFO_ENDPOINT=https://auth.example.com/realms/svalinn/protocol/openid-connect/userinfo
+export OIDC_JWKS_URI=https://auth.example.com/realms/svalinn/protocol/openid-connect/certs
+export OIDC_REDIRECT_URI=https://api.example.com/auth/callback
+export OIDC_SCOPES=openid,profile,email
 ----
 
-=== 3. Network Isolation
+=== API Key Management
 
-* Run Svalinn in private network
-* Only expose via reverse proxy
-* Firewall rules:
-  - Allow: 443 (HTTPS) from internet
-  - Allow: 8000 (Svalinn) from reverse proxy only
-  - Allow: 8080 (Vörðr) from Svalinn only
-
-=== 4. Principle of Least Privilege
+API keys are provided as a comma-separated list. Generate cryptographically
+strong keys and rotate regularly.
 
 [source,bash]
 ----
-# Create dedicated user
-sudo useradd -r -s /bin/false svalinn
+# Generate a new API key
+KEY=$(openssl rand -hex 32)
+echo "sk_prod_${KEY}"
 
-# Restrict file permissions
-sudo chown -R svalinn:svalinn /opt/svalinn
-sudo chmod 700 /opt/svalinn
+# Set multiple keys (allows rotation without downtime)
+export API_KEYS=sk_prod_<current>,sk_prod_<previous>
 ----
+
+Clients authenticate via the `Authorization` header:
+
+[source,bash]
+----
+curl -H "Authorization: Bearer sk_prod_abc123..." https://api.example.com/api/v1/containers
+# or
+curl -H "X-API-Key: sk_prod_abc123..." https://api.example.com/api/v1/containers
+----
+
+== Rate Limiting
+
+Svalinn applies a per-IP sliding-window rate limiter to all endpoints.
+
+=== Tuning for Production Traffic
+
+[cols="1,2,2",options="header"]
+|===
+|Profile |Window |Max Requests
+
+|Low traffic (internal)
+|`RATE_LIMIT_WINDOW_MS=60000`
+|`RATE_LIMIT_MAX_REQUESTS=100`
+
+|Medium traffic
+|`RATE_LIMIT_WINDOW_MS=60000`
+|`RATE_LIMIT_MAX_REQUESTS=500`
+
+|High traffic (public API)
+|`RATE_LIMIT_WINDOW_MS=60000`
+|`RATE_LIMIT_MAX_REQUESTS=2000`
+
+|Burst-friendly
+|`RATE_LIMIT_WINDOW_MS=10000`
+|`RATE_LIMIT_MAX_REQUESTS=200`
+|===
+
+When a client exceeds the limit, Svalinn returns `429 Too Many Requests`.
+
+== Monitoring
+
+=== Prometheus Metrics
+
+Svalinn exposes a `/metrics` endpoint in Prometheus text exposition format.
+
+Scrape config for `prometheus.yml`:
+
+[source,yaml]
+----
+scrape_configs:
+  - job_name: "svalinn"
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["svalinn:8000"]
+    # If TLS is enabled on Svalinn directly:
+    # scheme: https
+    # tls_config:
+    #   insecure_skip_verify: false
+    #   ca_file: /etc/prometheus/certs/ca.pem
+----
+
+=== Available Metrics
+
+[cols="2,1,3",options="header"]
+|===
+|Metric |Type |Description
+
+|`svalinn_requests_total`
+|Counter
+|Total HTTP requests received
+
+|`svalinn_requests_errors_total`
+|Counter
+|Total requests that resulted in errors
+
+|`svalinn_request_duration_seconds`
+|Histogram
+|Request duration distribution
+
+|`svalinn_containers_active`
+|Gauge
+|Number of active containers (refreshed from Vordr)
+|===
+
+== Health Checks
+
+=== Endpoints for Orchestrators
+
+[cols="1,2,2",options="header"]
+|===
+|Endpoint |Purpose |Behaviour
+
+|`/healthz`
+|Liveness probe
+|Returns `200` with JSON status; checks Vordr connectivity and reports `healthy` or `degraded`
+
+|`/readyz`
+|Readiness probe
+|Returns `200` if Vordr is reachable, `503` if Vordr is unavailable
+
+|`/metrics`
+|Prometheus scrape
+|Returns `200` with text exposition format
+|===
+
+=== Podman / Kubernetes Health Check
+
+[source,bash]
+----
+# Podman
+podman run --health-cmd='deno eval "const r = await fetch(\"http://localhost:8000/healthz\"); Deno.exit(r.ok ? 0 : 1)"' \
+  --health-interval=15s --health-timeout=5s --health-retries=3 ...
+
+# Kubernetes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 15
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+----
+
+== Security Checklist
+
+Before going to production, verify every item:
+
+* [ ] `AUTH_ENABLED=true` -- authentication middleware active
+* [ ] `ALLOWED_ORIGINS` set to specific domains (no wildcard `*`)
+* [ ] TLS enabled -- either `TLS_CERT_FILE`/`TLS_KEY_FILE` set or reverse proxy terminating TLS
+* [ ] `RATE_LIMIT_MAX_REQUESTS` tuned for expected traffic (not left at default 100 for high-traffic)
+* [ ] `ROKUR_GATE_ENABLED=true` -- container-start authorization active
+* [ ] `ROKUR_API_TOKEN` set to a strong, rotated token
+* [ ] `API_KEYS` use cryptographically strong random values (>= 32 bytes hex)
+* [ ] `OIDC_CLIENT_SECRET` stored in a secrets manager, not in plaintext env files
+* [ ] `LOG_LEVEL=info` or `warn` (not `debug` in production -- may leak sensitive data)
+* [ ] Container runs as non-root user (the shipped Containerfile already does this)
+* [ ] Network segmentation: Vordr and Rokur not exposed to the public internet
+* [ ] HSTS header enabled (Svalinn sets this by default via security headers middleware)
+* [ ] No wildcard `*` in `ALLOWED_ORIGINS`
 
 == Troubleshooting
 
@@ -419,109 +577,106 @@ sudo chmod 700 /opt/svalinn
 
 [cols="1,2,2",options="header"]
 |===
-|Issue |Cause |Solution
+|Symptom |Likely Cause |Fix
 
-|`503 Service Unavailable`
-|Vörðr not reachable
-|Check `VORDR_ENDPOINT`, ensure Vörðr is running
+|`503 Service Unavailable` on `/readyz`
+|Vordr not reachable
+|Verify `VORDR_ENDPOINT` is correct and Vordr is running. Check network/firewall rules.
 
-|`401 Unauthorized`
-|Auth enabled, no token
-|Provide valid JWT/API key in `Authorization` header
+|`401 Unauthorized` on API calls
+|Auth enabled, missing or invalid token
+|Provide a valid JWT or API key via `Authorization: Bearer <token>` or `X-API-Key: <key>` header.
 
-|`400 Bad Request`
-|Invalid request format
-|Check request against JSON schema
+|`409 Conflict` on container start
+|Rokur denied the container start
+|Check the `rokur` field in the response for the denial reason. Review Rokur policy configuration.
+
+|`429 Too Many Requests`
+|Rate limit exceeded
+|Wait for the window to reset, or increase `RATE_LIMIT_MAX_REQUESTS`.
+
+|`400 Bad Request` on `/api/v1/run`
+|Request body fails JSON schema validation
+|Check the `details` array in the response for specific validation errors.
+
+|TLS handshake failure
+|Cert/key mismatch or expired certificate
+|Verify cert and key match: `openssl x509 -noout -modulus -in cert.pem \| md5sum` vs `openssl rsa -noout -modulus -in key.pem \| md5sum`. Renew if expired.
 
 |`500 Internal Server Error`
-|Runtime error
-|Check logs, verify all environment variables set
+|Unhandled runtime error
+|Set `LOG_LEVEL=debug` temporarily and inspect structured JSON logs for the `error` field.
 
-|Slow responses
-|Vörðr MCP timeout
-|Increase `VORDR_TIMEOUT`, check network latency
+|Slow responses (>1s)
+|Vordr MCP timeout or network latency
+|Increase `VORDR_TIMEOUT`. Check Vordr health. Consider co-locating Svalinn and Vordr.
+
+|Gateway starts but no HTTPS
+|`TLS_CERT_FILE` or `TLS_KEY_FILE` not set (both required)
+|Set both env vars. Svalinn logs `TLS disabled` vs `TLS enabled` at startup -- check the log output.
+
+|Rokur authorization retries exhaust
+|Rokur returning 5xx errors
+|Check Rokur health. Increase `ROKUR_RETRY_COUNT` (max 5) and `ROKUR_TIMEOUT_MS` if transient.
 |===
 
 === Debug Mode
 
 [source,bash]
 ----
-# Enable verbose logging (planned)
+# Enable verbose structured logging
 export LOG_LEVEL=debug
 
-# Check Vörðr connectivity
-curl http://localhost:8080/health
+# Check Vordr connectivity directly
+curl -s http://localhost:8080/health | jq .
+
+# Check Rokur connectivity
+curl -s http://localhost:9090/health | jq .
+
+# Inspect Svalinn startup metadata
+journalctl -u svalinn --since "5 min ago" | jq 'select(.message == "Starting Svalinn Gateway")'
 ----
 
-=== Logs
+=== Log Analysis
 
-Svalinn uses structured JSON logging. Parse with `jq`:
+Svalinn emits structured JSON on stdout. Parse with `jq`:
 
 [source,bash]
 ----
-# View logs
+# Follow logs
 journalctl -u svalinn -f | jq .
 
-# Filter errors only
-journalctl -u svalinn | jq 'select(.level == "error")'
-----
+# Errors only
+journalctl -u svalinn | jq 'select(.level == "ERROR")'
 
-== Backup and Recovery
+# Slow requests (>500ms)
+journalctl -u svalinn | jq 'select(.metadata.duration_ms > 500)'
 
-=== What to Backup
-
-* Configuration files (environment variables)
-* TLS certificates
-* API keys (securely stored)
-
-=== What NOT to Backup
-
-* Svalinn binary (rebuild from source)
-* Container state (managed by Vörðr)
-
-== Performance Benchmarks
-
-Expected performance (hardware-dependent):
-
-* Health endpoint: < 10ms latency
-* Container list: < 100ms (depends on Vörðr)
-* Request validation: < 5ms overhead
-* Sustained load: 1000+ req/s
-
-Run benchmarks:
-
-[source,bash]
-----
-# Unit benchmarks
-deno bench --allow-net benchmarks/gateway_bench.ts
-
-# Load testing
-deno run --allow-net benchmarks/load_test.ts
+# Rokur denials
+journalctl -u svalinn | jq 'select(.message | contains("Rokur denied"))'
 ----
 
 == Upgrading
 
-=== From v0.1.x to v0.2.0
-
 [source,bash]
 ----
-# 1. Backup config
-cp .env .env.backup
-
-# 2. Pull latest
+# 1. Pull latest source
 git pull origin main
 
-# 3. Rebuild
-just build
+# 2. Rebuild container image
+podman build -f Containerfile -t svalinn:latest .
 
-# 4. Restart
-sudo systemctl restart svalinn
+# 3. Rolling restart (zero-downtime if behind a load balancer)
+podman stop svalinn
+podman rm svalinn
+podman run -d -p 8000:8000 --name svalinn \
+  --env-file /etc/svalinn/svalinn.env \
+  -v /etc/svalinn/certs:/certs:ro,Z \
+  svalinn:latest
 ----
-
-No breaking changes in v0.2.0.
 
 == Support
 
-* GitHub Issues: https://github.com/hyperpolymath/svalinn/issues
-* Documentation: https://github.com/hyperpolymath/svalinn/tree/main/docs
+* GitHub Issues: https://github.com/hyperpolymath/stapeln/issues
+* Documentation: https://github.com/hyperpolymath/stapeln/tree/main/container-stack/svalinn/docs
 * Security: See link:../SECURITY.md[SECURITY.md]

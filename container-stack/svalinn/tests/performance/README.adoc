@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Performance Testing
+:toc:
+:toc-placement!:
+:author: Jonathan D.A. Jewell
+:email: j.d.a.jewell@open.ac.uk
+
+Performance and load testing harness for Svalinn edge shield.
+
+toc::[]
+
+== Overview
+
+This directory contains two Deno-based test scripts:
+
+load-test.js:: Sustained load test with configurable concurrency, duration, and
+request limits. Measures throughput (req/s) and latency percentiles (p50/p95/p99).
+
+smoke-test.js:: Quick sanity check that hits every known endpoint once and
+verifies the expected HTTP status code. Useful as a post-deploy gate.
+
+Both scripts are standalone with no external dependencies beyond the Deno
+standard library.
+
+== Prerequisites
+
+* Deno >= 1.40 (installed via asdf or system package)
+* Svalinn server running (default: `http://localhost:8000`)
+
+== Running the Tests
+
+=== Via Justfile (recommended)
+
+[source,bash]
+----
+# Full load test
+just perf
+
+# Quick smoke test
+just smoke
+----
+
+=== Direct invocation
+
+[source,bash]
+----
+# Load test with defaults (10 workers, 10s, 1000 requests)
+deno run --allow-net tests/performance/load-test.js
+
+# Load test with custom parameters
+deno run --allow-net tests/performance/load-test.js \
+  --url http://localhost:8000 \
+  --concurrency 50 \
+  --duration 30 \
+  --requests 5000
+
+# Smoke test
+deno run --allow-net tests/performance/smoke-test.js
+
+# Smoke test against a different host
+deno run --allow-net tests/performance/smoke-test.js --url https://svalinn.example.com
+----
+
+== Endpoints Tested
+
+=== Load Test (round-robin)
+
+[cols="1,3,2"]
+|===
+| Method | Path | Notes
+
+| GET | `/healthz` | No auth required
+| GET | `/metrics` | No auth required
+| GET | `/api/v1/containers` | Returns 401 without auth (tests throughput)
+|===
+
+=== Smoke Test
+
+[cols="1,3,2,2"]
+|===
+| Method | Path | Expected Status | Notes
+
+| GET | `/healthz` | 200 | Health check
+| GET | `/metrics` | 200 | Prometheus metrics
+| GET | `/api/v1/containers` | 401 | Auth required
+| GET | `/api/v1/policies` | 401 | Auth required
+| GET | `/api/v1/audit` | 401 | Auth required
+| GET | `/` | 200/301/302/404 | Root (varies by config)
+|===
+
+== Expected Baselines
+
+These baselines assume a single Svalinn instance running on a modern workstation
+(4+ cores, 16 GB RAM). Adjust for your environment.
+
+[cols="2,2,3"]
+|===
+| Metric | Baseline | Notes
+
+| Requests/sec | > 500 | At concurrency=10, local network
+| p50 latency | < 10 ms | `/healthz` dominates
+| p95 latency | < 50 ms | Includes `/api/v1/containers` auth check
+| p99 latency | < 100 ms | Tail latency, acceptable for edge proxy
+| Smoke test | All pass | All endpoints reachable
+|===
+
+== Tuning Advice
+
+Concurrency:: Start with `--concurrency 10` and increase by 10x until you see
+p99 degrade. This reveals the saturation point of your Svalinn instance.
+
+Duration:: For reliable percentiles, run at least 30 seconds (`--duration 30`).
+Short runs produce noisy results.
+
+Request limit:: Set `--requests` high enough that duration is the limiting
+factor, not request count. A value of `concurrency * 100` is a reasonable floor.
+
+Connection reuse:: Deno's `fetch` reuses connections by default. This mirrors
+realistic client behaviour through a reverse proxy.
+
+Auth endpoints:: The `/api/v1/containers` endpoint returns 401 without a token.
+This still exercises the full request pipeline (TLS, routing, auth middleware,
+response serialization) and is valid for throughput measurement.
+
+== CI Integration
+
+Add to your CI pipeline as a post-deploy step:
+
+[source,yaml]
+----
+- name: Smoke test
+  run: |
+    deno run --allow-net tests/performance/smoke-test.js \
+      --url "$DEPLOY_URL"
+----
+
+For load tests in CI, use conservative settings to avoid flaky failures:
+
+[source,yaml]
+----
+- name: Load test (CI)
+  run: |
+    deno run --allow-net tests/performance/load-test.js \
+      --url "$DEPLOY_URL" \
+      --concurrency 5 \
+      --duration 5 \
+      --requests 200
+----

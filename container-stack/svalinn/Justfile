@@ -156,6 +156,15 @@ podman-push:
     @echo "🐳 Fallback: Pushing with podman (dev only)"
     podman push svalinn:latest
 
+# --- Performance Testing ---
+perf:
+    @echo "Running Svalinn load test"
+    deno run --allow-net tests/performance/load-test.js
+
+smoke:
+    @echo "Running Svalinn smoke test"
+    deno run --allow-net tests/performance/smoke-test.js
+
 # --- Cleanup ---
 clean:
     @echo "🧹 Cleaning build artifacts"

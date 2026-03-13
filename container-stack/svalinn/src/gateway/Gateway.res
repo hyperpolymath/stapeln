@@ -50,6 +50,10 @@ module Config = {
 
   let rateLimitWindowMs = parseIntWithBounds(getEnv("RATE_LIMIT_WINDOW_MS"), 60000, ~min=1000, ~max=300000)
   let rateLimitMaxRequests = parseIntWithBounds(getEnv("RATE_LIMIT_MAX_REQUESTS"), 100, ~min=1, ~max=10000)
+
+  let tlsCertFile = getEnv("TLS_CERT_FILE")
+  let tlsKeyFile = getEnv("TLS_KEY_FILE")
+  let tlsEnabled = Belt.Option.isSome(tlsCertFile) && Belt.Option.isSome(tlsKeyFile)
 }
 
 @scope("AbortSignal") @val external timeoutSignal: int => 'a = "timeout"
@@ -1155,22 +1159,55 @@ let serve = async () => {
         ("rokurTimeoutMs", Js.Json.number(Belt.Int.toFloat(Config.rokurTimeoutMs))),
         ("rokurRetryCount", Js.Json.number(Belt.Int.toFloat(Config.rokurRetryCount))),
         ("authEnabled", Js.Json.boolean(Config.enableAuth)),
+        ("tlsEnabled", Js.Json.boolean(Config.tlsEnabled)),
       ])
     ),
     ()
   )
 
-  // Start the server with Deno.serve
+  // Start the server with Deno.serve (TLS or plain HTTP)
   let handler = (req: Fetch.Request.t): promise<Fetch.Response.t> => {
     app->Hono.fetch(req, %raw(`{}`))
   }
 
-  Deno.Http.serve(
-    handler,
-    {
-      port: Config.port,
-      hostname: Some(Config.host),
-      signal: None,
-    }
-  )->ignore
+  if Config.tlsEnabled {
+    // Read TLS certificate and key from disk
+    let certPath = Config.tlsCertFile->Belt.Option.getExn
+    let keyPath = Config.tlsKeyFile->Belt.Option.getExn
+    let cert = await Deno.Fs.readTextFile(certPath)
+    let key = await Deno.Fs.readTextFile(keyPath)
+
+    Log.info(
+      "TLS enabled — serving HTTPS",
+      ~metadata=Js.Json.object_(
+        Js.Dict.fromArray([
+          ("certFile", Js.Json.string(certPath)),
+          ("keyFile", Js.Json.string(keyPath)),
+        ])
+      ),
+      ()
+    )
+
+    Deno.Http.serveTls(
+      handler,
+      {
+        port: Config.port,
+        hostname: Some(Config.host),
+        signal: None,
+        cert,
+        key,
+      }
+    )->ignore
+  } else {
+    Log.info("TLS disabled — serving plain HTTP", ())
+
+    Deno.Http.serve(
+      handler,
+      {
+        port: Config.port,
+        hostname: Some(Config.host),
+        signal: None,
+      }
+    )->ignore
+  }
 }

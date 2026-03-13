@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0 OR PMPL-1.0-or-later
+// SPDX-License-Identifier: PMPL-1.0-or-later
 
 open Tea
 
@@ -22,6 +22,22 @@ type model = {
   imageSort: imageSort,
   loading: bool,
   error: option<string>,
+  // Auth state
+  authState: Auth.authState,
+  loginForm: Auth.loginForm,
+  // Metrics state
+  metricsData: Metrics.metricsData,
+  metricsLoading: bool,
+  metricsError: option<string>,
+  // Policy state
+  policies: array<Policy.policy>,
+  policiesLoading: bool,
+  policiesError: option<string>,
+  // Verify state
+  verifyForm: Verify.verifyForm,
+  verifyResult: option<Verify.verificationResult>,
+  verifyLoading: bool,
+  verifyError: option<string>,
 }
 
 type msg =
@@ -40,6 +56,15 @@ type msg =
   | SetContainerSort(containerSort)
   | SetImageSort(imageSort)
   | RefreshTick(float)
+  // Auth messages
+  | AuthMsg(Auth.authMsg)
+  // Metrics messages
+  | MetricsRawLoaded(result<string, Tea.Http.httpError>)
+  // Policy messages
+  | PoliciesLoaded(result<Policy.policiesResponse, Tea.Http.httpError>)
+  // Verify messages
+  | VerifyMsg(Verify.verifyMsg)
+  | VerifyResultLoaded(result<Verify.verificationResult, Tea.Http.httpError>)
 
 type inspectTab =
   | Overview
@@ -77,6 +102,22 @@ let init = (): (model, Cmd.t<msg>) => {
       imageSort: ImageName,
       loading: true,
       error: None,
+      // Auth
+      authState: Auth.LoggedOut,
+      loginForm: Auth.emptyForm,
+      // Metrics
+      metricsData: Metrics.emptyMetrics,
+      metricsLoading: false,
+      metricsError: None,
+      // Policy
+      policies: [],
+      policiesLoading: false,
+      policiesError: None,
+      // Verify
+      verifyForm: Verify.emptyForm,
+      verifyResult: None,
+      verifyLoading: false,
+      verifyError: None,
     },
     Cmd.batch([
       Plugins.loadRegistry("./plugins.json", PluginsLoaded),
@@ -86,6 +127,34 @@ let init = (): (model, Cmd.t<msg>) => {
 }
 
 // ============================================================================
+// Metrics fetch (raw text, not JSON)
+// ============================================================================
+
+let fetchMetricsRaw = (baseUrl: string): Cmd.t<msg> =>
+  Tea.Http.getString(`${baseUrl}/metrics`, MetricsRawLoaded)
+
+// ============================================================================
+// Route-based command dispatch
+// ============================================================================
+
+let cmdForRoute = (route: Route.t, model: model): Cmd.t<msg> =>
+  switch route {
+  | Metrics => fetchMetricsRaw(model.config.svalinnBaseUrl)
+  | Policies =>
+    Policy.getPolicies(model.config.svalinnBaseUrl, PoliciesLoaded)
+  | Images(Some(pluginId)) =>
+    if Belt.Map.String.get(model.imagesByPlugin, pluginId) == None {
+      switch Belt.Array.getBy(model.plugins, plugin => plugin.id == pluginId) {
+      | Some(plugin) => Api.getImages(plugin.baseUrl, ImagesLoaded(pluginId))
+      | None => Cmd.none
+      }
+    } else {
+      Cmd.none
+    }
+  | _ => Cmd.none
+  }
+
+// ============================================================================
 // Update
 // ============================================================================
 
@@ -93,24 +162,14 @@ let update = (msg: msg, model: model): (model, Cmd.t<msg>) =>
   switch msg {
   | UrlChanged(url) => {
       let route = Route.fromUrl(url)
-      switch route {
-      | Images(Some(pluginId)) =>
-        if Belt.Map.String.get(model.imagesByPlugin, pluginId) == None {
-          switch Belt.Array.getBy(model.plugins, plugin => plugin.id == pluginId) {
-          | Some(plugin) =>
-            ({...model, route}, Api.getImages(plugin.baseUrl, ImagesLoaded(pluginId)))
-          | None => ({...model, route}, Cmd.none)
-          }
-        } else {
-          ({...model, route}, Cmd.none)
-        }
-      | _ => ({...model, route}, Cmd.none)
-      }
+      let cmd = cmdForRoute(route, model)
+      ({...model, route}, cmd)
     }
 
   | Navigate(route) => {
       Route.Nav.pushRoute(route)
-      ({...model, route}, Cmd.none)
+      let cmd = cmdForRoute(route, model)
+      ({...model, route}, cmd)
     }
 
   | ConfigLoaded(result) =>
@@ -137,18 +196,8 @@ let update = (msg: msg, model: model): (model, Cmd.t<msg>) =>
     switch result {
     | Ok(registry) =>
       let nextModel = {...model, plugins: registry.plugins, loading: false}
-      switch nextModel.route {
-      | Images(Some(pluginId)) =>
-        if Belt.Map.String.get(nextModel.imagesByPlugin, pluginId) == None {
-          switch Belt.Array.getBy(registry.plugins, plugin => plugin.id == pluginId) {
-          | Some(plugin) => (nextModel, Api.getImages(plugin.baseUrl, ImagesLoaded(pluginId)))
-          | None => (nextModel, Cmd.none)
-          }
-        } else {
-          (nextModel, Cmd.none)
-        }
-      | _ => (nextModel, Cmd.none)
-      }
+      let cmd = cmdForRoute(nextModel.route, nextModel)
+      (nextModel, cmd)
     | Error(error) =>
       (
         {...model, error: Some(Tea.Http.errorToString(error)), loading: false},
@@ -210,7 +259,111 @@ let update = (msg: msg, model: model): (model, Cmd.t<msg>) =>
           Api.getContainers(model.config.svalinnBaseUrl, ContainersLoaded),
         ]),
       )
+    | Metrics =>
+      (model, fetchMetricsRaw(model.config.svalinnBaseUrl))
     | _ => (model, Cmd.none)
+    }
+
+  // Auth messages
+  | AuthMsg(authMsg) =>
+    switch authMsg {
+    | Auth.SetApiKey(key) =>
+      ({...model, loginForm: {...model.loginForm, apiKey: key}}, Cmd.none)
+    | Auth.SubmitLogin =>
+      let key = Js.String2.trim(model.loginForm.apiKey)
+      if key == "" {
+        ({...model, loginForm: {...model.loginForm, error: Some("API key cannot be empty.")}}, Cmd.none)
+      } else {
+        (
+          {
+            ...model,
+            authState: Auth.LoggedIn(key),
+            loginForm: Auth.emptyForm,
+          },
+          Cmd.batch([
+            Api.getHealth(model.config.svalinnBaseUrl, HealthLoaded),
+            Api.getContainers(model.config.svalinnBaseUrl, ContainersLoaded),
+          ]),
+        )
+      }
+    | Auth.Logout =>
+      ({...model, authState: Auth.LoggedOut, loginForm: Auth.emptyForm}, Cmd.none)
+    | Auth.LoginError(message) =>
+      ({...model, loginForm: {...model.loginForm, error: Some(message), submitting: false}}, Cmd.none)
+    }
+
+  // Metrics messages
+  | MetricsRawLoaded(result) =>
+    switch result {
+    | Ok(raw) =>
+      let parsed = Metrics.parseMetrics(raw)
+      ({...model, metricsData: parsed, metricsLoading: false, metricsError: None}, Cmd.none)
+    | Error(error) =>
+      (
+        {...model, metricsLoading: false, metricsError: Some(Tea.Http.errorToString(error))},
+        Cmd.none,
+      )
+    }
+
+  // Policy messages
+  | PoliciesLoaded(result) =>
+    switch result {
+    | Ok(response) =>
+      ({...model, policies: response.policies, policiesLoading: false, policiesError: None}, Cmd.none)
+    | Error(error) =>
+      (
+        {...model, policiesLoading: false, policiesError: Some(Tea.Http.errorToString(error))},
+        Cmd.none,
+      )
+    }
+
+  // Verify messages
+  | VerifyMsg(verifyMsg) =>
+    switch verifyMsg {
+    | Verify.SetDigest(digest) =>
+      ({...model, verifyForm: {...model.verifyForm, digest}}, Cmd.none)
+    | Verify.SubmitVerify =>
+      let digest = Js.String2.trim(model.verifyForm.digest)
+      if digest == "" {
+        (model, Cmd.none)
+      } else {
+        (
+          {
+            ...model,
+            verifyForm: {...model.verifyForm, submitting: true},
+            verifyLoading: true,
+            verifyError: None,
+          },
+          Verify.verifyImage(model.config.svalinnBaseUrl, digest, VerifyResultLoaded),
+        )
+      }
+    | Verify.ClearResult =>
+      ({...model, verifyResult: None, verifyError: None, verifyForm: Verify.emptyForm}, Cmd.none)
+    }
+
+  | VerifyResultLoaded(result) =>
+    switch result {
+    | Ok(verificationResult) =>
+      (
+        {
+          ...model,
+          verifyResult: Some(verificationResult),
+          verifyForm: {...model.verifyForm, submitting: false},
+          verifyLoading: false,
+          verifyError: None,
+        },
+        Cmd.none,
+      )
+    | Error(error) =>
+      (
+        {
+          ...model,
+          verifyForm: {...model.verifyForm, submitting: false},
+          verifyLoading: false,
+          verifyError: Some(Tea.Http.errorToString(error)),
+        },
+        Cmd.none,
+      )
     }
   }
 
@@ -378,7 +531,7 @@ let imageRow = (image: Api.image): React.element =>
   <div className="card" key={image.digest}>
     <h3> {React.string(`${image.name}:${image.tag}`)} </h3>
     <p className="muted"> {React.string(image.digest)} </p>
-    <span className="badge">
+    <span className={image.verified ? "badge-verified" : "badge-unverified"}>
       {React.string(image.verified ? "verified" : "unverified")}
     </span>
   </div>
@@ -470,7 +623,7 @@ let imagesView = (
 // View
 // ============================================================================
 
-let view = (model: model, _dispatch: msg => unit): React.element => {
+let view = (model: model, dispatch: msg => unit): React.element => {
   let activeRoute = model.route
   let activeImages = switch model.route {
   | Images(pluginId) => pluginId
@@ -495,33 +648,53 @@ let view = (model: model, _dispatch: msg => unit): React.element => {
             )
           )
           ->React.array}
+        {navLink(~route=Route.Metrics, ~label="Metrics", ~active=activeRoute == Route.Metrics)}
+        {navLink(~route=Route.Policies, ~label="Policies", ~active=activeRoute == Route.Policies)}
+        {navLink(~route=Route.Verify, ~label="Verify", ~active=activeRoute == Route.Verify)}
+        {switch model.authState {
+        | Auth.LoggedIn(_) =>
+          Auth.logoutButton(authMsg => dispatch(AuthMsg(authMsg)))
+        | Auth.LoggedOut => React.null
+        }}
       </nav>
     </aside>
     <main className="main">
       {switch model.error {
       | Some(message) =>
-        <div className="card">
-          <h3> {React.string("Plugins failed to load")} </h3>
-          <p className="muted"> {React.string(message)} </p>
+        <div className="error-banner">
+          <strong> {React.string("Error: ")} </strong>
+          {React.string(message)}
         </div>
-      | None =>
-        switch model.route {
-        | Containers => containersView(model, dispatch)
-        | Images(pluginId) =>
-          imagesView(
-            model.plugins,
-            model.imagesByPlugin,
-            pluginId,
-            model.verificationFilter,
-            dispatch,
-            model.imageSort,
-          )
-        | NotFound =>
-          <div className="card">
-            <h3> {React.string("Page not found")} </h3>
-            <p className="muted"> {React.string("Use the sidebar to navigate.")} </p>
-          </div>
-        }
+      | None => React.null
+      }}
+      {switch model.route {
+      | Containers => containersView(model, dispatch)
+      | Images(pluginId) =>
+        imagesView(
+          model.plugins,
+          model.imagesByPlugin,
+          pluginId,
+          model.verificationFilter,
+          dispatch,
+          model.imageSort,
+        )
+      | Metrics =>
+        Metrics.view(model.metricsData, model.metricsLoading, model.metricsError)
+      | Policies =>
+        Policy.view(model.policies, model.policiesLoading, model.policiesError)
+      | Verify =>
+        Verify.view(
+          model.verifyForm,
+          model.verifyResult,
+          model.verifyLoading,
+          model.verifyError,
+          verifyMsg => dispatch(VerifyMsg(verifyMsg)),
+        )
+      | NotFound =>
+        <div className="card">
+          <h3> {React.string("Page not found")} </h3>
+          <p className="muted"> {React.string("Use the sidebar to navigate.")} </p>
+        </div>
       }}
     </main>
   </div>
