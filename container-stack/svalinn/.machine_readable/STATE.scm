@@ -19,7 +19,7 @@
   '((version . "0.1.0")
     (schema-version . "1.0")
     (created . "2025-12-29")
-    (updated . "2026-03-10")
+    (updated . "2026-03-13")
     (project . "svalinn")
     (repo . "https://gitlab.com/hyperpolymath/svalinn")))
 
@@ -33,7 +33,7 @@
 
 (define current-position
   '((phase . "v0.4+ — Security Headers, Metrics, Infrastructure")
-    (overall-completion . 70)
+    (overall-completion . 75)
 
     (components
       ((name . "Gateway HTTP Server")
@@ -117,7 +117,11 @@
       "Vörðr integration tests (skip when not available)"
       "Justfile with dev/build/test commands"
       "Containerfile (two-stage wolfi-base build)"
-      "Hypatia CI scan workflow")
+      "Hypatia CI scan workflow"
+      "Type-safe code: zero getExn in production code (33 removed, all pattern-matched)"
+      "Type-safe code: zero Obj.magic in production code (38 removed, 1 annotated FFI cast)"
+      "SECURITY.md with vulnerability reporting policy"
+      "MVP policy gate tool (Deno, replaces banned Python version)")
 
     (broken-features)))
 
@@ -185,7 +189,7 @@
     (high . ())
     (medium
       ((id . "SVALINN-003")
-       (description . "Test suite needs updating for Metrics.res and securityHeaders middleware")
+       (description . "Test suite needs updating for Metrics.res, securityHeaders middleware, and new pattern-matched code paths")
        (type . "testing")
        (notes . "90 existing tests pass but new code lacks coverage")))
     (low
@@ -288,7 +292,26 @@
        "Add tests for Metrics.res and securityHeaders middleware"
        "Validate Containerfile builds"
        "Add rate limiting middleware"
-       "Add remaining CI workflows"))))
+       "Add remaining CI workflows"))
+    (session-006
+     (date . "2026-03-13")
+     (duration . "1 hour")
+     (accomplishments
+       "Security remediation: removed 33 getExn calls from 6 production files"
+       "Security remediation: removed 38 Obj.magic calls from 4 production files"
+       "Replaced all getExn with switch/pattern-matching and descriptive error messages"
+       "Replaced all Obj.magic with Js.Json.object_ construction"
+       "Deleted .meta/STATE.scm (stale duplicate violating AI manifest invariant)"
+       "Deleted tools/mvp/svalinn_gate.py (banned Python language)"
+       "Created tools/mvp/svalinn_gate.js (Deno replacement for MVP policy gate)"
+       "Created SECURITY.md with vulnerability reporting policy"
+       "Fixed PolicyEngine.res parsePolicy/parseAttestation (getExn → pattern matching)"
+       "Fixed McpClient.res callWithRetry (getExn → descriptive error handling)")
+     (next-session
+       "Add tests for pattern-matched code paths"
+       "Add rate limiting middleware"
+       "Add remaining CI workflows (CodeQL, mirror, scorecard)"
+       "Validate Containerfile builds"))))
 
 ;; Helper functions
 (define (get-completion-percentage)

@@ -52,6 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 === Fixed
 - Doctor command JSON output now matches schema
 
+==== Security Hardening (2026-03-13)
+- Removed 33 `getExn` calls from 6 production files (Gateway, JWT, Validation, Metrics, PolicyEngine, McpClient)
+- Removed 38 `Obj.magic` type bypasses from 4 production files (Client, Server, Tools, JWT)
+- All option handling now uses exhaustive pattern matching with descriptive error messages
+- All JS interop now uses `Js.Json.object_` / `Js.Dict.fromArray` instead of `Obj.magic`
+- Deleted stale `.meta/STATE.scm` (violated AI manifest canonical location invariant)
+- Replaced banned Python tool (`svalinn_gate.py`) with Deno equivalent (`svalinn_gate.js`)
+- Added `SECURITY.md` with vulnerability reporting policy
+
 == [0.1.0] - Unreleased
 
 === Added

@@ -47,11 +47,13 @@ controls.
 
 === Memory & Type Safety
 * Ada/SPARK verification of core CT pipeline
+* [line-through]#getExn elimination: 33 unsafe option extractions removed from production code (2026-03-13)#
+* [line-through]#Obj.magic elimination: 38 type-system bypasses removed from production code (2026-03-13)#
 * FFI boundary audits and tests
 * Fuzzing for bundle/manifest parsers
 
 === Platform Security
-* OIDC auth, RBAC, and rate limiting
+* [line-through]#OIDC auth and RBAC# (complete since v0.4.0) + rate limiting (planned)
 * Secrets management for signing keys
 * Persistent scheduler state + crash recovery
 

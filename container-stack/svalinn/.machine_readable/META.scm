@@ -89,7 +89,26 @@
        (consequences . "Zero additional crypto dependencies.  Limited to
                         algorithms supported by Web Crypto (RS256, ES256,
                         EdDSA).  JWKS key rotation handled via re-fetch.
-                        Deno and all modern runtimes support this API.")))
+                        Deno and all modern runtimes support this API."))
+
+      ((id . "ADR-006")
+       (title . "Eliminate getExn and Obj.magic from production code")
+       (status . accepted)
+       (date . "2026-03-13")
+       (context . "Hypatia scanning revealed 33 getExn and 38 Obj.magic calls
+                   across production source files.  getExn throws on None with
+                   no context — dangerous for user input and external data.
+                   Obj.magic bypasses the ReScript type system entirely.")
+       (decision . "Ban getExn and Obj.magic from all production code.  Replace
+                    getExn with switch/pattern-matching that raises descriptive
+                    errors.  Replace Obj.magic with Js.Json.object_ construction
+                    using Js.Dict.fromArray.  Test files may use getExn since
+                    test failures should surface immediately.")
+       (consequences . "Stronger runtime safety — all failures now include
+                        descriptive error messages.  Slightly more verbose JSON
+                        construction code, but fully type-checked.  One remaining
+                        Obj.magic in Client.res for MCP JSON→record cast (annotated
+                        as future work).")))
 
     (development-practices
       ((code-style . "rescript")
@@ -107,4 +126,8 @@
       ((principle . "defence-in-depth")
        (description . "Multiple layers: schema validation, policy engine
                        (strict/permissive), RBAC scopes, security headers,
-                       Rokur secrets gate — each independent.")))))
+                       Rokur secrets gate — each independent."))
+      ((principle . "type-safety-enforcement")
+       (description . "Production code must not use type-system escape hatches
+                       (getExn, Obj.magic).  All option handling uses exhaustive
+                       pattern matching.  All JS interop uses Js.Json.object_.")))))

@@ -18,7 +18,7 @@ Svalinn is a Deno-based HTTP gateway that validates container operation requests
 
 == Project Status
 
-**Integration Complete (90%)** -- Core modules implemented and wired together (2026-01-25)
+**Integration Complete (75%)** -- Core modules hardened, type-safe production code (2026-03-13)
 
 [cols="1,1,3",options="header"]
 |===
@@ -39,6 +39,10 @@ Svalinn is a Deno-based HTTP gateway that validates container operation requests
 |*Authentication*
 |✅ Complete
 |OAuth2/OIDC + JWT + API keys + mTLS middleware (ReScript, 430+ lines)
+
+|*Security Hardening*
+|✅ Complete
+|Zero getExn/Obj.magic in production code, SECURITY.md, defence-in-depth headers
 
 |*Request Validation*
 |✅ Complete
@@ -243,7 +247,9 @@ svalinn/
 │   │   ├── OAuth2.res          # OAuth2 flows (230+ lines)
 │   │   └── Middleware.res      # Hono auth middleware (430+ lines)
 │   ├── mcp/
-│   │   └── McpClient.res       # Vörðr MCP client (330+ lines)
+│   │   ├── McpClient.res       # Vörðr MCP client (330+ lines)
+│   │   ├── Server.res          # MCP JSON-RPC 2.0 server (530+ lines)
+│   │   └── Tools.res           # MCP tool definitions (210+ lines)
 │   ├── validation/
 │   │   └── Validation.res      # JSON Schema validation (230+ lines)
 │   ├── policy/
@@ -254,6 +260,7 @@ svalinn/
 │       └── Fetch.res           # Fetch API bindings
 ├── tests/
 │   └── integration_test.res    # Integration test suite (330+ lines)
+├── SECURITY.md                 # Vulnerability reporting policy
 ├── spec/
 │   └── schemas/                # JSON Schema definitions
 │       ├── gateway-run-request.v1.json
