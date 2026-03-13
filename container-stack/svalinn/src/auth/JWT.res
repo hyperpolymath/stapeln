@@ -62,18 +62,29 @@ let fetchJWKS = async (jwksUri: string): jwks => {
       }
 
       let json = await Fetch.Response.json(response)
-      let jwks = json->Js.Json.decodeObject
+      let jwks = switch json->Js.Json.decodeObject
         ->Belt.Option.flatMap(obj => obj->Js.Dict.get("keys"))
-        ->Belt.Option.flatMap(Js.Json.decodeArray)
-        ->Belt.Option.getExn
+        ->Belt.Option.flatMap(Js.Json.decodeArray) {
+      | Some(keys) => keys
+      | None => raise(Js.Exn.raiseError("JWKS response missing 'keys' array"))
+      }
 
       let keys = jwks->Belt.Array.map(keyJson => {
-        let obj = keyJson->Js.Json.decodeObject->Belt.Option.getExn
+        let obj = switch keyJson->Js.Json.decodeObject {
+        | Some(o) => o
+        | None => raise(Js.Exn.raiseError("JWKS key entry is not a valid object"))
+        }
         {
-          kty: obj->Js.Dict.get("kty")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
+          kty: switch obj->Js.Dict.get("kty")->Belt.Option.flatMap(Js.Json.decodeString) {
+          | Some(v) => v
+          | None => raise(Js.Exn.raiseError("JWKS key missing required 'kty' field"))
+          },
           use_: obj->Js.Dict.get("use")->Belt.Option.flatMap(Js.Json.decodeString),
           alg: obj->Js.Dict.get("alg")->Belt.Option.flatMap(Js.Json.decodeString),
-          kid: obj->Js.Dict.get("kid")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
+          kid: switch obj->Js.Dict.get("kid")->Belt.Option.flatMap(Js.Json.decodeString) {
+          | Some(v) => v
+          | None => raise(Js.Exn.raiseError("JWKS key missing required 'kid' field"))
+          },
           n: obj->Js.Dict.get("n")->Belt.Option.flatMap(Js.Json.decodeString),
           e: obj->Js.Dict.get("e")->Belt.Option.flatMap(Js.Json.decodeString),
           x: obj->Js.Dict.get("x")->Belt.Option.flatMap(Js.Json.decodeString),
@@ -244,14 +255,16 @@ let importJWK = async (jwk: jwk, alg: string): 'cryptoKey => {
   let algorithm = getAlgorithm(alg)
 
   let algorithmObj = switch algorithm {
-  | RSA_PKCS1(hash) => {
-      "name": "RSASSA-PKCS1-v1_5",
-      "hash": hash,
-    }->Obj.magic
-  | ECDSA(curve, _) => {
-      "name": "ECDSA",
-      "namedCurve": curve,
-    }->Obj.magic
+  | RSA_PKCS1(hash) =>
+    Js.Json.object_(Js.Dict.fromArray([
+      ("name", Js.Json.string("RSASSA-PKCS1-v1_5")),
+      ("hash", Js.Json.string(hash)),
+    ]))
+  | ECDSA(curve, _) =>
+    Js.Json.object_(Js.Dict.fromArray([
+      ("name", Js.Json.string("ECDSA")),
+      ("namedCurve", Js.Json.string(curve)),
+    ]))
   }
 
   // Convert jwk to JS object for importKey
@@ -284,7 +297,7 @@ let importJWK = async (jwk: jwk, alg: string): 'cryptoKey => {
   | None => ()
   }
 
-  await importKey("jwk", Obj.magic(jwkObj), algorithmObj, true, ["verify"])
+  await importKey("jwk", jwkObj, algorithmObj, true, ["verify"])
 }
 
 // Verify JWT signature
@@ -309,14 +322,16 @@ let verifySignature = async (token: string, key: 'cryptoKey, algorithm: algorith
   }
 
   let algorithmObj = switch algorithm {
-  | RSA_PKCS1(hash) => {
-      "name": "RSASSA-PKCS1-v1_5",
-      "hash": hash,
-    }->Obj.magic
-  | ECDSA(_, hash) => {
-      "name": "ECDSA",
-      "hash": hash,
-    }->Obj.magic
+  | RSA_PKCS1(hash) =>
+    Js.Json.object_(Js.Dict.fromArray([
+      ("name", Js.Json.string("RSASSA-PKCS1-v1_5")),
+      ("hash", Js.Json.string(hash)),
+    ]))
+  | ECDSA(_, hash) =>
+    Js.Json.object_(Js.Dict.fromArray([
+      ("name", Js.Json.string("ECDSA")),
+      ("hash", Js.Json.string(hash)),
+    ]))
   }
 
   await verify(
@@ -361,7 +376,10 @@ let verifyJWT = async (token: string, config: oidcConfig): tokenPayload => {
 
   // Fetch JWKS and verify signature
   let jwks = await fetchJWKS(config.jwksUri)
-  let kid = header.kid->Belt.Option.getExn
+  let kid = switch header.kid {
+  | Some(k) => k
+  | None => raise(Js.Exn.raiseError("JWT header missing 'kid' field required for JWKS lookup"))
+  }
   let key = jwks.keys->Belt.Array.getBy(k => k.kid == kid)
 
   switch key {
@@ -394,16 +412,34 @@ let discoverOIDC = async (issuer: string): oidcConfig => {
   }
 
   let config = await Fetch.Response.json(response)
-  let obj = config->Js.Json.decodeObject->Belt.Option.getExn
+  let obj = switch config->Js.Json.decodeObject {
+  | Some(o) => o
+  | None => raise(Js.Exn.raiseError("OIDC discovery response is not a valid JSON object"))
+  }
 
   {
     clientId: "", // Must be provided by caller
     clientSecret: "", // Must be provided by caller
-    issuer: obj->Js.Dict.get("issuer")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    authorizationEndpoint: obj->Js.Dict.get("authorization_endpoint")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    tokenEndpoint: obj->Js.Dict.get("token_endpoint")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    userInfoEndpoint: obj->Js.Dict.get("userinfo_endpoint")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
-    jwksUri: obj->Js.Dict.get("jwks_uri")->Belt.Option.flatMap(Js.Json.decodeString)->Belt.Option.getExn,
+    issuer: switch obj->Js.Dict.get("issuer")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("OIDC discovery missing required 'issuer' field"))
+    },
+    authorizationEndpoint: switch obj->Js.Dict.get("authorization_endpoint")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("OIDC discovery missing required 'authorization_endpoint' field"))
+    },
+    tokenEndpoint: switch obj->Js.Dict.get("token_endpoint")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("OIDC discovery missing required 'token_endpoint' field"))
+    },
+    userInfoEndpoint: switch obj->Js.Dict.get("userinfo_endpoint")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("OIDC discovery missing required 'userinfo_endpoint' field"))
+    },
+    jwksUri: switch obj->Js.Dict.get("jwks_uri")->Belt.Option.flatMap(Js.Json.decodeString) {
+    | Some(v) => v
+    | None => raise(Js.Exn.raiseError("OIDC discovery missing required 'jwks_uri' field"))
+    },
     redirectUri: "", // Must be provided by caller
     scopes: ["openid", "profile", "email"], // Default scopes
     endSessionEndpoint: obj->Js.Dict.get("end_session_endpoint")->Belt.Option.flatMap(Js.Json.decodeString),

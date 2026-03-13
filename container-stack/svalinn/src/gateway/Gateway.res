@@ -616,7 +616,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   app->Hono.get("/api/v1/containers/:id", async c => {
     try {
       let req = Hono.Context.req(c)
-      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let id = switch Hono.Request.param(req, "id") {
+      | Some(id) => id
+      | None => raise(Js.Exn.raiseError("Missing required route parameter: id"))
+      }
       let result = await McpClient.Container.get(mcpConfig, id)
       Log.info("Got container", ~metadata=Js.Json.object_(
         Js.Dict.fromArray([("id", Js.Json.string(id))])
@@ -643,7 +646,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
     try {
       let req = Hono.Context.req(c)
       let body = await Hono.Request.json(req)
-      let image = Validation.getString(body, "image")->Belt.Option.getExn
+      let image = switch Validation.getString(body, "image") {
+      | Some(image) => image
+      | None => raise(Js.Exn.raiseError("Missing required field: image"))
+      }
       let name = Validation.getString(body, "name")
       let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
 
@@ -677,7 +683,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   app->Hono.post("/api/v1/containers/:id/start", async c => {
     try {
       let req = Hono.Context.req(c)
-      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let id = switch Hono.Request.param(req, "id") {
+      | Some(id) => id
+      | None => raise(Js.Exn.raiseError("Missing required route parameter: id"))
+      }
       switch await authorizeContainerStart(c, "container-id:" ++ id, Some(id)) {
       | Some(errorResponse) => errorResponse
       | None => {
@@ -708,7 +717,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   app->Hono.post("/api/v1/containers/:id/stop", async c => {
     try {
       let req = Hono.Context.req(c)
-      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let id = switch Hono.Request.param(req, "id") {
+      | Some(id) => id
+      | None => raise(Js.Exn.raiseError("Missing required route parameter: id"))
+      }
       let result = await McpClient.Container.stop(mcpConfig, id, ())
       Log.info("Stopped container", ~metadata=Js.Json.object_(
         Js.Dict.fromArray([("id", Js.Json.string(id))])
@@ -734,7 +746,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
   app->Hono.delete("/api/v1/containers/:id", async c => {
     try {
       let req = Hono.Context.req(c)
-      let id = Hono.Request.param(req, "id")->Belt.Option.getExn
+      let id = switch Hono.Request.param(req, "id") {
+      | Some(id) => id
+      | None => raise(Js.Exn.raiseError("Missing required route parameter: id"))
+      }
       let result = await McpClient.Container.remove(mcpConfig, id, ())
       Log.info("Removed container", ~metadata=Js.Json.object_(
         Js.Dict.fromArray([("id", Js.Json.string(id))])
@@ -783,7 +798,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
     try {
       let req = Hono.Context.req(c)
       let body = await Hono.Request.json(req)
-      let image = Validation.getString(body, "image")->Belt.Option.getExn
+      let image = switch Validation.getString(body, "image") {
+      | Some(image) => image
+      | None => raise(Js.Exn.raiseError("Missing required field: image"))
+      }
       let result = await McpClient.Image.pull(mcpConfig, image)
       Log.info("Pulled image", ~metadata=Js.Json.object_(
         Js.Dict.fromArray([("image", Js.Json.string(image))])
@@ -810,7 +828,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
     try {
       let req = Hono.Context.req(c)
       let body = await Hono.Request.json(req)
-      let digest = Validation.getString(body, "digest")->Belt.Option.getExn
+      let digest = switch Validation.getString(body, "digest") {
+      | Some(digest) => digest
+      | None => raise(Js.Exn.raiseError("Missing required field: digest"))
+      }
       let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
 
       // If policy provided, validate it first
@@ -895,7 +916,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
       switch validateRequest(c, validator, "gateway-run-request", body) {
       | Some(errorResponse) => errorResponse
       | None => {
-          let image = Validation.getString(body, "image")->Belt.Option.getExn
+          let image = switch Validation.getString(body, "image") {
+          | Some(image) => image
+          | None => raise(Js.Exn.raiseError("Missing required field: image"))
+          }
           let name = Validation.getString(body, "name")
           let config = Validation.getObject(body, "config")->Belt.Option.map(Js.Json.object_)
 
@@ -911,7 +935,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
               }
 
               // Extract container ID from result
-              let containerId = Validation.getString(createResult, "id")->Belt.Option.getExn
+              let containerId = switch Validation.getString(createResult, "id") {
+              | Some(id) => id
+              | None => raise(Js.Exn.raiseError("Vörðr response missing container id"))
+              }
 
               // Start container
               let startResult = await McpClient.Container.start(mcpConfig, containerId)
@@ -954,7 +981,10 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
       switch validateRequest(c, validator, "gateway-verify-request", body) {
       | Some(errorResponse) => errorResponse
       | None => {
-          let digest = Validation.getString(body, "digest")->Belt.Option.getExn
+          let digest = switch Validation.getString(body, "digest") {
+          | Some(digest) => digest
+          | None => raise(Js.Exn.raiseError("Missing required field: digest"))
+          }
           let policyJson = Validation.getObject(body, "policy")->Belt.Option.map(Js.Json.object_)
 
           // If policy provided, validate it first

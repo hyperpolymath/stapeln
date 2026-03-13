@@ -103,7 +103,10 @@ let loadStandardSchemas = async (validator: t): t => {
     if index >= Belt.Array.length(remaining) {
       v
     } else {
-      let (filename, schemaId) = remaining->Belt.Array.get(index)->Belt.Option.getExn
+      let (filename, schemaId) = switch Belt.Array.get(remaining, index) {
+      | Some(pair) => pair
+      | None => raise(Js.Exn.raiseError("Schema index out of bounds"))
+      }
       let path = schemaDir ++ "/" ++ filename
       let v2 = await loadSchema(v, path, schemaId)
       await loadSchemas(v2, remaining, index + 1)

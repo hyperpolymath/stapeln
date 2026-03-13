@@ -76,7 +76,10 @@ let observe = (histogram: histogram, value: float): unit => {
 
   Belt.Array.forEachWithIndex(histogram.buckets, (i, boundary) => {
     if value <= boundary {
-      let current = Belt.Array.getExn(histogram.counts, i)
+      let current = switch Belt.Array.get(histogram.counts, i) {
+      | Some(v) => v
+      | None => 0.0
+      }
       Belt.Array.setExn(histogram.counts, i, current +. 1.0)
     }
   })
@@ -140,7 +143,10 @@ let formatHistogram = (h: histogram): string => {
   // Cumulative bucket counts (Prometheus histograms are cumulative).
   let cumulativeRef = ref(0.0)
   let bucketLines = Belt.Array.mapWithIndex(h.buckets, (i, boundary) => {
-    let count = Belt.Array.getExn(h.counts, i)
+    let count = switch Belt.Array.get(h.counts, i) {
+    | Some(v) => v
+    | None => 0.0
+    }
     cumulativeRef := cumulativeRef.contents +. count
     let cumulative = cumulativeRef.contents
     `${h.name}_bucket{le="${Belt.Float.toString(boundary)}"} ${Belt.Float.toString(cumulative)}\n`

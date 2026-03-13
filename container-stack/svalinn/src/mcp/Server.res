@@ -21,24 +21,37 @@ let mcpConfig = McpClient.fromEnv()
 
 // Handle initialize request
 let handleInitialize = (_params: option<Js.Json.t>): Js.Json.t => {
-  Obj.magic({
-    "protocolVersion": protocolVersion,
-    "capabilities": {
-      "tools": %raw(`{}`),
-    },
-    "serverInfo": {
-      "name": serverName,
-      "version": serverVersion,
-    },
-  })
+  Js.Json.object_(Js.Dict.fromArray([
+    ("protocolVersion", Js.Json.string(protocolVersion)),
+    ("capabilities", Js.Json.object_(Js.Dict.fromArray([
+      ("tools", Js.Json.object_(Js.Dict.empty())),
+    ]))),
+    ("serverInfo", Js.Json.object_(Js.Dict.fromArray([
+      ("name", Js.Json.string(serverName)),
+      ("version", Js.Json.string(serverVersion)),
+    ]))),
+  ]))
 }
 
 // Handle list tools request
 let handleListTools = (): Js.Json.t => {
-  let result: listToolsResult = {
-    tools: Tools.allTools,
-  }
-  Obj.magic(result)
+  let tools = Belt.Array.map(Tools.allTools, tool => {
+    let schemaEntries = [
+      ("type", Js.Json.string(tool.inputSchema.type_)),
+      ("properties", tool.inputSchema.properties),
+      ("required", Js.Json.array(
+        Belt.Array.map(tool.inputSchema.required, Js.Json.string),
+      )),
+    ]
+    Js.Json.object_(Js.Dict.fromArray([
+      ("name", Js.Json.string(tool.name)),
+      ("description", Js.Json.string(tool.description)),
+      ("inputSchema", Js.Json.object_(Js.Dict.fromArray(schemaEntries))),
+    ]))
+  })
+  Js.Json.object_(Js.Dict.fromArray([
+    ("tools", Js.Json.array(tools)),
+  ]))
 }
 
 // ---------------------------------------------------------------------------
@@ -47,29 +60,39 @@ let handleListTools = (): Js.Json.t => {
 
 // Build a successful MCP tool result from a text payload.
 let makeSuccess = (text: string): Js.Json.t => {
-  let result: toolResult = {
-    content: [{type_: "text", text}],
-    isError: None,
-  }
-  Obj.magic(result)
+  Js.Json.object_(Js.Dict.fromArray([
+    ("content", Js.Json.array([
+      Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("text")),
+        ("text", Js.Json.string(text)),
+      ])),
+    ])),
+  ]))
 }
 
 // Build a successful MCP tool result from a structured JSON payload.
 let makeSuccessJson = (json: Js.Json.t): Js.Json.t => {
-  let result: toolResult = {
-    content: [{type_: "text", text: Js.Json.stringify(json)}],
-    isError: None,
-  }
-  Obj.magic(result)
+  Js.Json.object_(Js.Dict.fromArray([
+    ("content", Js.Json.array([
+      Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("text")),
+        ("text", Js.Json.string(Js.Json.stringify(json))),
+      ])),
+    ])),
+  ]))
 }
 
 // Build an error MCP tool result.
 let makeError = (text: string): Js.Json.t => {
-  let result: toolResult = {
-    content: [{type_: "text", text}],
-    isError: Some(true),
-  }
-  Obj.magic(result)
+  Js.Json.object_(Js.Dict.fromArray([
+    ("content", Js.Json.array([
+      Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("text")),
+        ("text", Js.Json.string(text)),
+      ])),
+    ])),
+    ("isError", Js.Json.boolean(true)),
+  ]))
 }
 
 // Build a JSON-RPC error response (for protocol-level errors, not tool errors).
@@ -402,8 +425,18 @@ let handleRm = async (args: Js.Json.t): Js.Json.t => {
 // ---------------------------------------------------------------------------
 
 let handleCallTool = async (params: Js.Json.t): Js.Json.t => {
-  let name: string = Obj.magic(params)["name"]
-  let arguments: Js.Json.t = Obj.magic(params)["arguments"]
+  let paramsObj = switch Js.Json.decodeObject(params) {
+  | Some(obj) => obj
+  | None => raise(Js.Exn.raiseError("tools/call params must be an object"))
+  }
+  let name = switch Js.Dict.get(paramsObj, "name")->Belt.Option.flatMap(Js.Json.decodeString) {
+  | Some(n) => n
+  | None => raise(Js.Exn.raiseError("tools/call missing 'name' parameter"))
+  }
+  let arguments = switch Js.Dict.get(paramsObj, "arguments") {
+  | Some(a) => a
+  | None => Js.Json.object_(Js.Dict.empty())
+  }
 
   switch name {
   | "svalinn_run" => await handleRun(arguments)

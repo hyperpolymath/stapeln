@@ -94,12 +94,18 @@ let rec callWithRetry = async (
     }
 
     let json = await Fetch.Response.json(response)
-    let obj = json->Js.Json.decodeObject->Belt.Option.getExn
+    let obj = switch json->Js.Json.decodeObject {
+    | Some(o) => o
+    | None => raise(Js.Exn.raiseError("MCP response is not a valid JSON object"))
+    }
 
     // Check for MCP error
     switch obj->Js.Dict.get("error") {
     | Some(errorJson) => {
-        let errorObj = errorJson->Js.Json.decodeObject->Belt.Option.getExn
+        let errorObj = switch errorJson->Js.Json.decodeObject {
+        | Some(o) => o
+        | None => raise(Js.Exn.raiseError("MCP error field is not a valid object"))
+        }
         let code = errorObj
           ->Js.Dict.get("code")
           ->Belt.Option.flatMap(Js.Json.decodeNumber)

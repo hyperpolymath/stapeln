@@ -49,50 +49,34 @@ let policyModeToString = (mode: policyMode): string => {
 
 // Parse policy from JSON
 let parsePolicy = (json: Js.Json.t): option<policy> => {
-  try {
-    let obj = json->Js.Json.decodeObject->Belt.Option.getExn
+  switch json->Js.Json.decodeObject {
+  | None => None
+  | Some(obj) =>
+    switch (
+      obj->Js.Dict.get("version")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt),
+      obj->Js.Dict.get("requiredPredicates")->Belt.Option.flatMap(Js.Json.decodeArray)->Belt.Option.map(arr => arr->Belt.Array.keepMap(Js.Json.decodeString)),
+      obj->Js.Dict.get("allowedSigners")->Belt.Option.flatMap(Js.Json.decodeArray)->Belt.Option.map(arr => arr->Belt.Array.keepMap(Js.Json.decodeString)),
+      obj->Js.Dict.get("logQuorum")->Belt.Option.flatMap(Js.Json.decodeNumber)->Belt.Option.map(Belt.Float.toInt),
+    ) {
+    | (Some(version), Some(requiredPredicates), Some(allowedSigners), Some(logQuorum)) => {
+        let mode = obj
+          ->Js.Dict.get("mode")
+          ->Belt.Option.flatMap(Js.Json.decodeString)
+          ->Belt.Option.flatMap(policyModeFromString)
 
-    let version = obj
-      ->Js.Dict.get("version")
-      ->Belt.Option.flatMap(Js.Json.decodeNumber)
-      ->Belt.Option.map(Belt.Float.toInt)
-      ->Belt.Option.getExn
+        let notes = obj->Js.Dict.get("notes")->Belt.Option.flatMap(Js.Json.decodeString)
 
-    let requiredPredicates = obj
-      ->Js.Dict.get("requiredPredicates")
-      ->Belt.Option.flatMap(Js.Json.decodeArray)
-      ->Belt.Option.map(arr => arr->Belt.Array.keepMap(Js.Json.decodeString))
-      ->Belt.Option.getExn
-
-    let allowedSigners = obj
-      ->Js.Dict.get("allowedSigners")
-      ->Belt.Option.flatMap(Js.Json.decodeArray)
-      ->Belt.Option.map(arr => arr->Belt.Array.keepMap(Js.Json.decodeString))
-      ->Belt.Option.getExn
-
-    let logQuorum = obj
-      ->Js.Dict.get("logQuorum")
-      ->Belt.Option.flatMap(Js.Json.decodeNumber)
-      ->Belt.Option.map(Belt.Float.toInt)
-      ->Belt.Option.getExn
-
-    let mode = obj
-      ->Js.Dict.get("mode")
-      ->Belt.Option.flatMap(Js.Json.decodeString)
-      ->Belt.Option.flatMap(policyModeFromString)
-
-    let notes = obj->Js.Dict.get("notes")->Belt.Option.flatMap(Js.Json.decodeString)
-
-    Some({
-      version,
-      requiredPredicates,
-      allowedSigners,
-      logQuorum,
-      mode,
-      notes,
-    })
-  } catch {
-  | _ => None
+        Some({
+          version,
+          requiredPredicates,
+          allowedSigners,
+          logQuorum,
+          mode,
+          notes,
+        })
+      }
+    | _ => None
+    }
   }
 }
 
@@ -106,35 +90,31 @@ type attestation = {
 
 // Parse attestation from JSON
 let parseAttestation = (json: Js.Json.t): option<attestation> => {
-  try {
-    let obj = json->Js.Json.decodeObject->Belt.Option.getExn
+  switch json->Js.Json.decodeObject {
+  | None => None
+  | Some(obj) =>
+    switch (
+      obj->Js.Dict.get("predicateType")->Belt.Option.flatMap(Js.Json.decodeString),
+      obj->Js.Dict.get("signer")->Belt.Option.flatMap(Js.Json.decodeString),
+    ) {
+    | (Some(predicateType), Some(signer)) => {
+        let subject = obj
+          ->Js.Dict.get("subject")
+          ->Belt.Option.flatMap(Js.Json.decodeArray)
+          ->Belt.Option.map(arr => arr->Belt.Array.keepMap(Js.Json.decodeString))
+          ->Belt.Option.getWithDefault([])
 
-    let predicateType = obj
-      ->Js.Dict.get("predicateType")
-      ->Belt.Option.flatMap(Js.Json.decodeString)
-      ->Belt.Option.getExn
+        let logEntry = obj->Js.Dict.get("logEntry")->Belt.Option.flatMap(Js.Json.decodeString)
 
-    let subject = obj
-      ->Js.Dict.get("subject")
-      ->Belt.Option.flatMap(Js.Json.decodeArray)
-      ->Belt.Option.map(arr => arr->Belt.Array.keepMap(Js.Json.decodeString))
-      ->Belt.Option.getWithDefault([])
-
-    let signer = obj
-      ->Js.Dict.get("signer")
-      ->Belt.Option.flatMap(Js.Json.decodeString)
-      ->Belt.Option.getExn
-
-    let logEntry = obj->Js.Dict.get("logEntry")->Belt.Option.flatMap(Js.Json.decodeString)
-
-    Some({
-      predicateType,
-      subject,
-      signer,
-      logEntry,
-    })
-  } catch {
-  | _ => None
+        Some({
+          predicateType,
+          subject,
+          signer,
+          logEntry,
+        })
+      }
+    | _ => None
+    }
   }
 }
 

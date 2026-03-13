@@ -10,29 +10,29 @@ let svalinnRun: tool = {
   description: "Run a container with edge validation. Validates request against verified-container-spec, checks edge policy, then delegates to Vörðr.",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "image": {
-        "type": "string",
-        "description": "Container image reference",
-      },
-      "name": {
-        "type": "string",
-        "description": "Optional container name",
-      },
-      "command": {
-        "type": "array",
-        "items": {"type": "string"},
-        "description": "Command to run",
-      },
-      "detach": {
-        "type": "boolean",
-        "description": "Run in background",
-      },
-      "removeOnExit": {
-        "type": "boolean",
-        "description": "Remove container when it exits",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("image", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Container image reference")),
+      ]))),
+      ("name", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Optional container name")),
+      ]))),
+      ("command", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("array")),
+        ("items", Js.Json.object_(Js.Dict.fromArray([("type", Js.Json.string("string"))]))),
+        ("description", Js.Json.string("Command to run")),
+      ]))),
+      ("detach", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("boolean")),
+        ("description", Js.Json.string("Run in background")),
+      ]))),
+      ("removeOnExit", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("boolean")),
+        ("description", Js.Json.string("Remove container when it exits")),
+      ]))),
+    ])),
     required: ["image"],
   },
 }
@@ -44,16 +44,16 @@ let svalinnPs: tool = {
   description: "List containers managed by Vörðr",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "all": {
-        "type": "boolean",
-        "description": "Show all containers (default shows only running)",
-      },
-      "filter": {
-        "type": "string",
-        "description": "Filter containers by name or image",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("all", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("boolean")),
+        ("description", Js.Json.string("Show all containers (default shows only running)")),
+      ]))),
+      ("filter", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Filter containers by name or image")),
+      ]))),
+    ])),
     required: [],
   },
 }
@@ -65,16 +65,16 @@ let svalinnStop: tool = {
   description: "Stop a running container",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "containerId": {
-        "type": "string",
-        "description": "Container ID to stop",
-      },
-      "timeout": {
-        "type": "integer",
-        "description": "Timeout in seconds before force kill",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("containerId", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Container ID to stop")),
+      ]))),
+      ("timeout", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("integer")),
+        ("description", Js.Json.string("Timeout in seconds before force kill")),
+      ]))),
+    ])),
     required: ["containerId"],
   },
 }
@@ -86,20 +86,20 @@ let svalinnVerify: tool = {
   description: "Verify container image signature and attestation via Vörðr",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "image": {
-        "type": "string",
-        "description": "Image reference to verify",
-      },
-      "checkSbom": {
-        "type": "boolean",
-        "description": "Check SBOM attestation",
-      },
-      "checkSignature": {
-        "type": "boolean",
-        "description": "Check image signature",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("image", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Image reference to verify")),
+      ]))),
+      ("checkSbom", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("boolean")),
+        ("description", Js.Json.string("Check SBOM attestation")),
+      ]))),
+      ("checkSignature", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("boolean")),
+        ("description", Js.Json.string("Check image signature")),
+      ]))),
+    ])),
     required: ["image"],
   },
 }
@@ -111,17 +111,17 @@ let svalinnPolicy: tool = {
   description: "Manage edge security policies",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "action": {
-        "type": "string",
-        "enum": ["get", "set", "validate"],
-        "description": "Policy action to perform",
-      },
-      "policy": {
-        "type": "object",
-        "description": "Policy configuration (for set action)",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("action", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("enum", Js.Json.array([Js.Json.string("get"), Js.Json.string("set"), Js.Json.string("validate")])),
+        ("description", Js.Json.string("Policy action to perform")),
+      ]))),
+      ("policy", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("object")),
+        ("description", Js.Json.string("Policy configuration (for set action)")),
+      ]))),
+    ])),
     required: ["action"],
   },
 }
@@ -133,20 +133,20 @@ let svalinnLogs: tool = {
   description: "Get container logs",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "containerId": {
-        "type": "string",
-        "description": "Container ID",
-      },
-      "tail": {
-        "type": "integer",
-        "description": "Number of lines to show from end",
-      },
-      "since": {
-        "type": "string",
-        "description": "Show logs since timestamp",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("containerId", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Container ID")),
+      ]))),
+      ("tail", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("integer")),
+        ("description", Js.Json.string("Number of lines to show from end")),
+      ]))),
+      ("since", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Show logs since timestamp")),
+      ]))),
+    ])),
     required: ["containerId"],
   },
 }
@@ -158,17 +158,17 @@ let svalinnExec: tool = {
   description: "Execute a command in a running container",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "containerId": {
-        "type": "string",
-        "description": "Container ID",
-      },
-      "command": {
-        "type": "array",
-        "items": {"type": "string"},
-        "description": "Command to execute",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("containerId", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Container ID")),
+      ]))),
+      ("command", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("array")),
+        ("items", Js.Json.object_(Js.Dict.fromArray([("type", Js.Json.string("string"))]))),
+        ("description", Js.Json.string("Command to execute")),
+      ]))),
+    ])),
     required: ["containerId", "command"],
   },
 }
@@ -180,16 +180,16 @@ let svalinnRm: tool = {
   description: "Remove a stopped container",
   inputSchema: {
     type_: "object",
-    properties: Obj.magic({
-      "containerId": {
-        "type": "string",
-        "description": "Container ID to remove",
-      },
-      "force": {
-        "type": "boolean",
-        "description": "Force removal even if running",
-      },
-    }),
+    properties: Js.Json.object_(Js.Dict.fromArray([
+      ("containerId", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("string")),
+        ("description", Js.Json.string("Container ID to remove")),
+      ]))),
+      ("force", Js.Json.object_(Js.Dict.fromArray([
+        ("type", Js.Json.string("boolean")),
+        ("description", Js.Json.string("Force removal even if running")),
+      ]))),
+    ])),
     required: ["containerId"],
   },
 }

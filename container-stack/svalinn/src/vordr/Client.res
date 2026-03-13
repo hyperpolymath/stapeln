@@ -130,19 +130,32 @@ let runContainer = async (
   request: Gateway.Types.runRequest,
 ): Gateway.Types.containerInfo => {
   // First create
-  let createArgs = Obj.magic({
-    "image": request.imageName,
-    "name": request.name,
-    "config": {
-      "privileged": false,
-      "readOnlyRoot": true,
-    },
-  })
+  let nameJson = switch request.name {
+  | Some(n) => Js.Json.string(n)
+  | None => Js.Json.null
+  }
+  let createArgs = Js.Json.object_(Js.Dict.fromArray([
+    ("image", Js.Json.string(request.imageName)),
+    ("name", nameJson),
+    ("config", Js.Json.object_(Js.Dict.fromArray([
+      ("privileged", Js.Json.boolean(false)),
+      ("readOnlyRoot", Js.Json.boolean(true)),
+    ]))),
+  ]))
   let createResult = await callTool(client, toolContainerCreate, createArgs)
 
   // Then start
-  let containerId = Obj.magic(createResult)["containerId"]
-  let _ = await callTool(client, toolContainerStart, Obj.magic({"containerId": containerId}))
+  let containerId = switch Js.Json.decodeObject(createResult) {
+  | Some(obj) => switch Js.Dict.get(obj, "containerId") {
+    | Some(v) => switch Js.Json.decodeString(v) {
+      | Some(s) => s
+      | None => raise(Js.Exn.raiseError("containerId is not a string"))
+      }
+    | None => raise(Js.Exn.raiseError("Response missing containerId"))
+    }
+  | None => raise(Js.Exn.raiseError("Invalid response format"))
+  }
+  let _ = await callTool(client, toolContainerStart, Js.Json.object_(Js.Dict.fromArray([("containerId", Js.Json.string(containerId))])))
 
   {
     id: containerId,
@@ -161,21 +174,22 @@ let verifyImage = async (
   imageRef: string,
   _digest: string,
 ): Gateway.Types.verificationResult => {
-  let args = Obj.magic({
-    "image": imageRef,
-    "checkSbom": true,
-    "checkSignature": true,
-  })
+  let args = Js.Json.object_(Js.Dict.fromArray([
+    ("image", Js.Json.string(imageRef)),
+    ("checkSbom", Js.Json.boolean(true)),
+    ("checkSignature", Js.Json.boolean(true)),
+  ]))
   let result = await callTool(client, toolVerifyImage, args)
+  // NOTE: MCP JSON-RPC result cast — future work: decode with pattern matching
   Obj.magic(result)
 }
 
 let stopContainer = async (client: t, containerId: string): unit => {
-  let _ = await callTool(client, toolContainerStop, Obj.magic({"containerId": containerId}))
+  let _ = await callTool(client, toolContainerStop, Js.Json.object_(Js.Dict.fromArray([("containerId", Js.Json.string(containerId))])))
 }
 
 let removeContainer = async (client: t, containerId: string): unit => {
-  let _ = await callTool(client, toolContainerRemove, Obj.magic({"containerId": containerId}))
+  let _ = await callTool(client, toolContainerRemove, Js.Json.object_(Js.Dict.fromArray([("containerId", Js.Json.string(containerId))])))
 }
 
 let inspectContainer = async (_client: t, containerId: string): Gateway.Types.containerInfo => {
@@ -199,11 +213,11 @@ let requestAuthorization = async (
   threshold: int,
   signers: int,
 ): Js.Json.t => {
-  let args = Obj.magic({
-    "operation": operation,
-    "threshold": threshold,
-    "signers": signers,
-  })
+  let args = Js.Json.object_(Js.Dict.fromArray([
+    ("operation", Js.Json.string(operation)),
+    ("threshold", Js.Json.number(Belt.Int.toFloat(threshold))),
+    ("signers", Js.Json.number(Belt.Int.toFloat(signers))),
+  ]))
   await callTool(client, toolRequestAuth, args)
 }
 
@@ -211,17 +225,27 @@ let submitSignature = async (
   client: t,
   share: signatureShare,
 ): Js.Json.t => {
-  let args = Obj.magic(share)
+  let args = Js.Json.object_(Js.Dict.fromArray([
+    ("requestId", Js.Json.string(share.requestId)),
+    ("signature", Js.Json.string(share.signature)),
+    ("signerId", Js.Json.string(share.signerId)),
+  ]))
   await callTool(client, toolSubmitSignature, args)
 }
 
 // Monitoring operations
 let startMonitor = async (client: t, config: monitorConfig): Js.Json.t => {
-  await callTool(client, toolMonitorStart, Obj.magic(config))
+  let args = Js.Json.object_(Js.Dict.fromArray([
+    ("containerId", Js.Json.string(config.containerId)),
+    ("syscalls", Js.Json.boolean(config.syscalls)),
+    ("network", Js.Json.boolean(config.network)),
+    ("filesystem", Js.Json.boolean(config.filesystem)),
+  ]))
+  await callTool(client, toolMonitorStart, args)
 }
 
 let stopMonitor = async (client: t, containerId: string): Js.Json.t => {
-  await callTool(client, toolMonitorStop, Obj.magic({"containerId": containerId}))
+  await callTool(client, toolMonitorStop, Js.Json.object_(Js.Dict.fromArray([("containerId", Js.Json.string(containerId))])))
 }
 
 let getAnomalies = async (
@@ -229,24 +253,24 @@ let getAnomalies = async (
   containerId: string,
   severity: string,
 ): Js.Json.t => {
-  let args = Obj.magic({
-    "containerId": containerId,
-    "severity": severity,
-  })
+  let args = Js.Json.object_(Js.Dict.fromArray([
+    ("containerId", Js.Json.string(containerId)),
+    ("severity", Js.Json.string(severity)),
+  ]))
   await callTool(client, toolGetAnomalies, args)
 }
 
 // Reversibility operations
 let rollback = async (client: t, containerId: string, steps: int): Js.Json.t => {
-  let args = Obj.magic({
-    "containerId": containerId,
-    "steps": steps,
-  })
+  let args = Js.Json.object_(Js.Dict.fromArray([
+    ("containerId", Js.Json.string(containerId)),
+    ("steps", Js.Json.number(Belt.Int.toFloat(steps))),
+  ]))
   await callTool(client, toolRollback, args)
 }
 
 let previewRollback = async (client: t, containerId: string): Js.Json.t => {
-  let args = Obj.magic({"containerId": containerId})
+  let args = Js.Json.object_(Js.Dict.fromArray([("containerId", Js.Json.string(containerId))]))
   await callTool(client, toolPreviewRollback, args)
 }
 
