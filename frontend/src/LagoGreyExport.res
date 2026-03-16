@@ -132,7 +132,7 @@ let generateManifest = (state: lagoGreyState): string => {
   "  \"created\": \"" ++
   Date.make()->Date.toISOString ++
   "\",\n" ++
-  "  \"author\": \"Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>\",\n" ++
+  "  \"author\": \"Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>\",\n" ++
   "  \"base\": \"" ++
   baseStr ++
   "\",\n" ++

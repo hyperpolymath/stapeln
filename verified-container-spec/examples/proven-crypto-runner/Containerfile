@@ -13,7 +13,7 @@ FROM ghcr.io/hyperpolymath/cerro-torre:latest
 # Metadata
 LABEL org.opencontainers.image.title="ProvenCrypto Runner"
 LABEL org.opencontainers.image.description="Isolated execution environment for ProvenCrypto.jl cryptographic operations"
-LABEL org.opencontainers.image.authors="Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"
+LABEL org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 LABEL org.opencontainers.image.license="PMPL-1.0-or-later"
 LABEL org.opencontainers.image.source="https://github.com/hyperpolymath/verified-container-spec"
 

@@ -22,7 +22,7 @@ mod vordr_mcp;
 #[derive(Parser)]
 #[command(name = "selur-compose")]
 #[command(version, about, long_about = None)]
-#[command(author = "Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>")]
+#[command(author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>")]
 struct Cli {
     /// Path to compose file
     #[arg(short = 'f', long, default_value = "compose.toml", env = "SELUR_COMPOSE_FILE")]

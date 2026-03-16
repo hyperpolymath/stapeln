@@ -73,7 +73,7 @@ function generateManifest(state) {
       baseStr = "scratch";
       break;
   }
-  return "{\n  \"version\": \"1.0\",\n  \"created\": \"" + new Date().toISOString() + "\",\n  \"author\": \"Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>\",\n  \"base\": \"" + baseStr + "\",\n  \"totalSize\": " + String(state.totalSize) + ",\n  \"formations\": [\n" + formations + "\n  ],\n  \"security\": {\n    \"postQuantum\": " + (
+  return "{\n  \"version\": \"1.0\",\n  \"created\": \"" + new Date().toISOString() + "\",\n  \"author\": \"Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>\",\n  \"base\": \"" + baseStr + "\",\n  \"totalSize\": " + String(state.totalSize) + ",\n  \"formations\": [\n" + formations + "\n  ],\n  \"security\": {\n    \"postQuantum\": " + (
     Belt_Array.some(state.formations, f => formationName(f) === "liboqs") ? "true" : "false"
   ) + ",\n    \"classical\": " + (
     Belt_Array.some(state.formations, f => formationName(f) === "libsodium") ? "true" : "false"
