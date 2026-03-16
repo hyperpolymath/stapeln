@@ -39,9 +39,9 @@ STATE.scm claims 60%. STATUS.md claims "Phase 2 at 30%, Phase 3 at 0%". The 30% 
 **What to do:**
 In each file, change the first line from:
 ```
--- SPDX-License-Identifier: AGPL-3.0-or-later
+-- SPDX-License-Identifier: PMPL-1.0-or-later
 ```
-(or `// SPDX-License-Identifier: AGPL-3.0-or-later` for Zig) to:
+(or `// SPDX-License-Identifier: PMPL-1.0-or-later` for Zig) to:
 ```
 -- SPDX-License-Identifier: PMPL-1.0-or-later
 ```
