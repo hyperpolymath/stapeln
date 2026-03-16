@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "a6bd9705-f4d2-5bfb-8975-5fc5be8a56da"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "stapeln"
+prefixed-name = "ix-stapeln"
+
+[clade]
+primary = "ix"
+secondary = []
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/stapeln"
+gitlab = "hyperpolymath/stapeln"
+bitbucket = "hyperpolymath/stapeln"
+
+[lineage]
+type = "standalone"
+parent = "Container layer management — verified builds"
+born = "2026-03-16"
