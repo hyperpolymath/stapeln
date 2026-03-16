@@ -511,9 +511,9 @@ See link:ROADMAP.md[ROADMAP.md] for detailed timeline.
 * link:DATABASE-AND-DOCS-INTEGRATION.md[Database Integration] - VeriSimDB + A2ML + K9-SVC
 * link:UI-MOCKUPS.md[UI Mockups] - Game-like interface designs
 * link:SETUP.md[Setup Guide] - Deno-only installation
-* link:STATE.scm[STATE.scm] - Current project state
-* link:ECOSYSTEM.scm[ECOSYSTEM.scm] - Ecosystem position
-* link:META.scm[META.scm] - Architecture decisions (14 ADRs)
+* link:.machine_readable/6a2/STATE.a2ml[.machine_readable/6a2/STATE.a2ml] - Current project state
+* link:.machine_readable/6a2/ECOSYSTEM.a2ml[.machine_readable/6a2/ECOSYSTEM.a2ml] - Ecosystem position
+* link:.machine_readable/6a2/META.a2ml[.machine_readable/6a2/META.a2ml] - Architecture decisions (14 ADRs)
 
 == Contributing
 
