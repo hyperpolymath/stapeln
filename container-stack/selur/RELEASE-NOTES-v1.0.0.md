@@ -318,7 +318,7 @@ See [LICENSE](LICENSE) for full terms.
 
 ## Credits
 
-**Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 **Part of the hyperpolymath ecosystem:**
 - [Cerro Torre](https://github.com/hyperpolymath/cerro-torre) - Verified container packaging
@@ -340,7 +340,7 @@ See [LICENSE](LICENSE) for full terms.
 2. Read [Troubleshooting](wiki/Troubleshooting.adoc)
 3. Search [GitHub Issues](https://github.com/hyperpolymath/selur/issues)
 4. Open a new issue with details
-5. Email: jonathan.jewell@open.ac.uk
+5. Email: j.d.a.jewell@open.ac.uk
 
 ---
 

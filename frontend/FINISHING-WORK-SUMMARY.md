@@ -200,5 +200,5 @@ style={ReactDOM.Style.make(~display="flex", ~gap="1rem", ())}
 ---
 
 **Completion Date:** 2026-02-05
-**Developer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Developer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **License:** PMPL-1.0-or-later

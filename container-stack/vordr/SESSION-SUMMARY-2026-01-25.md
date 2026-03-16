@@ -343,7 +343,7 @@ Total:              44 passed, 14 ignored
 ## Acknowledgments
 
 **Contributors:**
-- Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk> (Primary)
+- Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk> (Primary)
 - Claude Sonnet 4.5 <noreply@anthropic.com> (Co-Authored)
 
 **Tools Used:**

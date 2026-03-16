@@ -263,7 +263,7 @@ See [Contributing Guide](wiki/Contributing.adoc) for details.
 - **Repository:** https://github.com/hyperpolymath/selur
 - **Issue Tracker:** https://github.com/hyperpolymath/selur/issues
 - **Discussions:** Coming soon
-- **Email:** jonathan.jewell@open.ac.uk
+- **Email:** j.d.a.jewell@open.ac.uk
 
 **Part of the hyperpolymath ecosystem:**
 - [Cerro Torre](https://github.com/hyperpolymath/cerro-torre) - Verified containers
@@ -278,7 +278,7 @@ See [LICENSE](LICENSE) for full terms.
 
 ## Credits
 
-**Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 **Co-Authored-By:** Claude Sonnet 4.5 <noreply@anthropic.com>
 

@@ -3,7 +3,7 @@
 [package]
 name = "containerd-shim-verified-container"
 version = "0.1.0"
-authors = ["Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>"]
+authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Containerd shim for verified-container-spec compliant .ctp bundles"

@@ -60,7 +60,7 @@ selur is an Ephapax-linear WASM sealant that provides zero-copy IPC between Sval
 == Community
 
 * **License:** PMPL-1.0-or-later
-* **Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+* **Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 * **Part of:** hyperpolymath ecosystem (Cerro Torre, Svalinn, Vörðr)
 
 == Getting Help

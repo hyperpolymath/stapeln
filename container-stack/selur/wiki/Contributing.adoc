@@ -13,7 +13,7 @@ We follow the hyperpolymath community code of conduct:
 * **Be professional** - Keep discussions focused on technical merit
 * **Be inclusive** - Welcome newcomers and help them learn
 
-Violations can be reported to: jonathan.jewell@open.ac.uk
+Violations can be reported to: j.d.a.jewell@open.ac.uk
 
 == Ways to Contribute
 
@@ -515,7 +515,7 @@ For general questions:
 
 - GitHub Discussions (coming soon)
 - Issue tracker
-- Email: jonathan.jewell@open.ac.uk
+- Email: j.d.a.jewell@open.ac.uk
 
 === Reporting Problems
 
@@ -527,7 +527,7 @@ If you encounter issues:
 
 For security issues:
 
-Email jonathan.jewell@open.ac.uk directly (not public issue tracker).
+Email j.d.a.jewell@open.ac.uk directly (not public issue tracker).
 
 == Recognition
 
@@ -564,6 +564,6 @@ Ready to contribute?
 3. **Fork and code:** Follow the workflow above
 4. **Submit PR:** We'll review and merge!
 
-Questions? Open an issue or email jonathan.jewell@open.ac.uk
+Questions? Open an issue or email j.d.a.jewell@open.ac.uk
 
 Thank you for contributing to selur! 🚀

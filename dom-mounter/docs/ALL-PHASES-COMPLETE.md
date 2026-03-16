@@ -409,7 +409,7 @@ DomMounter.mountEnhanced(config);
 ## 📝 License & Attribution
 
 **License:** PMPL-1.0-or-later (Palimpsest License)
-**Author:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Author:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **Implementation Date:** 2026-02-05
 
 All original code uses PMPL-1.0-or-later. Third-party dependencies respect their original licenses.

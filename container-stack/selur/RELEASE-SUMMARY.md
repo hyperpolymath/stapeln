@@ -180,7 +180,7 @@ selur provides zero-copy IPC between Svalinn and Vörðr with:
 Download: https://github.com/hyperpolymath/selur/releases/tag/v1.0.0
 Docs: https://github.com/hyperpolymath/selur/wiki
 
-Questions? jonathan.jewell@open.ac.uk
+Questions? j.d.a.jewell@open.ac.uk
 ```
 
 ### 4. Integration Testing 📋 TODO
@@ -216,7 +216,7 @@ All pre-release criteria met:
 
 ## Contact
 
-**Maintainer:** Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>  
+**Maintainer:** Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>  
 **Repository:** https://github.com/hyperpolymath/selur  
 **License:** PMPL-1.0-or-later
 

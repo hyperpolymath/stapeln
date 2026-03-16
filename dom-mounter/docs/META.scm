@@ -231,7 +231,7 @@
 
   (governance
     (license "PMPL-1.0-or-later (Palimpsest License)")
-    (copyright "Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>")
+    (copyright "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>")
     (contribution-policy "See CONTRIBUTING.md")
     (code-of-conduct "Contributor Covenant 2.1")
     (security-policy "See SECURITY.md"))

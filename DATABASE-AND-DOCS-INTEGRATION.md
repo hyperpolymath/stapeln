@@ -282,7 +282,7 @@ It is the web server component in verified container stacks.
 @metadata:
 id: comp-nginx-001
 version: 1.27.0
-author: Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 attestation: rekor:abc123
 @end
 

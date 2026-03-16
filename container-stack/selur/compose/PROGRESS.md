@@ -405,6 +405,6 @@ PMPL-1.0-or-later (Polymath Public Mark License)
 
 ## Maintainer
 
-Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 **Co-Authored-By:** Claude Sonnet 4.5 <noreply@anthropic.com>

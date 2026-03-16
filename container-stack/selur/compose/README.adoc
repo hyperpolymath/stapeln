@@ -504,7 +504,7 @@ See link:CONTRIBUTING.adoc[Contributing Guide] for details.
 - **Repository:** https://github.com/hyperpolymath/selur-compose
 - **Issue Tracker:** https://github.com/hyperpolymath/selur-compose/issues
 - **Discussions:** https://github.com/hyperpolymath/selur-compose/discussions
-- **Email:** jonathan.jewell@open.ac.uk
+- **Email:** j.d.a.jewell@open.ac.uk
 
 **Part of the hyperpolymath ecosystem:**
 
@@ -521,7 +521,7 @@ See link:LICENSE[LICENSE] for full terms.
 
 == Maintainer
 
-**Jonathan D.A. Jewell** <jonathan.jewell@open.ac.uk>
+**Jonathan D.A. Jewell** <j.d.a.jewell@open.ac.uk>
 
 **Co-Authored-By:** Claude Sonnet 4.5 <noreply@anthropic.com>
 

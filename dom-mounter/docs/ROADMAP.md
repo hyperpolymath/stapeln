@@ -342,7 +342,7 @@
 
 ## Contact and Support
 
-**Maintainer**: Jonathan D.A. Jewell <jonathan.jewell@open.ac.uk>
+**Maintainer**: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 **Repository**: https://github.com/hyperpolymath/stapeln-frontend
 
