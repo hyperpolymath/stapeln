@@ -7,7 +7,7 @@
 
 A palimpsest is a manuscript page that has been written on, scraped off, and written on again — yet traces of earlier writing remain visible beneath. Software is similar: every contribution builds upon what came before, and the history of that evolution matters.
 
-The Palimpsest Covenant is not a license. It does not impose legal obligations beyond those of the accompanying software license (MIT or AGPL-3.0-or-later, at your choice). Instead, it is a statement of values that defines what it means to be part of the Cerro Torre community.
+The Palimpsest Covenant is not a license. It does not impose legal obligations beyond those of the accompanying software license (MIT or PMPL-1.0-or-later, at your choice). Instead, it is a statement of values that defines what it means to be part of the Cerro Torre community.
 
 We adopt this covenant because we believe:
 

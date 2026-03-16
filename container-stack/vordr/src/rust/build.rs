@@ -127,7 +127,7 @@ fn generate_stub_library() {
 
     let stub_code = r#"
 // Stub implementation of gatekeeper when GNAT is not available
-// SPDX-License-Identifier: MIT OR AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT OR PMPL-1.0-or-later
 
 #include <string.h>
 

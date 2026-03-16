@@ -34,7 +34,7 @@ STATE.scm claims 60%. STATUS.md claims "Phase 2 at 30%, Phase 3 at 0%". The 30% 
 - `/var/mnt/eclipse/repos/stapeln/ffi/zig/test/integration_test.zig` (line 1)
 - `/var/mnt/eclipse/repos/stapeln/ffi/zig/build.zig` (line 1)
 
-**Problem:** All seven files use `AGPL-3.0-or-later` as their SPDX license identifier. Per hyperpolymath standards, all original code must use `PMPL-1.0-or-later`. AGPL-3.0-or-later is the old license and is explicitly banned.
+**Problem:** All seven files use `PMPL-1.0-or-later` as their SPDX license identifier. Per hyperpolymath standards, all original code must use `PMPL-1.0-or-later`. PMPL-1.0-or-later is the old license and is explicitly banned.
 
 **What to do:**
 In each file, change the first line from:
@@ -50,7 +50,7 @@ In each file, change the first line from:
 **Verification:**
 ```bash
 # Must return zero matches:
-grep -rn "AGPL-3.0-or-later" /var/mnt/eclipse/repos/stapeln/src/abi/ /var/mnt/eclipse/repos/stapeln/ffi/zig/
+grep -rn "PMPL-1.0-or-later" /var/mnt/eclipse/repos/stapeln/src/abi/ /var/mnt/eclipse/repos/stapeln/ffi/zig/
 # Must return 7 matches:
 grep -rn "PMPL-1.0-or-later" /var/mnt/eclipse/repos/stapeln/src/abi/ /var/mnt/eclipse/repos/stapeln/ffi/zig/
 ```
@@ -778,7 +778,7 @@ zig build test 2>&1
 echo "Zig exit code: $?"
 
 # 4. License check: no AGPL anywhere in source
-grep -rn "AGPL-3.0-or-later" \
+grep -rn "PMPL-1.0-or-later" \
   /var/mnt/eclipse/repos/stapeln/src/ \
   /var/mnt/eclipse/repos/stapeln/ffi/ \
   /var/mnt/eclipse/repos/stapeln/frontend/src/ \
