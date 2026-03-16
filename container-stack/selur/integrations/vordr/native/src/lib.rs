@@ -2,6 +2,7 @@
 // Elixir NIF bindings for selur WASM bridge
 // Enables Vörðr (Elixir orchestrator) to use zero-copy IPC
 
+#![forbid(unsafe_code)]
 use rustler::{Encoder, Env, Error, ResourceArc, Term};
 use selur::{Bridge, ErrorCode};
 use std::sync::Mutex;

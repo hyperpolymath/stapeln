@@ -17,6 +17,7 @@
 //! # Ok::<(), anyhow::Error>(())
 //! ```
 
+#![forbid(unsafe_code)]
 use std::path::Path;
 use wasmtime::*;
 

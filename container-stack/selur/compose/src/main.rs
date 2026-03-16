@@ -7,6 +7,7 @@
 //! - selur for zero-copy IPC
 //! - Vordr for container orchestration
 
+#![forbid(unsafe_code)]
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;

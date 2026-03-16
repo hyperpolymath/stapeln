@@ -4,6 +4,7 @@
 // Containerd shim for verified-container-spec .ctp bundles
 // Implements: https://github.com/hyperpolymath/verified-container-spec/blob/main/spec/runtime-integration.adoc
 
+#![forbid(unsafe_code)]
 use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
