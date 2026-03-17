@@ -540,8 +540,8 @@ https://codeofconduct.club/palimpsest-license/[PMPL-1.0-or-later] (Palimpsest Li
 * https://github.com/hyperpolymath/selur[selur] - IPC bridge
 * https://github.com/hyperpolymath/vordr[vörðr] - Container runtime
 * https://github.com/hyperpolymath/verisimdb[verisimdb] - Multi-modal database
-* https://github.com/hyperpolymath/a2ml[a2ml] - Attested Markup Language
-* https://github.com/hyperpolymath/k9-svc[k9-svc] - Self-validating configs
+* https://github.com/hyperpolymath/standards/tree/main/a2ml[a2ml] - Attested Markup Language
+* https://github.com/hyperpolymath/standards/tree/main/k9-svc[k9-svc] - Self-validating configs
 * https://github.com/hyperpolymath/selur-compose[selur-compose] - CLI orchestration
 * https://github.com/hyperpolymath/verified-container-spec[verified-container-spec] - Protocol specification
 
