@@ -107,9 +107,9 @@ let encodeRequest = (command: int, payload: string): array<int> => {
   Belt.Array.setUnsafe(buf, 2, land(lsr(payloadBytes, 8), 0xFF))
   Belt.Array.setUnsafe(buf, 3, land(lsr(payloadBytes, 16), 0xFF))
   Belt.Array.setUnsafe(buf, 4, land(lsr(payloadBytes, 24), 0xFF))
-  // Payload
+  // Payload bytes
   for i in 0 to payloadBytes - 1 {
-    Belt.Array.setUnsafe(buf, 5 + i, Js.String.charCodeAt(payload, i)->Belt.Float.toInt)
+    Belt.Array.setUnsafe(buf, 5 + i, Js.String2.charCodeAt(payload, i)->Belt.Float.toInt)
   }
   buf
 }

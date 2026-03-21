@@ -112,7 +112,8 @@ let base64UrlDecode = (str: string): Js.TypedArray2.Uint8Array.t => {
     ->Js.String2.replaceByRe(%re("/-/g"), "+")
     ->Js.String2.replaceByRe(%re("/_/g"), "/")
 
-  let padding = Js.String2.repeat("=", (4 - mod(Js.String2.length(base64), 4)) |> mod(_, 4))
+  let padLen = mod(4 - mod(Js.String2.length(base64), 4), 4)
+  let padding = Js.String2.repeat("=", padLen)
   let binary = atob_(base64 ++ padding)
 
   let bytes = Js.TypedArray2.Uint8Array.fromLength(Js.String2.length(binary))
@@ -347,7 +348,7 @@ let verifyJWT = async (token: string, config: oidcConfig): tokenPayload => {
   let (header, payload) = decodeJWT(token)
 
   // Validate basic claims
-  let now = Js.Date.now() /. 1000.0 |> Belt.Float.toInt
+  let now = Belt.Float.toInt(Js.Date.now() /. 1000.0)
 
   if payload.exp < now {
     raise(Js.Exn.raiseError("Token expired"))
