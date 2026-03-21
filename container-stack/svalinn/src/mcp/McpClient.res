@@ -78,49 +78,54 @@ let rec callWithRetry = async (
   )
 
   try {
-    let response = await Fetch.fetch(
-      config.endpoint,
-      {
-        "method": "POST",
-        "headers": {"Content-Type": "application/json"},
-        "body": Js.Json.stringify(requestBody),
-        "signal": timeoutSignal(config.timeout),
-      }
-    )
+    // Try selur WASM bridge first (zero-copy IPC, ~7-20x faster).
+    // Falls through to HTTP Fetch if bridge is disabled or method unsupported.
+    let bridgeResult = await SelurBridge.tryBridge(method, params, requestId)
 
-    if !Fetch.Response.ok(response) {
-      let status = Fetch.Response.status(response)
-      raise(Js.Exn.raiseError(`HTTP ${Belt.Int.toString(status)}`))
-    }
-
-    let json = await Fetch.Response.json(response)
-    let obj = switch json->Js.Json.decodeObject {
-    | Some(o) => o
-    | None => raise(Js.Exn.raiseError("MCP response is not a valid JSON object"))
-    }
-
-    // Check for MCP error
-    switch obj->Js.Dict.get("error") {
-    | Some(errorJson) => {
-        let errorObj = switch errorJson->Js.Json.decodeObject {
-        | Some(o) => o
-        | None => raise(Js.Exn.raiseError("MCP error field is not a valid object"))
-        }
-        let code = errorObj
-          ->Js.Dict.get("code")
-          ->Belt.Option.flatMap(Js.Json.decodeNumber)
-          ->Belt.Option.map(Belt.Float.toInt)
-          ->Belt.Option.getWithDefault(-1)
-        let message = errorObj
-          ->Js.Dict.get("message")
-          ->Belt.Option.flatMap(Js.Json.decodeString)
-          ->Belt.Option.getWithDefault("Unknown error")
-
-        raise(Js.Exn.raiseError(`MCP error ${Belt.Int.toString(code)}: ${message}`))
-      }
+    switch bridgeResult {
+    | Some(json) => json
     | None => {
-        // Return result
-        obj->Js.Dict.get("result")->Belt.Option.getWithDefault(Js.Json.null)
+        let response = await Fetch.fetch(
+          config.endpoint,
+          {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": Js.Json.stringify(requestBody),
+            "signal": timeoutSignal(config.timeout),
+          }
+        )
+
+        if !Fetch.Response.ok(response) {
+          let status = Fetch.Response.status(response)
+          raise(Js.Exn.raiseError(`HTTP ${Belt.Int.toString(status)}`))
+        }
+
+        let json = await Fetch.Response.json(response)
+        let obj = switch json->Js.Json.decodeObject {
+        | Some(o) => o
+        | None => raise(Js.Exn.raiseError("MCP response is not a valid JSON object"))
+        }
+
+        switch obj->Js.Dict.get("error") {
+        | Some(errorJson) => {
+            let errorObj = switch errorJson->Js.Json.decodeObject {
+            | Some(o) => o
+            | None => raise(Js.Exn.raiseError("MCP error field is not a valid object"))
+            }
+            let code = errorObj
+              ->Js.Dict.get("code")
+              ->Belt.Option.flatMap(Js.Json.decodeNumber)
+              ->Belt.Option.map(Belt.Float.toInt)
+              ->Belt.Option.getWithDefault(-1)
+            let message = errorObj
+              ->Js.Dict.get("message")
+              ->Belt.Option.flatMap(Js.Json.decodeString)
+              ->Belt.Option.getWithDefault("Unknown error")
+            raise(Js.Exn.raiseError(`MCP error ${Belt.Int.toString(code)}: ${message}`))
+          }
+        | None =>
+            obj->Js.Dict.get("result")->Belt.Option.getWithDefault(Js.Json.null)
+        }
       }
     }
   } catch {

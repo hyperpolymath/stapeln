@@ -509,8 +509,8 @@ let handleRequest = async (body: Js.Json.t): jsonRpcResponse => {
           // Notifications are fire-and-forget; acknowledge silently
           Js.Json.object_(Js.Dict.fromArray([("ok", Js.Json.boolean(true))]))
         | method =>
-          // Return a proper method-not-found error at the JSON-RPC level
-          return makeJsonRpcError(request.id, errorMethodNotFound, `Unknown method: ${method}`)
+          // Method not found — raise to enter error handler
+          raise(Js.Exn.raiseError(`Unknown method: ${method}`))
         }
 
         {
