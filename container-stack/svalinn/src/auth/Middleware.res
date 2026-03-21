@@ -81,7 +81,7 @@ and authMiddleware = (config: authConfig): Hono.middleware<'env, 'path> => {
             scopes: result.contents.scopes->Belt.Option.getWithDefault([]),
             method: result.contents.method,
             issuedAt: token->Belt.Option.map(t => t.iat)->Belt.Option.getWithDefault(
-              Js.Date.now() /. 1000.0 |> Belt.Float.toInt
+              Belt.Float.toInt(Js.Date.now() /. 1000.0)
             ),
             expiresAt: token->Belt.Option.flatMap(t => Some(t.exp)),
           }
@@ -272,12 +272,12 @@ and authenticateApiKey = (c: Hono.Context.t<'env, 'path>, config: authConfig): a
                 // Create token payload from key info
                 let expiresAtTimestamp = switch keyInfo.expiresAt {
                 | Some(exp) =>
-                  makeDate(exp)->getTimeMs /. 1000.0 |> Js.Math.floor_int
+                  Js.Math.floor_int(makeDate(exp)->getTimeMs /. 1000.0)
                 | None => 0
                 }
 
                 let createdAtTimestamp =
-                  makeDate(keyInfo.createdAt)->getTimeMs /. 1000.0 |> Js.Math.floor_int
+                  Js.Math.floor_int(makeDate(keyInfo.createdAt)->getTimeMs /. 1000.0)
 
                 let tokenPayload: tokenPayload = {
                   sub: keyInfo.id,
