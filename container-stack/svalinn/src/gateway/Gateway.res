@@ -1138,6 +1138,12 @@ let createAppWithValidator = (validator: Validation.t): Hono.t<'env> => {
 
 // Start server
 let serve = async () => {
+  // Initialize selur WASM bridge (if SELUR_WASM env var is set)
+  SelurBridge.init()
+  if SelurBridge.isEnabled() {
+    Log.info("selur WASM bridge enabled — zero-copy IPC active", ())
+  }
+
   // Load JSON schemas
   Log.info("Loading JSON schemas...", ())
   let validator = Validation.make()
