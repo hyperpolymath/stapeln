@@ -3,7 +3,7 @@
 
 //! Example demonstrating error handling with selur Bridge
 
-use selur::{Bridge, ErrorCode};
+use selur::{Bridge, StatusCode};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("selur Error Handling Example");
@@ -39,8 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(response) => {
             println!("   ✓ Received response: {} bytes", response.len());
             if let Some(status) = response.first() {
-                if let Some(error_code) = ErrorCode::from_u32(*status as u32) {
-                    println!("   Status: {}", error_code);
+                if let Some(status_code) = StatusCode::from_u8(*status) {
+                    println!("   Status: {}", status_code);
                 }
             }
         }
